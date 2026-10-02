@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from cyp.core.errors import ConfigError
+from cyp.core.errors import ConfigError, CypError
 from cyp.core.timeutil import now_utc
 from cyp.dataset import CACHE, Dataset
 from cyp.settings import DEFAULT_ATHLETE_CONFIG, AthleteConfig, Settings, load_athlete_config
@@ -21,6 +21,10 @@ from cyp.store.streams import StreamStore
 
 class NoDataError(LookupError):
     """The store has no athlete yet (run a sync or seed demo data)."""
+
+
+class SchemaOutdatedError(CypError):
+    """The database is behind the code's migrations (run ``cyp db upgrade``)."""
 
 
 @dataclass
@@ -36,6 +40,25 @@ class AppContext:
     write_lock: threading.Lock = field(default_factory=threading.Lock)
     #: Frozen local wall-clock time (tests, demos); ``None`` = the real clock.
     fixed_now: dt.datetime | None = None
+    _schema_ok: bool = False
+
+    def check_schema(self) -> None:
+        """Fail fast with a clear hint when migrations are pending (checked once per context).
+
+        Raises:
+            SchemaOutdatedError: the DB revision is not the code's head revision.
+        """
+        if self._schema_ok:
+            return
+        from cyp.store.migrate import schema_status
+
+        st = schema_status(self.engine, self.settings.cyp_db_url)
+        if not st.up_to_date:
+            raise SchemaOutdatedError(
+                f"database schema is {st.current or 'empty'}, code expects {st.head}: "
+                "run `uv run cyp db upgrade` (then `uv run cyp analyze`)"
+            )
+        self._schema_ok = True
 
     @classmethod
     def from_settings(
@@ -91,7 +114,9 @@ class AppContext:
 
         Raises:
             NoDataError: no athlete in the store.
+            SchemaOutdatedError: migrations are pending.
         """
+        self.check_schema()
         ds = CACHE.get(self.factory)
         if ds is None:
             raise NoDataError("no athlete in the store; run `cyp sync` (or `cyp dev seed`)")

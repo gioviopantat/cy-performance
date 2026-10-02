@@ -40,7 +40,7 @@ def dev_seed(
     settings = cli_settings()
     for path in settings.data_layout:
         path.mkdir(parents=True, exist_ok=True)
-    with app_context(settings) as ctx:
+    with app_context(settings, check_schema=False) as ctx:
         if not schema_status(ctx.engine, settings.cyp_db_url).up_to_date:
             upgrade_head(settings.cyp_db_url)
         with ctx.factory() as s:
@@ -105,7 +105,7 @@ def dev_openapi(
     """Write the HTTP API's OpenAPI schema (the frontend's type source) to --out."""
     create_app = load_create_app()
     settings = cli_settings()
-    with app_context(settings, athlete_config) as ctx:
+    with app_context(settings, athlete_config, check_schema=False) as ctx:
         schema = create_app(ctx).openapi()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(schema, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

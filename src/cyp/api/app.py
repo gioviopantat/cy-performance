@@ -32,7 +32,7 @@ from cyp import __version__
 from cyp.api.routes import activities, ftp, jobs, meta, plan, readiness, reports
 from cyp.core.errors import AnalysisError, ConfigError, NotFoundError
 from cyp.dataset import data_version
-from cyp.services.context import AppContext, NoDataError
+from cyp.services.context import AppContext, NoDataError, SchemaOutdatedError
 from cyp.services.jobs import JobManager
 
 API_PREFIX = "/v1"
@@ -102,6 +102,10 @@ def create_app(ctx: AppContext) -> FastAPI:
     @app.exception_handler(NoDataError)
     async def _no_data(_: Request, exc: NoDataError) -> JSONResponse:
         return _error(409, "no_data", str(exc))
+
+    @app.exception_handler(SchemaOutdatedError)
+    async def _schema(_: Request, exc: SchemaOutdatedError) -> JSONResponse:
+        return _error(503, "schema", str(exc))
 
     @app.exception_handler(NotFoundError)
     async def _not_found(_: Request, exc: NotFoundError) -> JSONResponse:
