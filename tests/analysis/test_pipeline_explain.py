@@ -149,11 +149,12 @@ def test_no_power_no_hr_falls_back_to_estimated_tss() -> None:
     assert_numbers_backed(m.explanation)
 
 
-def test_short_ride_has_no_np(steady_ride: pl.DataFrame) -> None:
+def test_short_ride_gets_np_and_tss(steady_ride: pl.DataFrame) -> None:
     m = compute_ride_metrics(frame(steady_ride.head(600)), inputs())
-    assert m.np_w is None and m.tss is None
+    assert m.np_w is not None and m.tss is not None and m.tss > 0
     assert m.explanation is not None and m.explanation.headline_zh
-    assert m.comparison["tss_ours"] is None
+    tiny = compute_ride_metrics(frame(steady_ride.head(45)), inputs())
+    assert tiny.np_w is None and tiny.tss is None
 
 
 def test_without_ftp_power_metrics_degrade(steady_ride: pl.DataFrame) -> None:

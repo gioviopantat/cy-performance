@@ -110,6 +110,7 @@ class WellnessRow:
     injury: float | None = None
     weight_kg: float | None = None
     eftp: float | None = None
+    ctl_load: float | None = None  # icu's load for the day as used in its CTL
 
 
 @dataclass(frozen=True)
@@ -475,6 +476,7 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
             WellnessDaily.injury,
             WellnessDaily.weight_kg,
             WellnessDaily.raw_json,
+            WellnessDaily.ctl_load,
         ).where(WellnessDaily.athlete_id == athlete_id)
     ):
         eftp = None
@@ -497,7 +499,16 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
             _f(w.injury),
             w.weight_kg,
             eftp,
+            w.ctl_load,
         )
+
+    # icu is the load ledger (ADR-0003): where wellness carries icu's own daily ctlLoad, the
+    # day's load is that number. It excludes what icu does not count towards fitness (e.g.
+    # strength / yoga per the athlete's icu settings, rides icu has no load for). Days without
+    # it (e.g. Strava-only history) keep the activity sum.
+    for day, wrow in wellness.items():
+        if wrow.ctl_load is not None:
+            loads[day] = float(wrow.ctl_load)
 
     fitness = {
         r.date_local: FitnessRow(

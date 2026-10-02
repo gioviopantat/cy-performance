@@ -292,7 +292,7 @@ def analyze_activity(
     if activities.get_stream_file(activity_id) is None and not store.exists(activity_id):
         return AnalyzeResult(activity_id, "skipped_no_streams")
     try:
-        frame = load_frame(store, activity_id)
+        frame = load_frame(store, activity_id, trainer=bool(activity.trainer))
     except NotFoundError:
         return AnalyzeResult(activity_id, "skipped_no_streams")
     inputs = resolve_inputs(session, activity)

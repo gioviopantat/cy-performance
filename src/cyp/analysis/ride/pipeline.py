@@ -16,7 +16,7 @@ from cyp.analysis.ride.explain import explain_ride
 from cyp.analysis.ride.frames import FloatArray, RideFrame, elevation_gain
 from cyp.analysis.ride.result import RideInputs, RideMetrics, TssSource
 
-ALGO_VERSION = "ride-1.1.0"  # 1.1: per-ride durability (EF by kJ bucket)
+ALGO_VERSION = "ride-1.2.0"  # 1.1 durability per ride; 1.2 NP from 60 s, trainer moving
 
 
 def _pacing(frame: RideFrame, p_rec: FloatArray | None, pm: power.PowerMetrics) -> dict[str, Any]:

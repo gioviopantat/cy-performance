@@ -113,9 +113,18 @@ def recorded_mask(df: pl.DataFrame) -> BoolArray:
     return np.asarray(df.select(expr.alias("r"))["r"].to_numpy(), dtype=bool)
 
 
-def moving_mask(df: pl.DataFrame, recorded: BoolArray | None = None) -> BoolArray:
-    """Moving seconds: Strava ``moving`` flag, else speed > 0.5 m/s, else ``recorded``."""
+def moving_mask(
+    df: pl.DataFrame, recorded: BoolArray | None = None, *, trainer: bool = False
+) -> BoolArray:
+    """Moving seconds: Strava ``moving`` flag, else speed > 0.5 m/s, else ``recorded``.
+
+    On a stationary trainer every recorded second counts (icu's convention): with "include
+    zeros" off a head unit leaves power *and* virtual speed empty while you stop pedalling, so
+    a speed rule would drop those seconds and inflate NP.
+    """
     rec = recorded_mask(df) if recorded is None else recorded
+    if trainer:
+        return rec
     if StreamName.MOVING in df.columns:
         flag = np.asarray(
             df[StreamName.MOVING].fill_null(False).cast(pl.Boolean).to_numpy(), dtype=bool
@@ -137,8 +146,10 @@ class RideFrame:
     moving: BoolArray
 
     @classmethod
-    def from_df(cls, df: pl.DataFrame) -> RideFrame:
+    def from_df(cls, df: pl.DataFrame, *, trainer: bool = False) -> RideFrame:
         """Build from a stream frame; sorts by ``t_s`` and requires a contiguous 1 Hz grid.
+
+        ``trainer`` switches the moving rule to "every recorded second" (see :func:`moving_mask`).
 
         Raises:
             AnalysisError: ``t_s`` missing or not a contiguous 1 Hz grid.
@@ -152,7 +163,7 @@ class RideFrame:
         if t.size > 1 and not np.all(np.diff(t) == 1):
             raise AnalysisError("stream frame is not a contiguous 1 Hz grid")
         rec = recorded_mask(df)
-        return cls(df=df, recorded=rec, moving=moving_mask(df, rec))
+        return cls(df=df, recorded=rec, moving=moving_mask(df, rec, trainer=trainer))
 
     # ---------------------------------------------------------------- columns
     def col(self, name: str) -> FloatArray | None:
@@ -249,11 +260,11 @@ class RideFrame:
         return rolling_mean(np.nan_to_num(source, nan=0.0), NP_WINDOW_S)
 
 
-def load_frame(store: StreamStore, activity_id: int) -> RideFrame:
+def load_frame(store: StreamStore, activity_id: int, *, trainer: bool = False) -> RideFrame:
     """Read ``{activity_id}.parquet`` through the store and wrap it.
 
     Raises:
         NotFoundError: no stream file.
         AnalysisError: malformed frame.
     """
-    return RideFrame.from_df(store.read(activity_id))
+    return RideFrame.from_df(store.read(activity_id), trainer=trainer)
