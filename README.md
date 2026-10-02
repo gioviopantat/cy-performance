@@ -93,6 +93,12 @@ uv run cyp plan --publish                    # + read-only diff against the live
 uv run cyp publish spike --date YYYY-MM-DD   # dry run; --confirm-write runs the upsert spike
 uv run cyp plan --apply --confirm-write      # writes to icu (needs the spike result first)
 uv run cyp explain <key>                     # e.g. readiness.2026-10-06, ftp.proposal, plan.day.2026-10-07
+uv run cyp ftp [--what-if W] [--json]          # FTP evidence (~20 ms); `cyp ftp accept W --yes` records your decision
+uv run cyp season                            # 26-week skeleton with targets and tests
+uv run cyp dev seed --days 400               # synthetic demo athlete in an empty DB (no API keys)
+uv run cyp dev bench                         # recompute latency (trends / FTP / readiness / plan)
+uv run cyp serve                             # HTTP API for the frontend: http://127.0.0.1:8765/docs (docs/08-api.md)
+uv run cyp dev openapi                       # docs/api/openapi.json for client generation
 ```
 
 Nothing writes to the intervals.icu calendar unless both `--apply` (or `--confirm-write` for the
