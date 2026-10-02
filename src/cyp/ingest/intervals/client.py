@@ -353,6 +353,40 @@ class IntervalsClient:
         """``GET /athlete/{id}/fitness-model-events`` (SET_EFTP / SET_FITNESS / FITNESS_DAYS)."""
         return _as_list(self.get(f"/athlete/{self.resolve_athlete_id()}/fitness-model-events"))
 
+    # ------------------------------------------------------------------ calendar writes (M3)
+    # Retrying these on 5xx is safe only because every write is an upsert keyed on
+    # external_id / uid (ADR-0005): a replayed request converges on the same event.
+
+    def bulk_upsert_events(
+        self, events: list[JsonDict], *, mode: Literal["upsert", "uid"] = "upsert"
+    ) -> JsonList:
+        """``POST /athlete/{id}/events/bulk``; returns the created/updated events.
+
+        ``mode="upsert"`` sends ``upsert=true`` (match on ``external_id``), ``mode="uid"`` sends
+        ``upsertOnUid=true`` (match on ``uid``).
+        """
+        params = {"upsert": "true"} if mode == "upsert" else {"upsertOnUid": "true"}
+        return _as_list(
+            self.request(
+                "POST",
+                f"/athlete/{self.resolve_athlete_id()}/events/bulk",
+                params=params,
+                json=events,
+            )
+        )
+
+    def bulk_delete_events(self, refs: list[JsonDict]) -> Any:
+        """``PUT /athlete/{id}/events/bulk-delete`` with ``[{"id": ..} | {"external_id": ..}]``."""
+        return self.request(
+            "PUT", f"/athlete/{self.resolve_athlete_id()}/events/bulk-delete", json=refs
+        )
+
+    def create_event(self, event: JsonDict) -> JsonDict:
+        """``POST /athlete/{id}/events`` (single event, e.g. the daily NOTE)."""
+        return _as_dict(
+            self.request("POST", f"/athlete/{self.resolve_athlete_id()}/events", json=event)
+        )
+
 
 # ---------------------------------------------------------------------------- helpers
 
