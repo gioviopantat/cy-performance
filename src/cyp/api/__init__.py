@@ -1,1 +1,1 @@
-"""Optional FastAPI app: Strava webhook, healthz, read-only JSON for a future UI."""
+"""HTTP API for the frontend (FastAPI, optional ``serve`` extra). Entry: :func:`cyp.api.app.create_app`."""

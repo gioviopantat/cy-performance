@@ -220,3 +220,6 @@ __marimo__/
 # cyp runtime data (sqlite, parquet, tokens, logs, reports)
 data/
 .env
+
+# agent worktrees
+.claude/worktrees/

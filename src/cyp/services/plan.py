@@ -234,3 +234,43 @@ def season(ctx: AppContext) -> SeasonOut:
             for w, t in zip(sk.weeks, proj, strict=True)
         ],
     )
+
+
+def stored(ctx: AppContext, start: dt.date | None = None, days: int = 14) -> list[PlannedDayOut]:
+    """Stored (proposed / published) workouts from ``start`` for ``days`` days, rendered."""
+    from cyp.planning.templates import TemplateError, resolve
+
+    ds = ctx.dataset()
+    lib = load_library()
+    first = start or ctx.today()
+    out: list[PlannedDayOut] = []
+    for day in sorted(d for d in ds.planned if first <= d < first + dt.timedelta(days=days)):
+        for row in ds.planned[day]:
+            t = lib.get(row.template_id or "")
+            w = None
+            if t is not None:
+                try:
+                    w = resolve(t, dict(row.params), outdoor=not row.indoor)
+                except TemplateError:
+                    w = None
+            role = row.role if row.role in ROLE_ZH else "endurance"
+            out.append(
+                PlannedDayOut(
+                    date=day,
+                    role=role,
+                    role_zh=ROLE_ZH[role],
+                    template_id=row.template_id,
+                    name_zh=w.name_zh if w else row.template_id,
+                    intent=t.intent if t else "unknown",
+                    tss=round(w.tss if w else row.target_tss or 0.0, 1),
+                    minutes=round(w.duration_s / 60) if w else 0,
+                    max_minutes=0,
+                    outdoor=not row.indoor,
+                    params=dict(row.params),
+                    steps=_steps(w) if w else [],
+                    workout_text=render(w) if w else None,
+                    note_zh=w.note_zh if w else None,
+                    mutable=day >= ctx.today(),
+                )
+            )
+    return out

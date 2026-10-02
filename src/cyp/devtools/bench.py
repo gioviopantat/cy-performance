@@ -40,7 +40,9 @@ def run_bench(
     """Time trends, FTP, readiness and planning on the current store."""
     from cyp.analysis.longitudinal.run import build_trends
     from cyp.analysis.readiness_job import run_readiness
-    from cyp.planning.job import build_plan
+    from cyp.dataset import CACHE
+    from cyp.planning.job import build_plan, plan_horizon
+    from cyp.services.ftp import recompute as recompute_ftp
 
     now = dt.datetime.combine(today, dt.time(7, 0))
     out: dict[str, dict[str, float]] = {}
@@ -53,10 +55,9 @@ def run_bench(
     out["plan_14d"] = _time(
         lambda: build_plan(factory, cfg, today=today, now_local=now, persist=False), repeat
     )
-    try:
-        from cyp.services import ftp as ftp_service  # added by the refactor
-
-        out["ftp"] = _time(lambda: ftp_service.recompute(factory, as_of=today), repeat)
-    except ImportError:
-        pass
+    out["ftp"] = _time(lambda: recompute_ftp(factory, as_of=today), repeat)
+    out["plan_preview_warm"] = _time(
+        lambda: plan_horizon(CACHE.get(factory), cfg, today=today, now_local=now),  # type: ignore[arg-type]
+        repeat,
+    )
     return out

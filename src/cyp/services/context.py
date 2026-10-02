@@ -34,6 +34,8 @@ class AppContext:
     athlete_config_path: Path = DEFAULT_ATHLETE_CONFIG
     #: Serialises writes from concurrent API requests (SQLite has one writer anyway).
     write_lock: threading.Lock = field(default_factory=threading.Lock)
+    #: Frozen local wall-clock time (tests, demos); ``None`` = the real clock.
+    fixed_now: dt.datetime | None = None
 
     @classmethod
     def from_settings(
@@ -61,6 +63,8 @@ class AppContext:
 
     def now_local(self) -> dt.datetime:
         """Naive local wall-clock time."""
+        if self.fixed_now is not None:
+            return self.fixed_now
         return now_utc().astimezone(self.tz).replace(tzinfo=None)
 
     def today(self) -> dt.date:

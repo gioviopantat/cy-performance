@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     cyp_plan_mode: Literal["propose", "apply"] = "propose"
     cyp_timezone: str = "Asia/Taipei"
 
+    # HTTP API (cyp serve)
+    cyp_api_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cyp_api_token: SecretStr = SecretStr("")
+
+    @property
+    def api_cors_origins(self) -> list[str]:
+        """``CYP_API_CORS_ORIGINS`` split on commas."""
+        return [o.strip() for o in self.cyp_api_cors_origins.split(",") if o.strip()]
+
     # Optional LLM
     anthropic_api_key: SecretStr = SecretStr("")
     cyp_llm_model: str = "claude-sonnet-5-5"
