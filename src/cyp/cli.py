@@ -1,11 +1,13 @@
 """``cyp`` command-line entry point (docs/01 §5.9).
 
 M0: ``init``, ``doctor``, ``db upgrade``, ``explain``. M1: ``auth strava``, ``sync`` (unified),
-``sync intervals``, ``sync strava``, ``backfill``. Later milestones' commands are stubs.
+``sync intervals``, ``sync strava``, ``sync refetch-streams``, ``backfill``. M2: ``analyze``
+(ride -> trends -> readiness), ``trends``, ``readiness``. Later milestones' commands are stubs.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from collections.abc import Callable
 from pathlib import Path
@@ -360,6 +362,12 @@ def _find_explanation(settings: Settings, key: str) -> tuple[str, dict[str, Any]
             for blob in session.scalars(stmt):
                 if isinstance(blob, dict) and blob.get("key") == key:
                     return model.__tablename__, blob
+    from cyp.analysis.longitudinal.run import load_latest_report
+
+    report = load_latest_report(settings.reports_dir)
+    for blob in (report or {}).get("explanations", []):
+        if isinstance(blob, dict) and blob.get("key") == key:
+            return "reports/trends/latest.json", blob
     return None
 
 
@@ -644,6 +652,78 @@ def sync_intervals(
     )
 
 
+@sync_app.command("refetch-streams")
+def sync_refetch_streams(
+    activity: Annotated[
+        list[int] | None,
+        typer.Option("--activity", help="Only these internal activity ids (repeatable)."),
+    ] = None,
+) -> None:
+    """Re-download icu streams and rewrite Parquet (e.g. after the lat/lng mapping fix).
+
+    Every rewritten ride is marked pending_analysis; run `cyp analyze` afterwards so climb
+    fingerprints are recomputed.
+    """
+    from cyp.ingest.intervals.auth import ApiKeyAuth
+    from cyp.ingest.intervals.client import IntervalsClient
+    from cyp.ingest.intervals.sync import IntervalsSyncer
+
+    settings = _settings()
+    key = settings.intervals_api_key.get_secret_value()
+    if not key:
+        typer.echo("INTERVALS_API_KEY is not set (see .env.example)", err=True)
+        raise typer.Exit(code=2)
+    engine = engine_from_settings(settings)
+    client = IntervalsClient(auth=ApiKeyAuth(key), athlete_id=settings.intervals_athlete_id)
+    syncer = IntervalsSyncer(
+        client,
+        session_factory(engine),
+        StreamStore(settings.streams_dir),
+        timezone=settings.cyp_timezone,
+        log_path=str(settings.logs_dir / "cyp.jsonl"),
+    )
+    try:
+        counts = syncer.refetch_streams(activity)
+    except CypError as exc:
+        typer.echo(f"refetch failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        client.close()
+        engine.dispose()
+    typer.echo(f"refetch-streams: {_fmt_counts(counts)}")
+    typer.echo("next: `cyp analyze` to recompute climbs/fingerprints from the new files")
+
+
+def _today(settings: Settings) -> dt.date:
+    from cyp.core.timeutil import local_date, now_utc
+
+    return local_date(now_utc(), settings.cyp_timezone)
+
+
+def _season_phase(day: dt.date) -> str | None:
+    """Phase of ``day`` from the athlete config (``None`` before the season / without config)."""
+    try:
+        cfg = load_athlete_config(DEFAULT_ATHLETE_CONFIG)
+    except ConfigError:
+        return None
+    return "base" if day >= cfg.season.start else None
+
+
+DateOpt = Annotated[
+    str | None, typer.Option("--date", help="Local date YYYY-MM-DD (default: today).")
+]
+
+
+def _parse_day(settings: Settings, value: str | None) -> dt.date:
+    if value is None:
+        return _today(settings)
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError as exc:
+        typer.echo(f"invalid --date {value!r}; expected YYYY-MM-DD", err=True)
+        raise typer.Exit(code=2) from exc
+
+
 @app.command()
 def analyze(
     force: Annotated[
@@ -656,8 +736,12 @@ def analyze(
         list[int] | None,
         typer.Option("--activity", help="Analyse only these activity ids (repeatable)."),
     ] = None,
+    rides_only: Annotated[
+        bool,
+        typer.Option("--rides-only", help="Stop after per-ride metrics (skip trends + readiness)."),
+    ] = False,
 ) -> None:
-    """Compute per-ride metrics (NP/IF/TSS, durability, climbs, efforts, status)."""
+    """Per-ride metrics, then longitudinal trends, then today's readiness."""
     from cyp.analysis.run import ALGO_VERSION, analyze_pending
     from cyp.store.streams import StreamStore
 
@@ -673,24 +757,180 @@ def analyze(
             activity_ids=activity,
             log_path=str(settings.logs_dir / "cyp.jsonl"),
         )
+        typer.echo(f"analyze (algo {ALGO_VERSION}, run {summary.run_id})")
+        for key, value in sorted(summary.counts().items()):
+            typer.echo(f"  {key}: {value}")
+        for r in summary.results:
+            if r.outcome == "analyzed" and r.metrics is not None:
+                m = r.metrics
+                tss = f"{m.tss:.0f}" if m.tss is not None else "-"
+                np_w = f"{m.np_w:.0f}" if m.np_w is not None else "-"
+                typer.echo(
+                    f"  ride:{r.activity_id}  TSS {tss} ({m.tss_source})  NP {np_w}  "
+                    f"{m.classification}  {m.status}/{m.next_recommendation}"
+                )
+            elif r.outcome == "failed":
+                typer.echo(f"  ride:{r.activity_id}  FAILED {r.error}")
+        if not rides_only:
+            day = _today(settings)
+            _run_trends(settings, factory, day)
+            _run_readiness(factory, [day])
     finally:
         engine.dispose()
-    typer.echo(f"analyze (algo {ALGO_VERSION}, run {summary.run_id})")
-    for key, value in sorted(summary.counts().items()):
-        typer.echo(f"  {key}: {value}")
-    for r in summary.results:
-        if r.outcome == "analyzed" and r.metrics is not None:
-            m = r.metrics
-            tss = f"{m.tss:.0f}" if m.tss is not None else "-"
-            np_w = f"{m.np_w:.0f}" if m.np_w is not None else "-"
-            typer.echo(
-                f"  ride:{r.activity_id}  TSS {tss} ({m.tss_source})  NP {np_w}  "
-                f"{m.classification}  {m.status}/{m.next_recommendation}"
-            )
-        elif r.outcome == "failed":
-            typer.echo(f"  ride:{r.activity_id}  FAILED {r.error}")
     if any(r.outcome == "failed" for r in summary.results):
         raise typer.Exit(code=1)
+
+
+def _run_trends(settings: Settings, factory: Any, day: dt.date) -> Any:
+    from cyp.analysis.longitudinal.run import build_trends
+
+    try:
+        report = build_trends(
+            factory,
+            StreamStore(settings.streams_dir),
+            as_of=day,
+            phase=_season_phase(day),
+            reports_dir=settings.reports_dir,
+        )
+    except CypError as exc:
+        typer.echo(f"trends failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    _echo_trends(report)
+    return report
+
+
+def _echo_trends(report: Any) -> None:
+    typer.echo(f"trends as of {report.as_of} (FTP {report.ftp or '-'} W)")
+    p = report.pmc_today
+    if p:
+        icu = f"  icu CTL {p['ctl_icu']:.1f}" if p.get("ctl_icu") is not None else ""
+        acwr = f"{p['acwr_7_28']:.2f}" if p.get("acwr_7_28") is not None else "-"
+        ramp = f"{p['ramp_rate']:+.1f}" if p.get("ramp_rate") is not None else "-"
+        typer.echo(
+            f"  PMC  CTL {p['ctl']:.1f}  ATL {p['atl']:.1f}  TSB {p['tsb']:+.1f}  "
+            f"ramp {ramp}  ACWR {acwr}{icu}"
+        )
+    a = report.pmc_agreement
+    if a:
+        flag = "OK" if a["within_tolerance"] else "OUT OF ±1"
+        typer.echo(
+            f"  PMC vs icu ({a['decay']}): max |ΔCTL| {a['max_abs_ctl_err']:.2f} over "
+            f"{a['n_days']} d  [{flag}]"
+        )
+    for window, entry in report.cp_fits.items():
+        for model in ("cp_2p", "cp_3p"):
+            fit = entry.get(model)
+            if not fit:
+                continue
+            diff = fit.get("cp_diff_vs_icu_pct")
+            vs = f"  vs icu {diff:+.1f} %" if diff is not None else ""
+            pmax = f"  Pmax {fit['p_max']}" if fit.get("p_max") else ""
+            typer.echo(
+                f"  {window} {model}: CP {fit['cp']:.0f} W  W' {fit['w_prime'] / 1000:.1f} kJ"
+                f"{pmax}  r2 {fit['r2']}{vs}"
+            )
+    fp = report.ftp_proposal
+    if fp:
+        if fp["proposed_ftp"]:
+            typer.echo(
+                f"  FTP proposal: {fp['current_ftp']:.0f} -> {fp['proposed_ftp']:.0f} W "
+                f"({fp['change_pct']:+.1f} %, {fp['days_sustained']} d) — NOT applied"
+            )
+        elif fp.get("unsupported"):
+            typer.echo(
+                f"  FTP proposal: withheld — estimates up for {fp['days_sustained']} d but best "
+                f"20 min {fp['best_20min_w']:.0f} W does not support it"
+            )
+        else:
+            typer.echo(f"  FTP proposal: none ({fp['days_sustained']} d beyond ±3 %)")
+    blocks = [b for b in report.durability_blocks if b.get("median_ratio")]
+    if blocks:
+        b = blocks[-1]
+        typer.echo(
+            f"  durability (EF late/fresh, {b['end']}): {b['median_ratio']:.3f} "
+            f"over {b['n_long']} long rides"
+        )
+    if report.tid_weeks:
+        w = report.tid_weeks[-1]
+        typer.echo(
+            f"  TID week {w['week_start']}: {w['low'] * 100:.0f}/{w['mid'] * 100:.0f}/"
+            f"{w['high'] * 100:.0f} %  {w['hours']} h  {w['model']}"
+        )
+    if report.climbs:
+        typer.echo(f"  repeat climbs: {len(report.climbs)} (top: {report.climbs[0]['n']} efforts)")
+    for lim in report.limiters:
+        typer.echo(f"  limiter {lim['id']} ({lim['severity']:.2f}): {lim['title_zh']}")
+
+
+def _run_readiness(factory: Any, days: list[dt.date]) -> list[Any]:
+    from cyp.analysis.readiness_job import run_readiness
+
+    try:
+        verdicts = run_readiness(factory, days)
+    except CypError as exc:
+        typer.echo(f"readiness failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    for r in verdicts:
+        missing = ",".join(r.inputs.get("missing", [])) or "-"
+        typer.echo(
+            f"readiness {r.date_local}: {r.score_0_100:.0f} {r.status}/{r.recommendation}  "
+            f"(missing: {missing})"
+        )
+        if r.explanation is not None:
+            typer.echo(f"  {r.explanation.headline_zh}")
+    return verdicts
+
+
+@app.command()
+def trends(date: DateOpt = None) -> None:
+    """Longitudinal trends: PMC replay vs icu, CP/W', FTP proposal, durability, TID, limiters."""
+    settings = _settings()
+    engine = engine_from_settings(settings)
+    try:
+        _run_trends(settings, session_factory(engine), _parse_day(settings, date))
+    finally:
+        engine.dispose()
+
+
+@app.command()
+def readiness(
+    date: DateOpt = None,
+    days: Annotated[
+        int, typer.Option("--days", min=1, help="Also (re)compute the N-1 days before --date.")
+    ] = 1,
+    coverage: Annotated[
+        bool, typer.Option("--coverage", help="Show which wellness fields the store holds.")
+    ] = False,
+) -> None:
+    """Daily readiness verdict (rules + weighted z-scores) with its explanation."""
+    settings = _settings()
+    engine = engine_from_settings(settings)
+    factory = session_factory(engine)
+    day = _parse_day(settings, date)
+    try:
+        if coverage:
+            _echo_wellness_coverage(factory, day)
+        _run_readiness(factory, [day - dt.timedelta(days=i) for i in range(days - 1, -1, -1)])
+    finally:
+        engine.dispose()
+
+
+def _echo_wellness_coverage(factory: Any, day: dt.date) -> None:
+    from cyp.analysis.readiness import WELLNESS_FIELDS, wellness_coverage
+    from cyp.store.models import WellnessDaily
+
+    with factory() as s:
+        rows = s.scalars(
+            select(WellnessDaily).where(
+                WellnessDaily.date_local > day - dt.timedelta(days=60),
+                WellnessDaily.date_local <= day,
+            )
+        ).all()
+        dicts = [{f: getattr(w, f) for f in WELLNESS_FIELDS} for w in rows]
+    counts = wellness_coverage(dicts)
+    typer.echo(f"wellness coverage (last 60 d, {len(rows)} rows):")
+    for f, n in counts.items():
+        typer.echo(f"  {f:14s} {n:3d}")
 
 
 @app.command()
