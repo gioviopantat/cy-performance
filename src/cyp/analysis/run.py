@@ -47,6 +47,7 @@ __all__ = [
     "ALGO_VERSION",
     "AnalyzeResult",
     "AnalyzeSummary",
+    "activity_local_date",
     "analyze_activity",
     "analyze_pending",
     "resolve_inputs",
@@ -101,6 +102,10 @@ def _ride_local_date(activity: Activity) -> dt.date:
         except ValueError:
             pass
     return local_date(parse_iso(activity.start_utc), activity.tz or "Asia/Taipei")
+
+
+#: Public name for the local calendar day of an activity (longitudinal / readiness use it).
+activity_local_date = _ride_local_date
 
 
 def _zone_model(blob: Any) -> ZoneModel | None:

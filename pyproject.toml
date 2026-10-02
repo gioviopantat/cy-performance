@@ -55,7 +55,7 @@ src = ["src", "tests"]
 select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF", "BLE", "D"]
 ignore = ["D100", "D104", "D105", "D106", "D107", "D203", "D213"]
 pydocstyle.convention = "google"
-allowed-confusables = ["，", "：", "；", "（", "）"]
+allowed-confusables = ["，", "：", "；", "（", "）", "／", "–", "−", "×", "′"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D"]
