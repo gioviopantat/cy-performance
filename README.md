@@ -12,7 +12,11 @@ explicitly out of scope for v1 but the architecture leaves room for both.
 **M0 Scaffold** done, **M1 Ingest** done (see [docs/06-roadmap.md](docs/06-roadmap.md)): `uv`
 project, `cyp` CLI, settings, structlog, SQLite + Alembic schema, Parquet stream store,
 `job_runs`, `cyp doctor`, CI; intervals.icu + Strava clients and sync jobs, the Strava ↔ icu
-matcher, and the unified `cyp sync` / `cyp backfill` orchestration. M2 (`cyp analyze`) in progress.
+matcher, and the unified `cyp sync` / `cyp backfill` orchestration. **M2 Analysis** done (per-ride
+metrics, PMC replay vs icu, CP/W′, FTP proposals, durability, TID, repeat climbs, limiters,
+readiness v1, daily/weekly zh-TW reports). **M3 Publish** code done; the live `events/bulk`
+upsert spike still has to be run once on a machine that can reach intervals.icu. **M4 Planner**
+v1 done (season skeleton, week planning, guardrails, daily adaptation) in `propose` mode.
 
 | Doc | What it covers |
 |-----|----------------|
@@ -74,16 +78,25 @@ uv run cyp sync --no-streams --no-wait      # unified; --no-wait exits 2 instead
 ```
 
 Strava reads are budgeted: `STRAVA_MAX_DETAIL_FETCHES` (default 60) caps detail + fallback-stream
-fetches per run; re-run to continue (cursors persist). Commands that arrive with later milestones
-currently print `not implemented in M0` and exit 0:
+fetches per run; re-run to continue (cursors persist).
 
 ```bash
-uv run cyp analyze               # M2 (in progress)
-uv run cyp plan                  # M4: show / apply the plan diff (CYP_PLAN_MODE=propose|apply)
-uv run cyp daily                 # the unattended pipeline launchd/cron runs
-uv run cyp weekly
-uv run cyp explain <key>         # prints a persisted Explanation (docs/07); rendering lands in M5
+uv run cyp sync refetch-streams              # re-download icu streams (lat/lng fix), then analyze
+uv run cyp analyze [--rides-only]            # rides -> trends -> today's readiness
+uv run cyp trends [--date D]                 # PMC vs icu, CP/W', FTP proposal, durability, TID, limiters
+uv run cyp readiness [--date D] [--days N] [--coverage]
+uv run cyp report daily|weekly [--date D]    # data/reports/{daily,weekly}/*.md (+ .json facts)
+uv run cyp daily [--no-sync]                 # sync -> analyze -> trends -> readiness -> daily report
+uv run cyp weekly [--no-sync]                # trends -> weekly report
+uv run cyp plan [--date D] [--dry-run]       # 14-day horizon, stored as proposals (never writes icu)
+uv run cyp plan --publish                    # + read-only diff against the live icu calendar
+uv run cyp publish spike --date YYYY-MM-DD   # dry run; --confirm-write runs the upsert spike
+uv run cyp plan --apply --confirm-write      # writes to icu (needs the spike result first)
+uv run cyp explain <key>                     # e.g. readiness.2026-10-06, ftp.proposal, plan.day.2026-10-07
 ```
+
+Nothing writes to the intervals.icu calendar unless both `--apply` (or `--confirm-write` for the
+spike) and an explicit confirmation flag are given; `CYP_PLAN_MODE=apply` alone is not enough.
 
 ## Development
 

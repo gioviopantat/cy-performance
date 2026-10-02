@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import datetime as dt
-import json
 from pathlib import Path
 
-import pytest
 from typer.testing import CliRunner
 
 from cyp.cli import app
@@ -72,15 +70,6 @@ def test_doctor_flags_bad_athlete_config(data_dir: Path, db_url: str, tmp_path: 
     )
     assert result.exit_code == 1
     assert "FAIL " in result.output and "invalid athlete config" in result.output
-
-
-@pytest.mark.parametrize("cmd", ["plan"])
-def test_stubs_exit_zero(cmd: str, data_dir: Path, db_url: str) -> None:
-    result = runner.invoke(app, [cmd], env=_env(data_dir, db_url))
-    assert result.exit_code == 0, result.output
-    assert "not implemented in M0" in result.output
-    log = (data_dir / "logs" / "cyp.jsonl").read_text()
-    assert json.loads(log.splitlines()[-1])["command"] == cmd
 
 
 def test_explain_not_found_and_found(data_dir: Path, db_url: str) -> None:
