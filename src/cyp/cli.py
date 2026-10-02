@@ -994,6 +994,77 @@ def report_weekly(date: DateOpt = None) -> None:
         engine.dispose()
 
 
+publish_app = typer.Typer(help="intervals.icu calendar publishing (M3).", no_args_is_help=True)
+app.add_typer(publish_app, name="publish")
+PUBLISH_CURSOR_SOURCE = "intervals"
+PUBLISH_CURSOR_MODE = "publish_upsert_mode"
+
+
+@publish_app.command("spike")
+def publish_spike(
+    date: Annotated[
+        str,
+        typer.Option("--date", help="Future local date for the throw-away event (YYYY-MM-DD)."),
+    ],
+    confirm: Annotated[
+        bool,
+        typer.Option(
+            "--confirm-write",
+            help="Actually write (and then delete) the test event on your intervals.icu calendar.",
+        ),
+    ] = False,
+) -> None:
+    """Find out whether events/bulk upsert works with this API key (writes only with confirm).
+
+    Without --confirm-write it only prints what it would do. With it, it creates one test
+    WORKOUT on --date, re-posts it to test upsert, counts copies, deletes everything it made
+    and stores the supported mode for the publisher.
+    """
+    from cyp.ingest.intervals.auth import ApiKeyAuth
+    from cyp.ingest.intervals.client import IntervalsClient
+    from cyp.publish.spike import plan_spike, run_spike
+
+    settings = _settings()
+    day = _parse_day(settings, date)
+    if day <= _today(settings):
+        typer.echo("--date must be in the future (past/today are never written)", err=True)
+        raise typer.Exit(code=2)
+    if not confirm:
+        typer.echo(f"dry run — would write to your intervals.icu calendar on {day}:")
+        for line in plan_spike(day):
+            typer.echo(f"  - {line}")
+        typer.echo("re-run with --confirm-write to execute (the test event is deleted afterwards)")
+        return
+    key = settings.intervals_api_key.get_secret_value()
+    if not key:
+        typer.echo("INTERVALS_API_KEY is not set (see .env.example)", err=True)
+        raise typer.Exit(code=2)
+    client = IntervalsClient(auth=ApiKeyAuth(key), athlete_id=settings.intervals_athlete_id)
+    try:
+        result = run_spike(client, day)
+    except CypError as exc:
+        typer.echo(f"spike failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        client.close()
+    typer.echo(f"copies after two posts: {result.copies}")
+    for note in result.notes:
+        typer.echo(f"  {note}")
+    typer.echo(f"supported upsert mode: {result.supported}")
+    typer.echo(f"cleaned up {result.cleaned_up} event(s); leftovers: {result.leftovers or 'none'}")
+    if result.supported != "none":
+        engine = engine_from_settings(settings)
+        try:
+            with session_factory(engine)() as s:
+                SyncCursorRepo(s).set(PUBLISH_CURSOR_SOURCE, PUBLISH_CURSOR_MODE, result.supported)
+                s.commit()
+        finally:
+            engine.dispose()
+    if result.leftovers:
+        typer.echo("WARNING: delete the leftover test events manually in intervals.icu", err=True)
+        raise typer.Exit(code=1)
+
+
 NoSyncOpt = Annotated[
     bool, typer.Option("--no-sync", help="Skip the data sync (analyse what is stored).")
 ]

@@ -23,3 +23,17 @@ from other sources) on the same calendar.
   as "athlete declined" for that day (recorded as `status=skipped_by_athlete`) rather than recreating it.
 - M3 spike must confirm `upsert=true` semantics under API-key auth (the spec ties `upsert` to the
   OAuth app; fallback is `upsertOnUid=true` with `uid = external_id`).
+
+## M3 spike (implemented 2026-10-02, result pending a live run)
+`cyp publish spike --date <future YYYY-MM-DD>` prints the planned writes; adding
+`--confirm-write` runs them against the real calendar: one throw-away WORKOUT named
+"cyp spike — 測試事件，可刪除" is posted twice with `upsert=true`; if two copies appear it is
+retried with `upsertOnUid=true` and `uid = external_id`. Every event it created is then deleted
+by id, leftovers are reported, and the supported mode (`upsert` | `uid`) is stored in
+`sync_cursors(intervals, publish_upsert_mode)` for the publisher. The cloud dev environment
+cannot reach intervals.icu, so the spike has been verified only against an in-memory fake
+emulating all three behaviours (`tests/publish`).
+
+Publisher safety in code (`cyp/publish/publisher.py`): `propose` never writes; `apply` writes
+only when the caller also passes `allow_write=True` (a CLI flag), so `CYP_PLAN_MODE=apply` in
+the environment is not enough on its own.
