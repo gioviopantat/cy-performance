@@ -1,0 +1,30 @@
+id: z2_endurance_90
+version: 1
+name: "Endurance Z2 90 min"
+name_zh: "Z2 有氧耐力 90 分"
+purpose_zh: "標準平日 Z2 有氧騎乘。"
+intent: endurance
+phases: [base, build, threshold]
+slot_roles: [endurance]
+requires_power: false
+indoor_ok: true
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 72m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Hold 62-75 % on flats, climbs under 80 %, soft-pedal descents. Pick a route with few stops."
+  note_zh: "平路 62–75 %，爬坡不超過 80 %，下坡輕踩；選少停等的路線。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 心率 69–83 % LTHR；炎熱天心率會偏高，寧可降功率也不要超過 83 %。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 72m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "90 分鐘是平日可用時間（週二/四 120 分、週五 90 分）內最常見的 Z2 單位，提供約 70 TSS 的純有氧刺激。它是基礎期堆疊週訓練量的主力，到建構期與閾值期仍佔每週 75–80 % 的低強度時間。"

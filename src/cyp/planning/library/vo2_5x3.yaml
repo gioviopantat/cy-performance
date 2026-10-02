@@ -1,0 +1,40 @@
+id: vo2_5x3
+version: 1
+name: "VO2max 5x3"
+name_zh: "VO2max 5x3 分"
+purpose_zh: "短 VO2 間歇，閾值期的入門 VO2 課。"
+intent: vo2
+phases: [threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  reps: {min: 5, max: 6, default: 5, step: 1}
+  pct: {min: 112, max: 120, default: 115}
+  rest_min: 3
+progression: [reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - repeat: 3
+    cue: Primers
+    steps:
+      - {kind: steady, duration: 30s, lo: 105, hi: 110, cadence: "100-110rpm"}
+      - {kind: steady, duration: 30s, lo: 50, hi: 55}
+  - {kind: steady, duration: 4m, lo: 55, hi: 60}
+  - repeat: "{reps}"
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 3m, lo: "{pct}", hi: "{pct}+5", cadence: "95-105rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Use a 1-1.5 km climb at 5-8 %; start each rep from a rolling start. Rest = descend and soft-pedal back. Accept ±5 % power scatter; the aim is > 90 % HRmax by minute 2 of each rep."
+  note_zh: "用 1–1.5 km、5–8 % 的坡，每趟從滾動起步開始；休息下坡回起點。功率上下 5 % 可接受，目標是每趟第 2 分鐘起心率超過 90 % HRmax。"
+  widen_pct: 5
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "3 分鐘間歇心率落後太多，無法用心率配速；沒有功率計時改做 RPE 9/10 的 5x3 並以 HRmax > 90 % 當事後檢查，不另出 HR 版本。"
+tss_model: closed_form
+explain_zh: "5×3 @ 115 % 是閾值期的第一個 VO2 課：3 分鐘夠長能把攝氧量推到最大附近，又夠短能維持高功率，累積 15 分鐘的 VO2 時間。它負責「抬高天花板」，讓接下來 100–102 % 的閾值課有向上的空間；季節計畫在閾值期與 2×20 交替週進行。"

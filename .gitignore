@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# cyp runtime data (sqlite, parquet, tokens, logs, reports)
+data/
+.env

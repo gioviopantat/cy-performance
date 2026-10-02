@@ -1,0 +1,42 @@
+id: z2_cadence_90
+version: 1
+name: "Endurance Z2 90 min + Cadence Drills {drills}x5"
+name_zh: "Z2 有氧 90 分 + 高迴轉練習 {drills}x5"
+purpose_zh: "Z2 有氧量加上高迴轉段，訓練神經肌肉協調與踩踏效率。"
+intent: endurance
+phases: [base, build]
+slot_roles: [endurance]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  drills: {min: 3, max: 5, default: 4, step: 1}
+progression: [drills]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 65}
+  - repeat: "{drills}"
+    cue: Cadence Drills
+    steps:
+      - {kind: work, duration: 5m, lo: 65, hi: 72, cadence: "100-110rpm"}
+      - {kind: steady, duration: 5m, lo: 65, hi: 75, cadence: "85-95rpm"}
+  - {cue: Endurance, kind: steady, duration: "72-{drills}*10m", lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Do the high-cadence blocks on flat road or a slight descent in a small gear; power stays Z2, only cadence changes."
+  note_zh: "高迴轉段在平路或緩下坡用小齒比做，功率維持 Z2，只改變迴轉數。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "高迴轉段心率會比同功率略高 3–5 bpm，屬正常；整體維持 Z2 心率 69–83 % LTHR。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 72}
+    - repeat: "{drills}"
+      cue: Cadence Drills
+      steps:
+        - {kind: work, duration: 5m, lo: 72, hi: 83, cadence: "100-110rpm"}
+        - {kind: steady, duration: 5m, lo: 69, hi: 80, cadence: "85-95rpm"}
+    - {cue: Endurance, kind: steady, duration: "72-{drills}*10m", lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "基礎期的 Z2 加入高迴轉練習，是在不增加代謝壓力的情況下訓練神經肌肉協調，讓之後的閾值與 VO2 課能用更經濟的踩踏完成。TSS 與同長度純 Z2 幾乎相同，所以不影響週負荷分配。"

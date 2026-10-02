@@ -1,0 +1,230 @@
+[
+ {
+  "id": "i3001",
+  "start_date_local": "2026-09-30T06:12:34",
+  "start_date": "2026-09-29T22:12:34Z",
+  "type": "Ride",
+  "name": "Morning threshold",
+  "description": "2x10 threshold up the river path",
+  "timezone": "Asia/Taipei",
+  "distance": 6400.5,
+  "icu_distance": 6400.5,
+  "moving_time": 780,
+  "elapsed_time": 812,
+  "coasting_time": 40,
+  "total_elevation_gain": 48.2,
+  "total_elevation_loss": 31.0,
+  "trainer": false,
+  "sub_type": "NONE",
+  "commute": false,
+  "race": false,
+  "max_speed": 11.9,
+  "average_speed": 8.2,
+  "device_watts": true,
+  "has_heartrate": true,
+  "max_heartrate": 171,
+  "average_heartrate": 146,
+  "average_cadence": 88.4,
+  "calories": 161,
+  "average_temp": 27.4,
+  "gear": {
+   "id": "b1234567",
+   "name": "Canyon Endurace",
+   "distance": 5234000.0,
+   "primary": true
+  },
+  "device_name": "Garmin Edge 850",
+  "power_meter": "Favero Assioma",
+  "external_id": "garmin_ping_123456789.fit",
+  "file_type": "fit",
+  "icu_athlete_id": "i123456",
+  "created": "2026-09-29T23:30:12Z",
+  "icu_sync_date": "2026-09-29T23:30:15Z",
+  "analyzed": "2026-09-29T23:30:40Z",
+  "icu_pm_cp": 262,
+  "icu_pm_w_prime": 19500,
+  "icu_pm_p_max": 1040,
+  "icu_pm_ftp": 258,
+  "icu_pm_ftp_secs": 2400,
+  "icu_pm_ftp_watts": 258,
+  "icu_training_load": 21,
+  "icu_atl": 48.3,
+  "icu_ctl": 41.7,
+  "icu_ftp": 250,
+  "icu_w_prime": 20000,
+  "p_max": 1050,
+  "lthr": 165,
+  "icu_resting_hr": 48,
+  "icu_weight": 64.0,
+  "icu_power_zones": [
+   55,
+   75,
+   90,
+   105,
+   120,
+   150,
+   999
+  ],
+  "icu_hr_zones": [
+   133,
+   149,
+   158,
+   166,
+   175,
+   999
+  ],
+  "icu_joules": 163200,
+  "icu_recording_time": 780,
+  "icu_weighted_avg_watts": 228,
+  "icu_average_watts": 209,
+  "icu_variability_index": 1.09,
+  "icu_intensity": 91.2,
+  "icu_efficiency_factor": 1.56,
+  "icu_power_hr": 1.43,
+  "decoupling": 3.4,
+  "polarization_index": 1.82,
+  "icu_joules_above_ftp": 12300,
+  "icu_max_wbal_depletion": 6800,
+  "icu_zone_times": [
+   {
+    "id": "Z1",
+    "secs": 120
+   },
+   {
+    "id": "Z2",
+    "secs": 200
+   },
+   {
+    "id": "Z3",
+    "secs": 60
+   },
+   {
+    "id": "Z4",
+    "secs": 300
+   },
+   {
+    "id": "Z5",
+    "secs": 100
+   },
+   {
+    "id": "Z6",
+    "secs": 0
+   },
+   {
+    "id": "Z7",
+    "secs": 0
+   }
+  ],
+  "icu_hr_zone_times": [
+   150,
+   220,
+   110,
+   250,
+   50,
+   0
+  ],
+  "stream_types": [
+   "time",
+   "watts",
+   "heartrate",
+   "cadence",
+   "velocity_smooth",
+   "altitude",
+   "latlng",
+   "distance",
+   "grade_smooth",
+   "temp",
+   "moving"
+  ],
+  "has_weather": true,
+  "has_segments": false,
+  "icu_intervals_edited": false,
+  "icu_lap_count": 5,
+  "icu_rpe": 7,
+  "feel": 4,
+  "paired_event_id": 90001,
+  "source": "GARMIN_CONNECT",
+  "strava_id": null,
+  "tags": [
+   "threshold"
+  ],
+  "interval_summary": [
+   "2 x 10:00 @ 265w"
+  ]
+ },
+ {
+  "id": "i3003",
+  "start_date_local": "2026-09-29T19:05:00",
+  "start_date": "2026-09-29T11:05:00Z",
+  "type": "WeightTraining",
+  "name": "Gym",
+  "timezone": "Asia/Taipei",
+  "moving_time": 2700,
+  "elapsed_time": 2700,
+  "has_heartrate": true,
+  "average_heartrate": 110,
+  "max_heartrate": 142,
+  "icu_training_load": 25,
+  "hr_load": 25,
+  "hr_load_type": "HRSS",
+  "icu_athlete_id": "i123456",
+  "source": "GARMIN_CONNECT",
+  "device_name": "Garmin Forerunner 965",
+  "stream_types": [
+   "time",
+   "heartrate"
+  ],
+  "kg_lifted": 3200.0
+ },
+ {
+  "id": "i3002",
+  "start_date_local": "2026-09-28T17:40:00",
+  "start_date": "2026-09-28T09:40:00Z",
+  "type": "VirtualRide",
+  "name": "Rouvy via Strava",
+  "timezone": "Asia/Taipei",
+  "distance": 20100.0,
+  "moving_time": 2400,
+  "elapsed_time": 2410,
+  "trainer": true,
+  "commute": false,
+  "race": false,
+  "device_watts": true,
+  "has_heartrate": true,
+  "average_heartrate": 139,
+  "max_heartrate": 160,
+  "average_cadence": 91.0,
+  "icu_training_load": 38,
+  "icu_intensity": 72.0,
+  "icu_ftp": 250,
+  "icu_weighted_avg_watts": 180,
+  "icu_average_watts": 172,
+  "icu_joules": 412800,
+  "icu_athlete_id": "i123456",
+  "source": "STRAVA",
+  "strava_id": "12345678901",
+  "stream_types": [],
+  "icu_zone_times": [
+   {
+    "id": "Z1",
+    "secs": 300
+   },
+   {
+    "id": "Z2",
+    "secs": 1800
+   },
+   {
+    "id": "Z3",
+    "secs": 300
+   }
+  ],
+  "icu_hr_zone_times": [
+   400,
+   1700,
+   300,
+   0,
+   0,
+   0
+  ]
+ }
+]

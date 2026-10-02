@@ -1,0 +1,16 @@
+[
+ {"id": 1001, "athlete": {"id": 188844906}, "name": "Morning Ride", "sport_type": "Ride", "type": "Ride",
+  "distance": 40000.0, "moving_time": 3600, "elapsed_time": 3700, "total_elevation_gain": 500.0,
+  "start_date": "2026-09-28T22:00:00Z", "start_date_local": "2026-09-29T06:00:00Z",
+  "timezone": "(GMT+08:00) Asia/Taipei", "utc_offset": 28800.0,
+  "average_speed": 11.1, "max_speed": 18.0, "device_watts": true, "average_watts": 200.0,
+  "weighted_average_watts": 215.0, "kilojoules": 720.0, "has_heartrate": true, "average_heartrate": 150.0,
+  "max_heartrate": 178.0, "average_cadence": 88.0, "trainer": false, "commute": false, "manual": false,
+  "workout_type": 10, "gear_id": "b123", "map": {"summary_polyline": "abc"}},
+ {"id": 1002, "athlete": {"id": 188844906}, "name": "Rouvy Session", "sport_type": "VirtualRide", "type": "VirtualRide",
+  "distance": 25000.0, "moving_time": 2700, "elapsed_time": 2700, "total_elevation_gain": 120.0,
+  "start_date": "2026-09-30T11:30:00Z", "start_date_local": "2026-09-30T19:30:00Z",
+  "timezone": "(GMT+08:00) Asia/Taipei", "utc_offset": 28800.0,
+  "device_watts": true, "average_watts": 230.0, "has_heartrate": false, "trainer": true, "commute": false,
+  "manual": false, "workout_type": 11}
+]

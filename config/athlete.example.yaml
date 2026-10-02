@@ -1,0 +1,29 @@
+# Athlete intent and constraints. Copy to config/athlete.yaml (git-tracked, no secrets).
+timezone: Asia/Taipei
+goals:
+  - name: "Target A event"          # or an FTP / W/kg target
+    date: 2027-03-15
+    category: RACE_A                # RACE_A | RACE_B | RACE_C | TARGET
+    kind: climb_tt                  # climb_tt | gran_fondo | crit | ftp_target | wkg_target
+    target: {ftp: 280}
+availability:                       # minutes available per weekday; 0 = no riding
+  mon: 90
+  tue: 75
+  wed: 120
+  thu: 75
+  fri: 60
+  sat: 240
+  sun: 180
+indoor_days: [tue, thu]             # prefer trainer (Rouvy) on these days
+other_sports:                       # load-only placeholders, not prescribed
+  strength: {days: [mon, thu], tss: 20}
+  yoga:     {days: [any], tss: 5}
+planner:
+  horizon_days: 14
+  mode: propose                     # propose | apply
+  today_cutoff_local: "10:00"
+  load_pattern: "3:1"
+  ramp_cap:        {base: 6, build: 6, specialty: 3}
+  tsb_floor:       {base: -30, build: -30, specialty: -20, taper: 5}
+  hit_per_week:    {base: 1, build: 2, specialty: 3}
+  tid_model:       pyramidal

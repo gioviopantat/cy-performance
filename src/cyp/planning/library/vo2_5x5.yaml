@@ -1,0 +1,39 @@
+id: vo2_5x5
+version: 1
+name: "VO2max 5x5"
+name_zh: "VO2max 5x5 分"
+purpose_zh: "本季 VO2 進程的頂點：25 分鐘在 108–112 %。"
+intent: vo2
+phases: [threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 108, max: 112, default: 108}
+  rest_min: 5
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - repeat: 3
+    cue: Primers
+    steps:
+      - {kind: steady, duration: 30s, lo: 105, hi: 110, cadence: "100-110rpm"}
+      - {kind: steady, duration: 30s, lo: 50, hi: 55}
+  - {kind: steady, duration: 4m, lo: 55, hi: 60}
+  - repeat: 5
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 5m, lo: "{pct}", hi: "{pct}+4", cadence: "95-105rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Same 2-2.5 km climb five times, or two climbs back-to-back. If rep 4 falls > 5 % under target, skip rep 5 rather than grind it."
+  note_zh: "同一段 2–2.5 km 的坡做五次。第四趟若低於目標 5 % 以上，第五趟直接取消，不要硬撐。"
+  widen_pct: 4
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "VO2 間歇不以心率配速；無功率時改用 RPE 9/10，事後以 HRmax > 90 % 檢查。"
+tss_model: closed_form
+explain_zh: "5×5 @ 108–112 % 累積 25 分鐘的 VO2 時間，是閾值期第二個 3:1 區塊的頂點，刻意把強度壓低到 108 % 換取可完成的量。它是在測驗前最後一次拉高有氧天花板，之後進入測驗週的 5 天迷你減量。"

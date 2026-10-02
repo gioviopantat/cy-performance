@@ -1,0 +1,1 @@
+{"token_type": "Bearer", "expires_at": 1900000000, "expires_in": 21600, "refresh_token": "fixture-refresh-token-B", "access_token": "fixture-access-token-B", "athlete": {"id": 188844906, "firstname": "Test"}}

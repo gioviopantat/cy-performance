@@ -1,0 +1,44 @@
+id: z2_cadence_120
+version: 1
+name: "Endurance Z2 120 min + Cadence Drills {drills}x5"
+name_zh: "Z2 有氧 120 分 + 高迴轉練習 {drills}x5"
+purpose_zh: "兩小時 Z2 加上高迴轉段，兼顧有氧量與踩踏效率。"
+intent: endurance
+phases: [base, build]
+slot_roles: [endurance, long_ride]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  drills: {min: 4, max: 6, default: 5, step: 1}
+progression: [drills]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 30m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - repeat: "{drills}"
+    cue: Cadence Drills
+    steps:
+      - {kind: work, duration: 5m, lo: 65, hi: 72, cadence: "100-110rpm"}
+      - {kind: steady, duration: 5m, lo: 65, hi: 75, cadence: "85-95rpm"}
+  - {cue: Endurance, kind: steady, duration: "70-{drills}*10m", lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "High-cadence blocks on flat road in a small gear; power stays Z2."
+  note_zh: "高迴轉段在平路用小齒比做，功率維持 Z2。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "整體維持 Z2 心率 69–83 % LTHR；高迴轉段略高屬正常。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 30m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - repeat: "{drills}"
+      cue: Cadence Drills
+      steps:
+        - {kind: work, duration: 5m, lo: 72, hi: 83, cadence: "100-110rpm"}
+        - {kind: steady, duration: 5m, lo: 69, hi: 80, cadence: "85-95rpm"}
+    - {cue: Endurance, kind: steady, duration: "70-{drills}*10m", lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "兩小時版本把高迴轉練習放在第一小時後段，讓神經肌肉練習在有一點疲勞時進行。它是基礎期週三 150 分時段的首選，建構期則作為高強度日之間的恢復性有氧量。"

@@ -1,0 +1,56 @@
+# Athlete intent and constraints (git-tracked, no secrets). Answers from 2026-10-02.
+timezone: Asia/Taipei
+athlete:
+  weight_kg: 64
+  ftp_w: 265                       # icu sport settings on 2026-10-02 (Strava still shows 250); icu is canonical
+
+goals:
+  - name: "FTP 300"
+    date: 2027-04-02               # 26 weeks from season start
+    category: TARGET
+    kind: ftp_target
+    target: {ftp: 300}
+    checkpoints:                   # expectations for reports, not plan inputs
+      - {week: 8,  ftp: 272}
+      - {week: 16, ftp: 285}
+      - {week: 24, ftp: 295}
+
+season:
+  start: 2026-10-05
+  type: ftp_target                 # no taper; blocks base -> build -> threshold/vo2 -> test week
+  load_pattern: "3:1"
+  tests:
+    ramp:   {every_weeks: 8, offset_week: 4}     # wk 4, 12, 20
+    twenty_min: {every_weeks: 8, offset_week: 8} # wk 8, 16, 24 (+ final wk 26)
+
+availability:                      # minutes per weekday; total ceiling 900 (15 h)
+  weekly_max_minutes: 900
+  mon: 0                           # rest / optional recovery spin
+  tue: 120
+  wed: 150
+  thu: 120
+  fri: 90
+  sat: 240
+  sun: 180
+  # ^ default = 15 h. Edit freely; planner respects weekly_max_minutes first, then per-day caps.
+
+location:
+  indoor_policy: fallback          # fallback = outdoor unless weather/test demands indoor
+  indoor_platform: Rouvy
+  weather_indoor_if: {rain_prob_pct: 60, temp_c_min: 8, temp_c_max: 36}
+  test_venue: indoor               # ramp / 20-min tests on Rouvy for repeatability
+
+other_sports:
+  plan: false                      # strength + yoga are NOT scheduled
+  ingest_load: true                # their icu training load still counts in the PMC
+  hit_downgrade_after_strength: true
+
+planner:
+  horizon_days: 14
+  mode: propose                    # switch to apply after M4 validation
+  today_cutoff_local: "10:00"
+  ramp_cap:        {base: 6, build: 6, threshold: 4}
+  tsb_floor:       {base: -30, build: -30, threshold: -25, test: 0}
+  hit_per_week:    {base: 1, build: 2, threshold: 2}
+  tid_model:       pyramidal
+  long_ride_day:   sat
