@@ -130,3 +130,14 @@ def test_subjective_direction_lower_is_better() -> None:
 def test_wellness_coverage() -> None:
     cov = rd.wellness_coverage([{"hrv": 50, "sleep_s": None}, {"hrv": 51, "sleep_s": 100}])
     assert cov["hrv"] == 2 and cov["sleep_s"] == 1 and cov["mood"] == 0
+
+
+def test_stored_z_is_direction_normalised_not_raw() -> None:
+    """Regression: the raw z of resting HR used to overwrite the normalised z in inputs."""
+    hist = _history()
+    today = rd.WellnessPoint(DAY, resting_hr=52)  # 2 sd above baseline -> bad
+    r = rd.compute_readiness(rd.ReadinessInputs(DAY, today, hist))
+    comp = r.inputs["components"]["rhr"]
+    assert comp["z"] == pytest.approx(-2.0) and comp["raw_z"] == pytest.approx(2.0)
+    text = r.explanation.because[0].text_zh
+    assert text.startswith("安靜心率比你的基準高 2.0 個標準差") and "不利" in text

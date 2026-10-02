@@ -198,12 +198,14 @@ def components(inp: ReadinessInputs) -> tuple[list[Component], dict[str, float |
     z_hrv = zscore(ln(t.hrv), [ln(h.hrv) for h in hist])
     zs["hrv"] = z_hrv
     if z_hrv is not None:
-        out.append(Component("hrv", clip(z_hrv), WEIGHTS["hrv"], {"hrv": t.hrv, "z": z_hrv}))
+        out.append(Component("hrv", clip(z_hrv), WEIGHTS["hrv"], {"hrv": t.hrv, "raw_z": z_hrv}))
     z_rhr = zscore(t.resting_hr, [h.resting_hr for h in hist])
     zs["rhr"] = z_rhr
     if z_rhr is not None:
         out.append(
-            Component("rhr", clip(-z_rhr), WEIGHTS["rhr"], {"resting_hr": t.resting_hr, "z": z_rhr})
+            Component(
+                "rhr", clip(-z_rhr), WEIGHTS["rhr"], {"resting_hr": t.resting_hr, "raw_z": z_rhr}
+            )
         )
     sleep_parts = [
         z
@@ -223,7 +225,7 @@ def components(inp: ReadinessInputs) -> tuple[list[Component], dict[str, float |
                 {
                     "sleep_h": round(t.sleep_s / 3600, 2) if t.sleep_s else None,
                     "sleep_score": t.sleep_score,
-                    "z": z,
+                    "raw_z": z,
                 },
             )
         )
@@ -382,6 +384,28 @@ REC_ZH: dict[str, str] = {
 }
 
 
+def _component_text(c: Component) -> str:
+    """One readable line per component; ``c.z`` is already direction-normalised (+ = good)."""
+    effect = "有利" if c.z > 0.05 else "不利" if c.z < -0.05 else "中性"
+    raw_z = c.raw.get("raw_z")
+    if c.name in {"hrv", "rhr", "sleep"} and isinstance(raw_z, float | int):
+        side = "高" if raw_z >= 0 else "低"
+        return f"{COMPONENT_ZH[c.name]}比你的基準{side} {abs(raw_z):.1f} 個標準差（{effect}）"
+    if c.name == "tsb":
+        return f"進入今天的 TSB {c.raw.get('tsb'):+.1f}，換算 {c.z:+.2f}（{effect}）"
+    if c.name == "ride":
+        parts = c.raw.get("parts") or {}
+        names = {
+            "decoupling": "解耦",
+            "load_vs_plan": "負荷對計畫",
+            "hr_lag": "心率延遲",
+            "blunted": "鈍化",
+        }
+        detail = "、".join(f"{names.get(k, k)} {v:+.1f}" for k, v in parts.items())
+        return f"昨天騎乘反應 {c.z:+.2f}（{detail}；{effect}）"
+    return f"{COMPONENT_ZH[c.name]} {c.z:+.2f}（主觀分數相對基準；{effect}）"
+
+
 def _explain(
     inp: ReadinessInputs,
     comps: list[Component],
@@ -395,13 +419,9 @@ def _explain(
     because: list[Reason] = list(rules)
     for c in sorted(comps, key=lambda c: -abs(c.weight * c.z)):
         share = c.weight / total_w if total_w else 0.0
-        direction = "高於" if c.z >= 0 else "低於"
         because.append(
             Reason(
-                text_zh=(
-                    f"{COMPONENT_ZH[c.name]}{direction}你的基準 {abs(c.z):.1f}"
-                    f"（權重 {share * 100:.0f} %）"
-                ),
+                text_zh=_component_text(c),
                 evidence={"component": c.name, "z": round(c.z, 3), **_json(c.raw)},
                 weight=round(share, 3),
             )

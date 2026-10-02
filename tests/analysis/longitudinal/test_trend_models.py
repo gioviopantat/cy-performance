@@ -82,6 +82,8 @@ def test_weekly_tid_and_polarization() -> None:
     assert w.polarization_index == pytest.approx(math.log10((low / mid) * high * 100))
     assert w.model == "pyramidal"
     assert weeks[1].model == "threshold" and weeks[1].polarization_index is None
+    no_mid = tid.weekly_tid([tid.RideTiz(mon, {"Z2": 5000, "Z5": 4000})])[0]
+    assert no_mid.model == "polarized" and no_mid.polarization_index is None
     e = tid.explain_week(w, "base")
     assert e.key == "tid.2026-09-14" and "base 期目標" in e.because[-1].text_zh
 

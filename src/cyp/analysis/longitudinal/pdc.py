@@ -103,6 +103,10 @@ def fit_cp_2p(mmp: Mapping[int, float], rng: tuple[int, int] = FIT_2P_RANGE_S) -
     return CPFit("cp_2p", float(slope), float(intercept), None, r2, pts, rmse)
 
 
+_BOUNDS_LO = [50.0, 1000.0, 100.0]
+_BOUNDS_HI = [800.0, 100000.0, 3000.0]
+
+
 def _morton(t: Any, cp: float, w_prime: float, p_max: float) -> Any:
     return cp + w_prime / (t + w_prime / (p_max - cp))
 
@@ -122,7 +126,7 @@ def fit_cp_3p(mmp: Mapping[int, float], rng: tuple[int, int] = FIT_3P_RANGE_S) -
             t,
             p,
             p0=p0,
-            bounds=([50.0, 1000.0, 100.0], [800.0, 100000.0, 3000.0]),
+            bounds=(_BOUNDS_LO, _BOUNDS_HI),
             maxfev=10000,
         )
     except (RuntimeError, ValueError):
@@ -130,6 +134,9 @@ def fit_cp_3p(mmp: Mapping[int, float], rng: tuple[int, int] = FIT_3P_RANGE_S) -
     cp, w_prime, p_max = (float(x) for x in popt)
     if p_max <= cp:
         return None
+    for value, lo, hi in zip(popt, _BOUNDS_LO, _BOUNDS_HI, strict=True):
+        if value <= lo * 1.01 or value >= hi * 0.99:
+            return None  # pinned at a bound: the data do not identify the model
     pred = _morton(t, cp, w_prime, p_max)
     ss_res = float(np.sum((p - pred) ** 2))
     ss_tot = float(np.sum((p - p.mean()) ** 2))

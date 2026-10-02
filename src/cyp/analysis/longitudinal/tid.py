@@ -76,7 +76,8 @@ class WeekTid:
         if mid > low:
             return "threshold"
         pi = self.polarization_index
-        if high > mid and pi is not None and pi > 2.0:
+        # Treff 2019: polarized = low > high > mid; PI is undefined when mid is 0.
+        if high > mid and (pi is None or pi > 2.0):
             return "polarized"
         return "pyramidal"
 

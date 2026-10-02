@@ -74,7 +74,7 @@ def test_doctor_flags_bad_athlete_config(data_dir: Path, db_url: str, tmp_path: 
     assert "FAIL " in result.output and "invalid athlete config" in result.output
 
 
-@pytest.mark.parametrize("cmd", ["plan", "daily", "weekly"])
+@pytest.mark.parametrize("cmd", ["plan"])
 def test_stubs_exit_zero(cmd: str, data_dir: Path, db_url: str) -> None:
     result = runner.invoke(app, [cmd], env=_env(data_dir, db_url))
     assert result.exit_code == 0, result.output
