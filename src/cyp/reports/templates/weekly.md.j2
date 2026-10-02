@@ -1,0 +1,81 @@
+{% from "_explain.md.j2" import explain %}
+# 週報 · {{ iso_week.year }} 第 {{ iso_week.week }} 週（{{ week_start.isoformat() }} – {{ week_end.isoformat() }}）
+{% if season_week %}
+賽季第 {{ season_week }} 週{% if goal %} · {{ goal.name }}：FTP {{ ftp | num }} → {{ goal.target_ftp | num }} W，還有 {{ goal.weeks_left }} 週{% if goal.next_checkpoint %}；下一個檢查點第 {{ goal.next_checkpoint.week }} 週 {{ goal.next_checkpoint.ftp | num }} W{% endif %}{% endif %}
+
+{% else %}
+FTP 設定 {{ ftp | num }} W{% if goal %} · 目標 {{ goal.name }}（{{ goal.date.isoformat() }}）{% endif %}
+
+{% endif %}
+
+## 1. 本週 vs 計畫
+- 騎乘 {{ totals.n_rides }} 趟 · 總時數 {{ totals.hours }} 小時{% if totals.budget_hours %}（上限 {{ totals.budget_hours }} 小時）{% endif %}
+
+- 負荷 {{ totals.load }}{% if totals.planned_load %} vs 計畫 {{ totals.planned_load }}（{{ (totals.load / totals.planned_load) | pct }}）{% else %}（尚無計畫可比對，M4 起提供）{% endif %}
+
+{% if fitness_start and fitness_end %}
+- CTL {{ fitness_start.ctl | num(".1f") }} → {{ fitness_end.ctl | num(".1f") }}（{{ (fitness_end.ctl - fitness_start.ctl) | signed }}）· 週末 TSB {{ fitness_end.tsb | signed }} · ACWR {{ fitness_end.acwr | num(".2f") }}
+{% endif %}
+{% for w in warnings %}
+- ⚠️ {{ w }}
+{% endfor %}
+
+| 日 | 訓練 | 負荷 | 準備度 |
+|----|------|------|--------|
+{% for d in days %}
+| {{ d.date.isoformat()[5:] }} {{ d.date | weekday }} | {% for a in d.activities %}{{ a.name }}{% if a.classification_zh %}（{{ a.classification_zh }}）{% endif %}{% if not loop.last %}、{% endif %}{% else %}休息{% endfor %} | {{ d.load | num }} | {% if d.readiness %}{{ d.readiness.score | num }} {{ d.readiness.recommendation | rec_zh }}{% else %}–{% endif %} |
+{% endfor %}
+
+## 2. 強度分布（TID）
+{% if tid %}
+低／中／高 = **{{ tid.low | pct }} / {{ tid.mid | pct }} / {{ tid.high | pct }}**{% if tid.target %}（本階段目標 {{ tid.target[0] | pct }} / {{ tid.target[1] | pct }} / {{ tid.target[2] | pct }}）{% endif %}
+
+{{ explain(tid.explanation) }}
+{% else %}
+本週沒有可計算區間時間的騎乘。
+{% endif %}
+
+## 3. FTP 證據
+{% for window, entry in cp_fits.items() %}
+{% for model in ("cp_2p", "cp_3p") %}
+{% if entry[model] is defined %}
+- {{ window }} {{ "兩參數" if model == "cp_2p" else "三參數" }} CP 模型：CP **{{ entry[model].cp | num }} W**、W′ {{ (entry[model].w_prime / 1000) | num(".1f") }} kJ{% if entry[model].p_max %}、Pmax {{ entry[model].p_max | num }} W{% endif %}（r² {{ entry[model].r2 | num(".3f") }}{% if entry[model].cp_diff_vs_icu_pct is not none %}，與 icu 差 {{ entry[model].cp_diff_vs_icu_pct | signed }} %{% endif %}）
+{% endif %}
+{% endfor %}
+{% endfor %}
+{% if ftp_proposal_explanation %}
+
+{{ explain(ftp_proposal_explanation) }}
+{% endif %}
+
+## 4. 耐久力
+{% if durability %}
+{% set last = durability[-1] %}
+最近一個 28 天區塊（至 {{ last.end }}）：騎完 1000 kJ 後效率是剛開始的 **{{ last.median_ratio | pct(".1f") }}**（{{ last.n_long }} 趟長騎）。
+{% endif %}
+{{ explain(durability_explanation) }}
+
+## 5. 限制因子與下週方向
+{% if limiters %}
+{% for lim in limiters %}
+### {{ lim.title_zh }}（嚴重度 {{ lim.severity | num(".2f") }}）
+{{ explain(lim.explanation) }}
+{% endfor %}
+{% if planner_bias %}
+排程器下週選課的偏好權重：{% for k, v in planner_bias.items() %}`{{ k }}` ×{{ v | num(".2f") }}{% if not loop.last %}、{% endif %}{% endfor %}
+
+{% endif %}
+{% else %}
+目前沒有偵測到明顯的限制因子，下週照階段計畫進行。
+{% endif %}
+{% if climbs %}
+
+## 6. 本週重複爬坡
+| 爬坡 | 次數 | 本週名次 | 本週時間 | 最佳 | W/kg 趨勢（每 30 天） |
+|------|------|---------|---------|------|----------------------|
+{% for c in climbs %}
+| `{{ c.fingerprint }}`（{{ ((c.distance_m or 0) / 1000) | num(".1f") }} km） | {{ c.n }} | {{ c.latest.rank }} | {{ (c.latest.duration_s // 60) }}:{{ "%02d" | format(c.latest.duration_s % 60) }} | {{ (c.best.duration_s // 60) }}:{{ "%02d" | format(c.best.duration_s % 60) }} | {{ c.wkg_slope_per_30d | signed("+.2f") }} |
+{% endfor %}
+{% endif %}
+
+<sub>本報告只引用已儲存的分析結果（trends 計算於 {{ trends_as_of or "–" }}）；每個結論都可用 `cyp explain <key>` 查看完整依據。</sub>

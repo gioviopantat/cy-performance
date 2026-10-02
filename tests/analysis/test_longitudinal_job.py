@@ -249,3 +249,59 @@ def test_cli_trends_readiness_explain(data_dir: Path, db_url: str, store: Stream
 
     bad = runner.invoke(app, ["trends", "--date", "02-10-2026"], env=env)
     assert bad.exit_code == 2
+
+
+def test_daily_and_weekly_reports(data_dir: Path, db_url: str, store: StreamStore) -> None:
+    from cyp.store.db import make_engine, session_factory
+    from cyp.store.migrate import upgrade_head
+
+    env = {"CYP_DATA_DIR": str(data_dir), "CYP_DB_URL": db_url}
+    upgrade_head(db_url)
+    engine = make_engine(db_url)
+    _seed(session_factory(engine), store)
+    engine.dispose()
+    runner = CliRunner()
+    assert runner.invoke(app, ["analyze", "--rides-only"], env=env).exit_code == 0
+    assert runner.invoke(app, ["trends", "--date", "2026-10-02"], env=env).exit_code == 0
+    assert (
+        runner.invoke(app, ["readiness", "--date", "2026-10-02", "--days", "7"], env=env).exit_code
+        == 0
+    )
+
+    res = runner.invoke(app, ["report", "daily", "--date", "2026-10-02"], env=env)
+    assert res.exit_code == 0, res.output
+    md = (data_dir / "reports" / "daily" / "2026-10-02.md").read_text(encoding="utf-8")
+    assert md.startswith("# 每日報告 · 2026-10-02（週五）")
+    assert "## 1. 今天的判斷" in md and "**準備度" in md and "| HRV |" in md
+    assert "**為什麼**" in md and "cyp explain readiness.2026-10-02" in md
+    assert "## 3. 昨天（2026-10-01）的訓練" in md and "NP " in md
+    assert "最大攝氧間歇" in md or "閾值課" in md or "混合強度" in md
+    assert "## 5. FTP 提案" in md and "266" in md
+    facts = json.loads((data_dir / "reports" / "daily" / "2026-10-02.json").read_text())
+    assert facts["readiness"]["recommendation"] in {"REST", "EASY", "AS_PLANNED", "UPGRADE"}
+
+    res = runner.invoke(app, ["report", "weekly", "--date", "2026-09-27"], env=env)
+    assert res.exit_code == 0, res.output
+    wk = (data_dir / "reports" / "weekly" / "2026-W39.md").read_text(encoding="utf-8")
+    assert "# 週報 · 2026 第 39 週（2026-09-21 – 2026-09-27）" in wk
+    assert "## 2. 強度分布（TID）" in wk and "## 3. FTP 證據" in wk
+    assert "兩參數 CP 模型" in wk and "## 5. 限制因子與下週方向" in wk
+    assert "| 09-25 週五 |" in wk
+    assert "休息" in wk  # SICK day verdict shows in the readiness column
+
+
+def test_cli_daily_pipeline_without_sync(data_dir: Path, db_url: str, store: StreamStore) -> None:
+    from cyp.store.db import make_engine, session_factory
+    from cyp.store.migrate import upgrade_head
+
+    env = {"CYP_DATA_DIR": str(data_dir), "CYP_DB_URL": db_url}
+    upgrade_head(db_url)
+    engine = make_engine(db_url)
+    _seed(session_factory(engine), store)
+    engine.dispose()
+    res = CliRunner().invoke(app, ["daily", "--no-sync"], env=env)
+    assert res.exit_code == 0, res.output
+    assert "analyze:" in res.output and "readiness " in res.output
+    assert "daily report:" in res.output
+    weekly = CliRunner().invoke(app, ["weekly", "--no-sync"], env=env)
+    assert weekly.exit_code == 0, weekly.output and "weekly report:" in weekly.output

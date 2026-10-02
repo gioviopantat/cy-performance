@@ -58,6 +58,8 @@ def test_fit_3p_recovers_morton() -> None:
 def test_fits_need_enough_points() -> None:
     assert pdc.fit_cp_2p({300: 300.0}) is None
     assert pdc.fit_cp_3p({60: 400.0, 300: 300.0, 1200: 270.0}) is None
+    # Flat power at every duration cannot identify W′ / Pmax -> pinned at a bound -> None.
+    assert pdc.fit_cp_3p({5: 330.0, 60: 330.0, 300: 330.0, 1200: 300.0, 1800: 300.0}) is None
     # Non-physical (power rising with duration) -> rejected.
     assert pdc.fit_cp_2p({180: 200.0, 1200: 400.0}) is None
 

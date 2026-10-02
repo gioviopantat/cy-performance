@@ -939,16 +939,112 @@ def plan() -> None:
     _not_implemented("plan")
 
 
-@app.command()
-def daily() -> None:
-    """Unattended daily pipeline: sync, analyze, readiness, replan, publish, report."""
-    _not_implemented("daily")
+report_app = typer.Typer(help="zh-TW Markdown reports (daily / weekly).", no_args_is_help=True)
+app.add_typer(report_app, name="report")
+
+
+def _athlete_config_or_none() -> Any:
+    try:
+        return load_athlete_config(DEFAULT_ATHLETE_CONFIG)
+    except ConfigError:
+        return None
+
+
+def _write_report(settings: Settings, factory: Any, kind: str, day: dt.date) -> Path:
+    from cyp.reports.facts import daily_facts, week_bounds, weekly_facts
+    from cyp.reports.render import write
+
+    cfg = _athlete_config_or_none()
+    with factory() as s:
+        try:
+            if kind == "daily":
+                facts = daily_facts(s, day, reports_dir=settings.reports_dir, cfg=cfg)
+            else:
+                facts = weekly_facts(
+                    s, week_bounds(day)[0], reports_dir=settings.reports_dir, cfg=cfg
+                )
+        except CypError as exc:
+            typer.echo(f"report failed: {exc}", err=True)
+            raise typer.Exit(code=1) from exc
+    path = write(kind, facts, settings.reports_dir)
+    typer.echo(f"{kind} report: {path}")
+    return path
+
+
+@report_app.command("daily")
+def report_daily(date: DateOpt = None) -> None:
+    """Render the daily report for --date (default today) from stored results."""
+    settings = _settings()
+    engine = engine_from_settings(settings)
+    try:
+        _write_report(settings, session_factory(engine), "daily", _parse_day(settings, date))
+    finally:
+        engine.dispose()
+
+
+@report_app.command("weekly")
+def report_weekly(date: DateOpt = None) -> None:
+    """Render the weekly review of the ISO week containing --date (default: yesterday's week)."""
+    settings = _settings()
+    day = _parse_day(settings, date) if date else _today(settings) - dt.timedelta(days=1)
+    engine = engine_from_settings(settings)
+    try:
+        _write_report(settings, session_factory(engine), "weekly", day)
+    finally:
+        engine.dispose()
+
+
+NoSyncOpt = Annotated[
+    bool, typer.Option("--no-sync", help="Skip the data sync (analyse what is stored).")
+]
 
 
 @app.command()
-def weekly() -> None:
-    """Weekly review: FTP/eFTP, block progression, next-week template, report."""
-    _not_implemented("weekly")
+def daily(no_sync: NoSyncOpt = False, no_wait: NoWaitOpt = False) -> None:
+    """Unattended daily pipeline: sync, analyze, trends, readiness, report.
+
+    Replanning and publishing join in M4 / M3; until then the report shows the readiness
+    verdict next to whatever is on the calendar.
+    """
+    from cyp.analysis.run import analyze_pending
+
+    settings = _settings()
+    if not no_sync:
+        if settings.intervals_api_key.get_secret_value():
+            _run_unified(no_streams=False, no_wait=no_wait)
+        else:
+            typer.echo("INTERVALS_API_KEY not set: skipping sync", err=True)
+    engine = engine_from_settings(settings)
+    factory = session_factory(engine)
+    day = _today(settings)
+    try:
+        summary = analyze_pending(
+            factory,
+            store=StreamStore(settings.streams_dir),
+            log_path=str(settings.logs_dir / "cyp.jsonl"),
+        )
+        typer.echo(f"analyze: {_fmt_counts(summary.counts())}")
+        _run_trends(settings, factory, day)
+        _run_readiness(factory, [day])
+        _write_report(settings, factory, "daily", day)
+    finally:
+        engine.dispose()
+
+
+@app.command()
+def weekly(no_sync: NoSyncOpt = False) -> None:
+    """Weekly review: trends (FTP/eFTP, durability, TID, limiters) and the weekly report."""
+    settings = _settings()
+    if not no_sync and settings.intervals_api_key.get_secret_value():
+        _run_unified(no_streams=False, no_wait=True)
+    engine = engine_from_settings(settings)
+    factory = session_factory(engine)
+    today = _today(settings)
+    try:
+        _run_trends(settings, factory, today)
+        _write_report(settings, factory, "weekly", today - dt.timedelta(days=1))
+    finally:
+        engine.dispose()
 
 
 if __name__ == "__main__":  # pragma: no cover
