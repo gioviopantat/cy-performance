@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from cyp.analysis.longitudinal.durability import ride_durability_json
 from cyp.analysis.ride import climbs as climbs_mod
 from cyp.analysis.ride import durability, efforts, estimate, power
 from cyp.analysis.ride.classify import classify_ride
@@ -15,7 +16,7 @@ from cyp.analysis.ride.explain import explain_ride
 from cyp.analysis.ride.frames import FloatArray, RideFrame, elevation_gain
 from cyp.analysis.ride.result import RideInputs, RideMetrics, TssSource
 
-ALGO_VERSION = "ride-1.0.2"
+ALGO_VERSION = "ride-1.1.0"  # 1.1: per-ride durability (EF by kJ bucket)
 
 
 def _pacing(frame: RideFrame, p_rec: FloatArray | None, pm: power.PowerMetrics) -> dict[str, Any]:
@@ -163,6 +164,10 @@ def compute_ride_metrics(frame: RideFrame, inputs: RideInputs) -> RideMetrics:
         if m.hr_drift_detail is None:
             m.hr_drift_detail = {}
         m.hr_drift_detail["hr_lag"] = lag.to_json()
+
+    # Durability: EF per kJ bucket at endurance intensity (read by the trends job).
+    if use_power and inputs.ftp and frame.hr is not None:
+        m.durability = ride_durability_json(frame, inputs.ftp)
 
     # Terrain + efforts
     m.climbs = climbs_mod.detect_climbs(frame, weight_kg=inputs.weight_kg, watts=watts)

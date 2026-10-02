@@ -543,15 +543,34 @@ def load_template(path: str | Path) -> Template:
     return _parse(data, p.name)
 
 
+_LIBRARY_CACHE: dict[tuple[str, tuple[tuple[str, int], ...]], dict[str, Template]] = {}
+
+
 def load_library(directory: str | Path | None = None) -> dict[str, Template]:
     """Load every `*.yaml` template in `directory` (default: the packaged library), keyed by id.
+
+    Parsed libraries are cached per directory and invalidated when any file's name or mtime
+    changes, so repeated planning runs never re-parse YAML. A fresh dict is returned each call
+    (the templates themselves are immutable).
 
     Raises:
         TemplateError: If any template is invalid, or its `id` differs from the file stem.
     """
     d = Path(directory) if directory is not None else LIBRARY_DIR
+    files = sorted(d.glob("*.yaml"))
+    key = (str(d.resolve()), tuple((p.name, p.stat().st_mtime_ns) for p in files))
+    cached = _LIBRARY_CACHE.get(key)
+    if cached is not None:
+        return dict(cached)
+    out = _load_library_uncached(files)
+    _LIBRARY_CACHE.clear()  # one library at a time is plenty
+    _LIBRARY_CACHE[key] = out
+    return dict(out)
+
+
+def _load_library_uncached(files: list[Path]) -> dict[str, Template]:
     out: dict[str, Template] = {}
-    for path in sorted(d.glob("*.yaml")):
+    for path in files:
         t = load_template(path)
         if t.id != path.stem:
             raise TemplateError(f"{path.name}: id {t.id!r} must equal file stem {path.stem!r}")
@@ -685,7 +704,34 @@ def closed_form_tss(items: Iterable[Step | Repeat]) -> tuple[float, int]:
     return tss, duration
 
 
+_RESOLVE_CACHE: dict[tuple[Any, ...], tuple[Template, ResolvedWorkout]] = {}
+_RESOLVE_CACHE_MAX = 4096
+
+
 def resolve(
+    t: Template,
+    params: dict[str, int] | None = None,
+    *,
+    outdoor: bool = False,
+    target: TargetMode = "POWER",
+) -> ResolvedWorkout:
+    """Memoised :func:`resolve_uncached` (templates and results are immutable).
+
+    The key holds the template object itself, so a template edited and reloaded under the same
+    id/version never collides with the old one.
+    """
+    key = (id(t), t.id, t.version, tuple(sorted((params or {}).items())), outdoor, target)
+    hit = _RESOLVE_CACHE.get(key)
+    if hit is not None and hit[0] is t:
+        return hit[1]
+    w = resolve_uncached(t, params, outdoor=outdoor, target=target)
+    if len(_RESOLVE_CACHE) >= _RESOLVE_CACHE_MAX:
+        _RESOLVE_CACHE.clear()
+    _RESOLVE_CACHE[key] = (t, w)
+    return w
+
+
+def resolve_uncached(
     t: Template,
     params: dict[str, int] | None = None,
     *,

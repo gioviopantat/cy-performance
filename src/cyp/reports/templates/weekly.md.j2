@@ -38,7 +38,7 @@ FTP 設定 {{ ftp | num }} W{% if goal %} · 目標 {{ goal.name }}（{{ goal.da
 ## 3. FTP 證據
 {% for window, entry in cp_fits.items() %}
 {% for model in ("cp_2p", "cp_3p") %}
-{% if entry[model] is defined %}
+{% if entry.get(model) %}
 - {{ window }} {{ "兩參數" if model == "cp_2p" else "三參數" }} CP 模型：CP **{{ entry[model].cp | num }} W**、W′ {{ (entry[model].w_prime / 1000) | num(".1f") }} kJ{% if entry[model].p_max %}、Pmax {{ entry[model].p_max | num }} W{% endif %}（r² {{ entry[model].r2 | num(".3f") }}{% if entry[model].cp_diff_vs_icu_pct is not none %}，與 icu 差 {{ entry[model].cp_diff_vs_icu_pct | signed }} %{% endif %}）
 {% endif %}
 {% endfor %}

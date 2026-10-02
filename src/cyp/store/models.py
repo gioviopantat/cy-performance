@@ -85,6 +85,7 @@ class Activity(Base):
     __table_args__ = (
         Index("ix_activities_start_utc", "start_utc"),
         Index("ix_activities_is_ride_start", "is_ride", "start_utc"),
+        Index("ix_activities_start_local", "start_local"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -189,6 +190,7 @@ class ActivityMetrics(Base):
     wbal_min_j: Mapped[float | None] = mapped_column(Float)
     estimated_power_meta: Mapped[JsonAny | None] = mapped_column(JSON)
     comparison: Mapped[JsonAny | None] = mapped_column(JSON)
+    durability: Mapped[JsonAny | None] = mapped_column(JSON)
     status: Mapped[str | None] = mapped_column(String(16))
     next_recommendation: Mapped[str | None] = mapped_column(String(16))
     explanation: Mapped[JsonDict | None] = mapped_column(JSON)

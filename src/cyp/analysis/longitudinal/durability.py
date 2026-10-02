@@ -113,6 +113,33 @@ def ef_by_kj(
     return out
 
 
+def ride_durability_json(frame: RideFrame, ftp: float) -> dict[str, object] | None:
+    """Per-ride durability blob for ``activity_metrics.durability`` (computed at analysis time)."""
+    r = ef_by_kj(frame, ftp, activity_id=0, date=dt.date.min)
+    if r is None:
+        return None
+    return {
+        "version": DURABILITY_VERSION,
+        "ftp": round(ftp, 1),
+        "total_kj": round(r.total_kj, 1),
+        "ef_by_bucket": r.ef_by_bucket,
+        "seconds_by_bucket": r.seconds_by_bucket,
+    }
+
+
+def from_json(activity_id: int, date: dt.date, blob: object) -> RideDurability | None:
+    """Inverse of :func:`ride_durability_json` (``None`` for missing / other versions)."""
+    if not isinstance(blob, dict) or blob.get("version") != DURABILITY_VERSION:
+        return None
+    return RideDurability(
+        activity_id=activity_id,
+        date=date,
+        total_kj=float(blob.get("total_kj") or 0.0),
+        ef_by_bucket=dict(blob.get("ef_by_bucket") or {}),
+        seconds_by_bucket=dict(blob.get("seconds_by_bucket") or {}),
+    )
+
+
 @dataclass
 class DurabilityBlock:
     """Durability summary for one 28-day block."""
