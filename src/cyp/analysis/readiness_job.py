@@ -155,13 +155,18 @@ def persist(session: Session, athlete_id: int, verdicts: Iterable[Readiness]) ->
         row.algo_version = r.algo_version
 
 
-def run_readiness(factory: sessionmaker[Session], days: Iterable[dt.date]) -> list[Readiness]:
+def run_readiness(
+    factory: sessionmaker[Session],
+    days: Iterable[dt.date],
+    *,
+    power_fix_until: dt.date | None = None,
+) -> list[Readiness]:
     """Compute and persist readiness for each day; returns the verdicts in order.
 
     Raises:
         AnalysisError: no athlete in the store.
     """
-    ds = CACHE.get(factory)
+    ds = CACHE.get(factory, power_fix_until=power_fix_until)
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     out = [readiness_for(ds, d) for d in days]

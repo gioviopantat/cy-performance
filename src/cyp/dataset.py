@@ -16,7 +16,7 @@ from __future__ import annotations
 import datetime as dt
 import threading
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from sqlalchemy import func, select
@@ -216,6 +216,29 @@ class Dataset:
     events: tuple[EventRow, ...]
     icu_models: Mapping[str, dict[str, float | None]]  # window -> {cp, w_prime, p_max, eftp}
     planned: Mapping[dt.date, tuple[PlannedRow, ...]] = field(default_factory=dict)
+    #: Set by :meth:`with_power_fix`: loads up to this day come from our re-analysis.
+    power_fix_until: dt.date | None = None
+
+    def with_power_fix(self, until: dt.date | None) -> Dataset:
+        """Copy whose daily loads up to ``until`` use our TSS instead of icu's ledger.
+
+        For a day ≤ ``until`` the load is Σ per activity of: our TSS for rides analysed with
+        measured power (empty power counted as 0 W), else the activity's load. icu's numbers for
+        those days were computed from files recorded with "include zeros" off and run high.
+        """
+        if until is None:
+            return self
+        loads = dict(self.loads)
+        per_day: dict[dt.date, float] = {}
+        for a in self.activities:
+            if a.date > until:
+                continue
+            own = a.tss if (a.is_ride and a.measured_power and a.tss is not None) else None
+            per_day[a.date] = per_day.get(a.date, 0.0) + (own if own is not None else a.load)
+        for d in [d for d in loads if d <= until]:
+            loads[d] = per_day.get(d, 0.0)
+        loads.update(per_day)
+        return replace(self, loads=loads, power_fix_until=until)
 
     @property
     def planned_load(self) -> dict[dt.date, float]:
@@ -658,10 +681,29 @@ class DatasetCache:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._entries: dict[str, Dataset] = {}
+        self._fixed: dict[tuple[str, dt.date], Dataset] = {}
         self.loads = 0  # how many times a snapshot was (re)loaded — for tests / metrics
 
-    def get(self, factory: sessionmaker[Session]) -> Dataset | None:
-        """Current snapshot (one version query when nothing changed)."""
+    def get(
+        self, factory: sessionmaker[Session], *, power_fix_until: dt.date | None = None
+    ) -> Dataset | None:
+        """Current snapshot (one version query when nothing changed).
+
+        ``power_fix_until`` returns the :meth:`Dataset.with_power_fix` view (memoised).
+        """
+        ds = self._get(factory)
+        if ds is None or power_fix_until is None:
+            return ds
+        key = (ds.version, power_fix_until)
+        with self._lock:
+            hit = self._fixed.get(key)
+        if hit is None:
+            hit = ds.with_power_fix(power_fix_until)
+            with self._lock:
+                self._fixed = {key: hit}
+        return hit
+
+    def _get(self, factory: sessionmaker[Session]) -> Dataset | None:
         bind = factory.kw.get("bind")
         key = str(bind.url) if bind is not None else "default"
         with factory() as s:
@@ -683,6 +725,7 @@ class DatasetCache:
         """Drop every cached snapshot."""
         with self._lock:
             self._entries.clear()
+            self._fixed.clear()
 
 
 #: Process-wide cache used by the services (CLI and API share it within one process).
