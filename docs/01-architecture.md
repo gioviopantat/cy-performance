@@ -128,11 +128,18 @@ Orchestration only; each stage is independently runnable and resumable.
   structured JSON; edits re-enter `guardrails` and are logged as `plan_revisions.source='llm'`.
 - Prompt inputs are aggregates and our own metrics, never raw Strava streams (see 02 §3.3).
 
-### 5.9 `cli.py` and `api/`
-- `cyp auth strava | intervals`, `cyp sync`, `cyp analyze`, `cyp plan --dry-run|--apply`,
-  `cyp daily`, `cyp weekly`, `cyp report`, `cyp doctor` (checks tokens, rate budget, schema).
-- `api/` — FastAPI: `/webhooks/strava`, `/healthz`, read-only `/v1/*` JSON for a future UI.
-  Not needed for the launchd deployment.
+### 5.9 `dataset.py`, `services/`, `cli/` and `api/`
+- `dataset.py` — read-only, column-selected snapshot of every model input with a one-query
+  `data_version` and a process-wide cache; all recompute paths start from it.
+- `services/` — the operations (meta, fitness, activities, FTP status / what-if / accept,
+  readiness, plan preview / commit / season, trends, explain, reports, pipelines, background
+  jobs) with pydantic I/O from `schemas.py`. The CLI and the API both call these, never the
+  models directly.
+- `cli/` — typer commands grouped by domain (core, sync, analysis, planning, reports, dev,
+  serve).
+- `api/` — FastAPI `create_app(AppContext)`: `/healthz` and `/v1/*` (reads, what-ifs, explicit
+  writes, jobs) with ETag caching and optional bearer token. Contract and budgets:
+  [08-api.md](08-api.md).
 
 ## 6. Runtime and deployment
 
