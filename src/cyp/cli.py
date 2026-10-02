@@ -11,7 +11,7 @@ import datetime as dt
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import typer
 from sqlalchemy import Engine, select
@@ -387,12 +387,6 @@ def explain(
 
 
 # --------------------------------------------------------------------------------------- stubs
-
-
-def _not_implemented(name: str) -> None:
-    _settings()
-    log.info("not implemented in M0", command=name)
-    typer.echo(f"cyp {name}: not implemented in M0")
 
 
 NoStreamsOpt = Annotated[
@@ -934,18 +928,139 @@ def _echo_wellness_coverage(factory: Any, day: dt.date) -> None:
 
 
 @app.command()
-def plan() -> None:
-    """Replan the rolling horizon and show/apply the diff (M4)."""
-    _not_implemented("plan")
+def plan(
+    date: DateOpt = None,
+    publish: Annotated[
+        bool,
+        typer.Option("--publish", help="Compare with the live icu calendar (read-only diff)."),
+    ] = False,
+    apply: Annotated[
+        bool,
+        typer.Option("--apply", help="Write the diff to intervals.icu (needs --confirm-write)."),
+    ] = False,
+    confirm: Annotated[
+        bool,
+        typer.Option("--confirm-write", help="Required with --apply: really change your calendar."),
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Do not store the plan (print only).")
+    ] = False,
+    athlete_config: AthleteConfigOpt = DEFAULT_ATHLETE_CONFIG,
+) -> None:
+    """Replan the rolling horizon (propose by default) and show/apply the calendar diff."""
+    from zoneinfo import ZoneInfo
+
+    from cyp.analysis.longitudinal.run import load_latest_report
+    from cyp.planning.job import build_plan
+
+    settings = _settings()
+    cfg = _athlete_config_or_none(athlete_config)
+    if cfg is None:
+        typer.echo(f"{athlete_config} missing or invalid (run `cyp doctor`)", err=True)
+        raise typer.Exit(code=2)
+    if apply and not confirm:
+        typer.echo("--apply writes to your intervals.icu calendar; add --confirm-write", err=True)
+        raise typer.Exit(code=2)
+    day = _parse_day(settings, date)
+    from cyp.core.timeutil import now_utc
+
+    now_local = now_utc().astimezone(ZoneInfo(settings.cyp_timezone)).replace(tzinfo=None)
+    if date is not None and day != now_local.date():
+        now_local = dt.datetime.combine(day, dt.time(6, 0))
+    bias = (load_latest_report(settings.reports_dir) or {}).get("planner_bias", {})
+    engine = engine_from_settings(settings)
+    factory = session_factory(engine)
+    try:
+        run = build_plan(
+            factory, cfg, today=day, now_local=now_local, bias=bias, persist=not dry_run
+        )
+    except CypError as exc:
+        typer.echo(f"plan failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        engine.dispose()
+    _echo_plan(run)
+    if publish or apply:
+        _publish_plan(settings, run, now_local, apply=apply)
+    if run.needs_review:
+        raise typer.Exit(code=3)
+
+
+def _echo_plan(run: Any) -> None:
+    typer.echo(f"plan {run.today} (season {run.season_key}, mode propose)")
+    for t in run.week_targets.values():
+        typer.echo(f"  {t.explanation.headline_zh}")
+    for d in run.days:
+        if d.workout is None:
+            label = "休息"
+        else:
+            venue = "室外" if d.outdoor else "室內"
+            label = f"{d.workout.name_zh}  {d.tss:.0f} TSS  {d.minutes} 分  {venue}"
+        typer.echo(f"  {d.date} {d.date.strftime('%a')}  {label}")
+    for e in run.adaptations:
+        typer.echo(f"  調整：{e.headline_zh}")
+    for r in run.repairs:
+        typer.echo(f"  守衛：{r.explanation.headline_zh}")
+    for v in run.violations:
+        typer.echo(f"  NEEDS REVIEW {v.rule} {v.date}: {v.detail_zh}")
+    if run.changes:
+        typer.echo("  changes: " + ", ".join(f"{k} {len(v)}" for k, v in run.changes.items()))
+
+
+def _publish_plan(settings: Settings, run: Any, now_local: dt.datetime, *, apply: bool) -> None:
+    from cyp.ingest.intervals.auth import ApiKeyAuth
+    from cyp.ingest.intervals.client import IntervalsClient
+    from cyp.planning.job import event_specs
+    from cyp.planning.renderer import render
+    from cyp.publish.publisher import Publisher
+
+    key = settings.intervals_api_key.get_secret_value()
+    if not key:
+        typer.echo("INTERVALS_API_KEY is not set: cannot compare with the calendar", err=True)
+        raise typer.Exit(code=2)
+    engine = engine_from_settings(settings)
+    factory = session_factory(engine)
+    with factory() as s:
+        mode = SyncCursorRepo(s).get(PUBLISH_CURSOR_SOURCE, PUBLISH_CURSOR_MODE)
+    if apply and mode not in ("upsert", "uid"):
+        engine.dispose()
+        typer.echo(
+            "run `cyp publish spike --confirm-write` first to learn the upsert mode", err=True
+        )
+        raise typer.Exit(code=2)
+    specs = event_specs(run, render=render)
+    window = (run.days[0].date, run.days[-1].date) if run.days else (run.today, run.today)
+    client = IntervalsClient(auth=ApiKeyAuth(key), athlete_id=settings.intervals_athlete_id)
+    try:
+        upsert_mode: Literal["upsert", "uid"] = "uid" if mode == "uid" else "upsert"
+        result = Publisher(client, factory, upsert_mode=upsert_mode).run(
+            specs,
+            window=window,
+            now_local=now_local,
+            mode="apply" if apply else "propose",
+            allow_write=apply,
+        )
+    except CypError as exc:
+        typer.echo(f"publish failed: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    finally:
+        client.close()
+        engine.dispose()
+    typer.echo(f"calendar diff: {result.diff.summary()}")
+    if apply:
+        typer.echo(
+            f"written {result.written}, deleted {result.deleted}, "
+            f"verified {len(result.verified)}, needs_review {len(result.needs_review)}"
+        )
 
 
 report_app = typer.Typer(help="zh-TW Markdown reports (daily / weekly).", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 
 
-def _athlete_config_or_none() -> Any:
+def _athlete_config_or_none(path: Path | str = DEFAULT_ATHLETE_CONFIG) -> Any:
     try:
-        return load_athlete_config(DEFAULT_ATHLETE_CONFIG)
+        return load_athlete_config(path)
     except ConfigError:
         return None
 
