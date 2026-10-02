@@ -1,13 +1,16 @@
-"""Readiness job: gather one day's inputs from the store, score, persist ``readiness_daily``.
+"""Readiness job: assemble each day's inputs from a :class:`~cyp.dataset.Dataset`, score, persist.
 
 Inputs per day *d* (morning-of semantics):
 
 - wellness of *d* and the :data:`~cyp.analysis.readiness.BASELINE_DAYS` days before;
 - TSB = form going into *d*: yesterday's ``tsb_icu``, else yesterday's ``tsb_sim``;
-- yesterday's rides (``activity_metrics``): worst status, hardest class, the longest ride's
-  decoupling (+ reliability) and HR lag, the day's total load; the plan for yesterday is
-  ``planned_workouts.target_tss`` (ours), else icu ``WORKOUT`` events' ``icu_training_load``;
+- yesterday's rides: worst status, hardest class, the longest ride's decoupling
+  (+ reliability) and HR lag, the day's total load; the plan for yesterday is our
+  ``planned_workouts.target_tss``, else icu ``WORKOUT`` events' ``icu_training_load``;
 - an icu ``SICK`` / ``INJURED`` event covering *d*.
+
+:func:`inputs_for` and :func:`readiness_for` are pure; :func:`run_readiness` loads the cached
+snapshot once for any number of days and bulk-upserts ``readiness_daily``.
 """
 
 from __future__ import annotations
@@ -18,7 +21,6 @@ from collections.abc import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from cyp.analysis.longitudinal.run import daily_loads, primary_athlete_id
 from cyp.analysis.readiness import (
     BASELINE_DAYS,
     ReadinessInputs,
@@ -26,18 +28,10 @@ from cyp.analysis.readiness import (
     YesterdayRide,
     compute_readiness,
 )
-from cyp.analysis.run import activity_local_date
 from cyp.core.errors import AnalysisError
 from cyp.core.load import Readiness
-from cyp.store.models import (
-    Activity,
-    ActivityMetrics,
-    FitnessDaily,
-    IcuEvent,
-    PlannedWorkout,
-    ReadinessDaily,
-    WellnessDaily,
-)
+from cyp.dataset import CACHE, Dataset, WellnessRow
+from cyp.store.models import ReadinessDaily
 
 _STATUS_RANK = {"FRESH": 0, "NORMAL": 1, "BLUNTED": 2, "OVERREACHED": 3}
 _CLASS_RANK = {
@@ -52,143 +46,113 @@ _CLASS_RANK = {
 }
 
 
-def _point(w: WellnessDaily) -> WellnessPoint:
+def _point(w: WellnessRow) -> WellnessPoint:
     return WellnessPoint(
-        date=w.date_local,
+        date=w.date,
         hrv=w.hrv,
         resting_hr=w.resting_hr,
-        sleep_s=float(w.sleep_s) if w.sleep_s is not None else None,
+        sleep_s=w.sleep_s,
         sleep_score=w.sleep_score,
-        soreness=_f(w.soreness),
-        fatigue=_f(w.fatigue),
-        stress=_f(w.stress),
-        mood=_f(w.mood),
-        injury=_f(w.injury),
+        soreness=w.soreness,
+        fatigue=w.fatigue,
+        stress=w.stress,
+        mood=w.mood,
+        injury=w.injury,
     )
 
 
-def _f(v: int | float | None) -> float | None:
-    return float(v) if v is not None else None
+def _planned_load(ds: Dataset, day: dt.date) -> float | None:
+    if day in ds.planned_load:
+        return ds.planned_load[day]
+    vals = [
+        e.load
+        for e in ds.events_between(day, day)
+        if e.category == "WORKOUT" and not e.ours and e.load is not None
+    ]
+    return float(sum(vals)) if vals else None  # type: ignore[arg-type]
 
 
-def _yesterday(session: Session, athlete_id: int, day: dt.date) -> YesterdayRide | None:
+def _yesterday(ds: Dataset, day: dt.date) -> YesterdayRide | None:
     y = day - dt.timedelta(days=1)
-    lo, hi = (y - dt.timedelta(days=1)).isoformat(), (y + dt.timedelta(days=2)).isoformat()
-    rows = session.execute(
-        select(Activity, ActivityMetrics)
-        .join(ActivityMetrics, ActivityMetrics.activity_id == Activity.id)
-        .where(Activity.is_ride.is_(True), Activity.start_utc >= lo, Activity.start_utc < hi)
-    ).all()
-    rides = [(a, m) for a, m in rows if activity_local_date(a) == y]
-    loads, _ = daily_loads(session)
-    planned = _planned_load(session, athlete_id, y)
+    rides = [a for a in ds.on(y) if a.is_ride and a.analysed]
+    planned = _planned_load(ds, y)
     if not rides:
         if planned is None:
             return None
-        return YesterdayRide(load=loads.get(y, 0.0), planned_load=planned)
-    longest = max(rides, key=lambda am: am[0].moving_s or 0)[1]
-    detail = longest.hr_drift_detail if isinstance(longest.hr_drift_detail, dict) else {}
-    statuses = [m.status for _, m in rides if m.status]
+        return YesterdayRide(load=ds.loads.get(y, 0.0), planned_load=planned)
+    longest = max(rides, key=lambda a: a.moving_s)
+    statuses = [a.status for a in rides if a.status]
+    classes = [a.classification for a in rides if a.classification]
     return YesterdayRide(
         status=max(statuses, key=lambda st: _STATUS_RANK.get(st, 1)) if statuses else None,
-        classification=_classification(rides),
+        classification=max(classes, key=lambda c: _CLASS_RANK.get(c, -1)) if classes else None,
         decoupling_pct=longest.decoupling_pct,
-        decoupling_reliable=bool(detail.get("reliable")),
+        decoupling_reliable=longest.decoupling_reliable,
         hr_lag_s=longest.hr_lag_s,
-        load=loads.get(y),
+        load=ds.loads.get(y),
         planned_load=planned,
     )
 
 
-def _classification(rides: list[tuple[Activity, ActivityMetrics]]) -> str | None:
-    """Hardest stored ride class (the pipeline keeps it in ``pacing['classification']``)."""
-    found = [
-        m.pacing["classification"]
-        for _, m in rides
-        if isinstance(m.pacing, dict) and isinstance(m.pacing.get("classification"), str)
-    ]
-    return max(found, key=lambda c: _CLASS_RANK.get(c, -1)) if found else None
-
-
-def _planned_load(session: Session, athlete_id: int, day: dt.date) -> float | None:
-    ours = session.scalars(
-        select(PlannedWorkout.target_tss).where(
-            PlannedWorkout.athlete_id == athlete_id,
-            PlannedWorkout.date_local == day,
-            PlannedWorkout.status.not_in(("cancelled", "superseded")),
-        )
-    ).all()
-    vals = [v for v in ours if v is not None]
-    if vals:
-        return float(sum(vals))
-    icu = session.scalars(
-        select(IcuEvent.icu_training_load).where(
-            IcuEvent.category == "WORKOUT",
-            IcuEvent.start_date_local >= day.isoformat(),
-            IcuEvent.start_date_local < (day + dt.timedelta(days=1)).isoformat(),
-        )
-    ).all()
-    vals = [v for v in icu if v is not None]
-    return float(sum(vals)) if vals else None
-
-
-def _sick(session: Session, day: dt.date) -> str | None:
-    rows = session.scalars(
-        select(IcuEvent).where(
-            IcuEvent.category.in_(("SICK", "INJURED")),
-            IcuEvent.start_date_local < (day + dt.timedelta(days=1)).isoformat(),
-        )
-    ).all()
-    for e in rows:
-        start = (e.start_date_local or "")[:10]
-        end = (e.end_date_local or e.start_date_local or "")[:10]
-        if start and start <= day.isoformat() <= (end or start):
+def _sick(ds: Dataset, day: dt.date) -> str | None:
+    for e in ds.events:
+        if e.category not in ("SICK", "INJURED") or e.date is None:
+            continue
+        if e.date <= day <= (e.end_date or e.date):
             return e.category
     return None
 
 
-def _tsb(session: Session, athlete_id: int, day: dt.date) -> float | None:
-    row = session.get(FitnessDaily, (athlete_id, day - dt.timedelta(days=1)))
-    if row is None:
-        return None
-    return row.tsb_icu if row.tsb_icu is not None else row.tsb_sim
+def _tsb(ds: Dataset, day: dt.date) -> float | None:
+    row = ds.fitness.get(day - dt.timedelta(days=1))
+    return row.tsb if row is not None else None
 
 
-def inputs_for(session: Session, athlete_id: int, day: dt.date) -> ReadinessInputs:
-    """Assemble :class:`ReadinessInputs` for ``day`` from the store."""
-    rows = session.scalars(
-        select(WellnessDaily)
-        .where(
-            WellnessDaily.athlete_id == athlete_id,
-            WellnessDaily.date_local >= day - dt.timedelta(days=BASELINE_DAYS),
-            WellnessDaily.date_local <= day,
-        )
-        .order_by(WellnessDaily.date_local)
-    ).all()
-    today = next((_point(w) for w in rows if w.date_local == day), None)
-    history = [_point(w) for w in rows if w.date_local < day]
+def inputs_for(ds: Dataset, day: dt.date) -> ReadinessInputs:
+    """Assemble :class:`ReadinessInputs` for ``day`` (pure)."""
+    lo = day - dt.timedelta(days=BASELINE_DAYS)
+    history = [_point(w) for d, w in sorted(ds.wellness.items()) if lo <= d < day]
+    today = ds.wellness.get(day)
     return ReadinessInputs(
         date=day,
-        today=today,
+        today=_point(today) if today else None,
         history=history,
-        tsb=_tsb(session, athlete_id, day),
-        yesterday=_yesterday(session, athlete_id, day),
-        sick_or_injured=_sick(session, day),
+        tsb=_tsb(ds, day),
+        yesterday=_yesterday(ds, day),
+        sick_or_injured=_sick(ds, day),
     )
 
 
-def persist(session: Session, athlete_id: int, r: Readiness) -> None:
-    """Upsert one ``readiness_daily`` row."""
-    row = session.get(ReadinessDaily, (athlete_id, r.date_local))
-    if row is None:
-        row = ReadinessDaily(athlete_id=athlete_id, date_local=r.date_local)
-        session.add(row)
-    row.score_0_100 = r.score_0_100
-    row.status = r.status
-    row.recommendation = r.recommendation
-    row.inputs = r.inputs
-    row.explanation = r.explanation.to_json_dict() if r.explanation else None
-    row.algo_version = r.algo_version
+def readiness_for(ds: Dataset, day: dt.date) -> Readiness:
+    """Score one day (pure)."""
+    return compute_readiness(inputs_for(ds, day))
+
+
+def persist(session: Session, athlete_id: int, verdicts: Iterable[Readiness]) -> None:
+    """Upsert ``readiness_daily`` rows (one SELECT for all dates)."""
+    verdicts = list(verdicts)
+    if not verdicts:
+        return
+    existing = {
+        r.date_local: r
+        for r in session.scalars(
+            select(ReadinessDaily).where(
+                ReadinessDaily.athlete_id == athlete_id,
+                ReadinessDaily.date_local.in_([v.date_local for v in verdicts]),
+            )
+        )
+    }
+    for r in verdicts:
+        row = existing.get(r.date_local)
+        if row is None:
+            row = ReadinessDaily(athlete_id=athlete_id, date_local=r.date_local)
+            session.add(row)
+        row.score_0_100 = r.score_0_100
+        row.status = r.status
+        row.recommendation = r.recommendation
+        row.inputs = r.inputs
+        row.explanation = r.explanation.to_json_dict() if r.explanation else None
+        row.algo_version = r.algo_version
 
 
 def run_readiness(factory: sessionmaker[Session], days: Iterable[dt.date]) -> list[Readiness]:
@@ -197,14 +161,11 @@ def run_readiness(factory: sessionmaker[Session], days: Iterable[dt.date]) -> li
     Raises:
         AnalysisError: no athlete in the store.
     """
-    out: list[Readiness] = []
+    ds = CACHE.get(factory)
+    if ds is None:
+        raise AnalysisError("no athlete in the store; run `cyp sync` first")
+    out = [readiness_for(ds, d) for d in days]
     with factory() as s:
-        athlete_id = primary_athlete_id(s)
-        if athlete_id is None:
-            raise AnalysisError("no athlete in the store; run `cyp sync` first")
-        for day in days:
-            r = compute_readiness(inputs_for(s, athlete_id, day))
-            persist(s, athlete_id, r)
-            out.append(r)
+        persist(s, ds.athlete_id, out)
         s.commit()
     return out

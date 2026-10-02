@@ -25,6 +25,8 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Literal
 
+import numpy as np
+
 from cyp.core.explain import Explanation, MethodRef, Reason
 
 Decay = Literal["exp", "linear"]
@@ -101,6 +103,8 @@ def replay(
     loads: Mapping[dt.date, float],
     end: dt.date,
     params: PMCParams = DEFAULT_PARAMS,
+    *,
+    annotate: bool = True,
 ) -> list[PMCDay]:
     """Replay from ``seed`` (included as the first day) through ``end``.
 
@@ -129,7 +133,8 @@ def replay(
                 tsb=state.tsb,
             )
         )
-    _annotate_safety(out, loads)
+    if annotate:
+        _annotate_safety(out, loads)
     return out
 
 
@@ -190,12 +195,33 @@ def monotony_strain(
 
 
 def _annotate_safety(series: list[PMCDay], loads: Mapping[dt.date, float]) -> None:
-    by_date = {d.date: d for d in series}
-    for d in series:
-        week_ago = by_date.get(d.date - dt.timedelta(days=7))
-        d.ramp_rate = d.ctl - week_ago.ctl if week_ago is not None else None
-        d.acwr_7_28 = acwr(loads, d.date)
-        d.monotony_7, d.strain_7 = monotony_strain(loads, d.date)
+    """Vectorised ramp / ACWR / monotony / strain (same definitions as :func:`acwr` etc.)."""
+    if not series:
+        return
+    first = series[0].date - dt.timedelta(days=34)
+    n = (series[-1].date - first).days + 1
+    arr = np.zeros(n)
+    for d, v in loads.items():
+        i = (d - first).days
+        if 0 <= i < n:
+            arr[i] = v
+    cs = np.concatenate([[0.0], np.cumsum(arr)])
+    cs2 = np.concatenate([[0.0], np.cumsum(arr * arr)])
+    idx = np.array([(d.date - first).days for d in series])
+    week = cs[idx + 1] - cs[idx - 6]
+    chronic = (cs[idx - 6] - cs[idx - 34]) / 28.0
+    mean = week / 7.0
+    var = np.maximum((cs2[idx + 1] - cs2[idx - 6]) / 7.0 - mean * mean, 0.0)
+    sd = np.sqrt(var)
+    ctl = np.array([d.ctl for d in series])
+    for k, day in enumerate(series):
+        day.ramp_rate = float(ctl[k] - ctl[k - 7]) if k >= 7 else None
+        day.acwr_7_28 = float(mean[k] / chronic[k]) if chronic[k] > 0 else None
+        if week[k] > 0 and sd[k] > 1e-9:
+            day.monotony_7 = float(mean[k] / sd[k])
+            day.strain_7 = float(week[k] * day.monotony_7)
+        else:
+            day.monotony_7 = day.strain_7 = None
 
 
 # ------------------------------------------------------------------------- icu comparison
@@ -261,11 +287,12 @@ def best_params(
     best: tuple[list[PMCDay], IcuAgreement] | None = None
     for decay in ("exp", "linear"):
         params = PMCParams(decay=decay)  # type: ignore[arg-type]
-        series = replay(seed, loads, end, params)
+        series = replay(seed, loads, end, params, annotate=False)
         agreement = compare_with_icu(series, icu, params)
         if best is None or agreement.mean_abs_ctl_err < best[1].mean_abs_ctl_err:
             best = (series, agreement)
     assert best is not None
+    _annotate_safety(best[0], loads)
     return best
 
 

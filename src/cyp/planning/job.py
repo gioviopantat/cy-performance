@@ -1,18 +1,19 @@
-"""``cyp plan``: build the rolling horizon from the store, adapt, guard, persist (docs/05 §3).
+"""Rolling-horizon planning: pure :func:`plan_horizon` + :func:`build_plan` job (docs/05 §3).
 
-Steps:
+:func:`plan_horizon` (pure, over a :class:`~cyp.dataset.Dataset`) does:
 
-1. Season skeleton from ``config/athlete.yaml`` (checkpoint repeats from measured FTP).
+1. Season skeleton from the athlete config.
 2. Horizon ``today .. today + horizon_days - 1`` clipped to the season.
 3. Week targets from the CTL going into each week (store for the current week, simulation of
    the planned week for the next).
-4. :func:`~cyp.planning.planner.plan_week` per week with limiter bias (trends report),
-   availability overrides (icu NOTE ``training_availability=LIMITED`` + ``max_training_time``
-   in seconds; HOLIDAY/SICK/INJURED -> 0).
+4. :func:`~cyp.planning.planner.plan_week` per week with limiter bias, availability overrides
+   (icu NOTE ``training_availability=LIMITED`` + ``max_training_time`` in seconds;
+   HOLIDAY/SICK/INJURED -> 0) and any :class:`PlanOverrides` (UI what-ifs).
 5. Adapt today (calendar, yesterday, readiness) and enforce guardrails on mutable days.
-6. Persist: ``seasons`` / ``blocks`` / ``week_plans`` (upsert), ``planned_workouts`` for
-   mutable days (``status=proposed``; previous proposals for those dates are superseded),
-   and one ``plan_revisions`` row with before/after/diff and the Explanations.
+
+:func:`build_plan` = cached dataset -> :func:`plan_horizon` -> (optionally) persist
+``seasons`` / ``blocks`` / ``week_plans`` / ``planned_workouts`` (``proposed``; superseding
+older proposals for mutable dates) and one ``plan_revisions`` row.
 
 Nothing here talks to intervals.icu; publishing is :mod:`cyp.publish` and needs explicit flags.
 """
@@ -28,33 +29,24 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from cyp.analysis.longitudinal.pmc import PMCState, simulate
-from cyp.analysis.longitudinal.run import daily_loads, primary_athlete_id
-from cyp.analysis.run import activity_local_date
 from cyp.core.errors import AnalysisError
 from cyp.core.explain import Explanation
 from cyp.core.timeutil import iso_utc, now_utc
+from cyp.dataset import CACHE, Dataset, PlannedRow
 from cyp.planning import adapt
 from cyp.planning.guardrails import GuardrailInputs, Repair, Violation, enforce
 from cyp.planning.planner import DayPlan, PlanContext, Role, plan_week
 from cyp.planning.season import SeasonSkeleton, SeasonWeek, build_skeleton, week_targets
-from cyp.planning.templates import Template, load_library
+from cyp.planning.templates import Template, TemplateError, load_library, resolve
 from cyp.publish.events import EventSpec, external_id
 from cyp.settings import AthleteConfig
-from cyp.store.models import (
-    Activity,
-    ActivityMetrics,
-    FitnessDaily,
-    IcuEvent,
-    PlannedWorkout,
-    PlanRevision,
-    ReadinessDaily,
-    WeekPlan,
-)
 from cyp.store.models import Block as BlockRow
+from cyp.store.models import PlannedWorkout, PlanRevision, WeekPlan
 from cyp.store.models import Season as SeasonRow
 
 SEASON_KEY_FMT = "s{start:%Y%m%d}"
 MUTABLE_STATUSES = ("proposed", "published")
+HARD_CLASSES = ("sweetspot", "threshold", "vo2", "race")
 
 
 def season_key(sk: SeasonSkeleton) -> str:
@@ -62,9 +54,42 @@ def season_key(sk: SeasonSkeleton) -> str:
     return SEASON_KEY_FMT.format(start=sk.start)
 
 
+@dataclass(frozen=True)
+class PlanOverrides:
+    """What-if inputs (never persisted unless the caller persists the resulting plan).
+
+    ``weekday_minutes`` replaces per-weekday availability (``{"tue": 60}``), ``date_minutes``
+    caps single dates (0 = day off), ``indoor_days`` forces indoor renderings, ``readiness``
+    forces today's recommendation, ``bias`` replaces the limiter bias, ``ctl`` / ``atl``
+    replace the fitness going into the horizon.
+    """
+
+    weekday_minutes: Mapping[str, int] = field(default_factory=dict)
+    weekly_max_minutes: int | None = None
+    date_minutes: Mapping[dt.date, int] = field(default_factory=dict)
+    indoor_days: frozenset[dt.date] = frozenset()
+    readiness: str | None = None
+    bias: Mapping[str, float] | None = None
+    horizon_days: int | None = None
+    ctl: float | None = None
+    atl: float | None = None
+
+    def apply_to(self, cfg: AthleteConfig) -> AthleteConfig:
+        """Config with the availability / horizon overrides applied."""
+        avail: dict[str, Any] = dict(self.weekday_minutes)
+        if self.weekly_max_minutes is not None:
+            avail["weekly_max_minutes"] = self.weekly_max_minutes
+        update: dict[str, Any] = {}
+        if avail:
+            update["availability"] = cfg.availability.model_copy(update=avail)
+        if self.horizon_days is not None:
+            update["planner"] = cfg.planner.model_copy(update={"horizon_days": self.horizon_days})
+        return cfg.model_copy(update=update) if update else cfg
+
+
 @dataclass
 class PlanRun:
-    """Result of one ``cyp plan`` run."""
+    """Result of one planning run."""
 
     today: dt.date
     season_key: str
@@ -75,6 +100,7 @@ class PlanRun:
     violations: list[Violation] = field(default_factory=list)
     changes: dict[str, list[str]] = field(default_factory=dict)
     revision_id: int | None = None
+    mutable_from: dt.date | None = None
 
     @property
     def needs_review(self) -> bool:
@@ -83,96 +109,44 @@ class PlanRun:
 
 
 def _overrides_and_events(
-    session: Session, start: dt.date, end: dt.date
+    ds: Dataset, start: dt.date, end: dt.date
 ) -> tuple[dict[dt.date, int], dict[dt.date, list[str]]]:
-    rows = session.scalars(
-        select(IcuEvent).where(
-            IcuEvent.start_date_local >= start.isoformat(),
-            IcuEvent.start_date_local < (end + dt.timedelta(days=1)).isoformat(),
-        )
-    ).all()
     overrides: dict[dt.date, int] = {}
     athlete: dict[dt.date, list[str]] = {}
-    for e in rows:
-        if (e.external_id or "").startswith("cyp:"):
+    for e in ds.events_between(start, end):
+        if e.ours or e.date is None:
             continue
-        day = dt.date.fromisoformat((e.start_date_local or "")[:10])
-        cat = e.category or ""
-        if cat == "NOTE" and (e.training_availability or "").upper() == "LIMITED":
+        if e.category == "NOTE" and (e.training_availability or "").upper() == "LIMITED":
             minutes = (e.max_training_time or 0) // 60
-            overrides[day] = min(overrides.get(day, minutes), minutes)
-        elif cat in adapt.BLOCKING_CATEGORIES:
-            overrides[day] = 0
-            athlete.setdefault(day, []).append(cat)
-        elif cat in adapt.ATHLETE_OWNS:
-            athlete.setdefault(day, []).append(cat)
+            overrides[e.date] = min(overrides.get(e.date, minutes), minutes)
+        elif e.category in adapt.BLOCKING_CATEGORIES:
+            overrides[e.date] = 0
+            athlete.setdefault(e.date, []).append(e.category)
+        elif e.category in adapt.ATHLETE_OWNS:
+            athlete.setdefault(e.date, []).append(e.category)
     return overrides, athlete
 
 
-def _ctl_atl(session: Session, athlete_id: int, day: dt.date) -> tuple[float, float]:
-    row = session.get(FitnessDaily, (athlete_id, day))
-    if row is None:
-        row = session.scalars(
-            select(FitnessDaily)
-            .where(FitnessDaily.athlete_id == athlete_id, FitnessDaily.date_local <= day)
-            .order_by(FitnessDaily.date_local.desc())
-        ).first()
-    if row is None:
-        return 0.0, 0.0
-    ctl = row.ctl_icu if row.ctl_icu is not None else row.ctl_sim
-    atl = row.atl_icu if row.atl_icu is not None else row.atl_sim
-    return float(ctl or 0.0), float(atl or 0.0)
-
-
-def _longest_ride_min(session: Session, today: dt.date) -> float | None:
-    lo = (today - dt.timedelta(weeks=6)).isoformat()
-    vals = session.scalars(
-        select(Activity.moving_s).where(Activity.is_ride.is_(True), Activity.start_utc >= lo)
-    ).all()
-    minutes = [int(v) / 60 for v in vals if v]
+def _longest_ride_min(ds: Dataset, today: dt.date) -> float | None:
+    minutes = [
+        a.moving_s / 60
+        for a in ds.activities
+        if a.is_ride and a.moving_s and today - dt.timedelta(weeks=6) <= a.date < today
+    ]
     return max(minutes) if minutes else None
 
 
-def _yesterday_facts(
-    session: Session, athlete_id: int, today: dt.date, loads: Mapping[dt.date, float]
-) -> tuple[bool, float | None, PlannedWorkout | None]:
-    y = today - dt.timedelta(days=1)
-    lo, hi = (y - dt.timedelta(days=1)).isoformat(), (y + dt.timedelta(days=2)).isoformat()
-    rows = session.execute(
-        select(Activity, ActivityMetrics)
-        .join(ActivityMetrics, ActivityMetrics.activity_id == Activity.id)
-        .where(Activity.is_ride.is_(True), Activity.start_utc >= lo, Activity.start_utc < hi)
-    ).all()
-    hard = any(
-        activity_local_date(a) == y
-        and isinstance(m.pacing, dict)
-        and m.pacing.get("classification") in ("sweetspot", "threshold", "vo2", "race")
-        for a, m in rows
-    )
-    planned = session.scalars(
-        select(PlannedWorkout).where(
-            PlannedWorkout.athlete_id == athlete_id,
-            PlannedWorkout.date_local == y,
-            PlannedWorkout.status.in_(MUTABLE_STATUSES),
-        )
-    ).first()
-    return hard, loads.get(y), planned
-
-
-def _dayplan_from_row(row: PlannedWorkout, library: Mapping[str, Template]) -> DayPlan | None:
-    from cyp.planning.templates import TemplateError, resolve
-
+def _dayplan_from_row(row: PlannedRow, library: Mapping[str, Template]) -> DayPlan | None:
     t = library.get(row.template_id or "")
     if t is None:
         return None
     try:
-        w = resolve(t, dict((row.steps or {}).get("params", {})), outdoor=not row.indoor)
+        w = resolve(t, dict(row.params), outdoor=not row.indoor)
     except TemplateError:
         return None
-    role = cast(Role, str((row.steps or {}).get("role", "hit")))
     return DayPlan(
-        date=row.date_local,
-        role=role,
+        date=row.date,
+        role=cast(Role, row.role),
         max_minutes=round(w.duration_s / 60),
         template_id=t.id,
         params=dict(w.params),
@@ -180,6 +154,131 @@ def _dayplan_from_row(row: PlannedWorkout, library: Mapping[str, Template]) -> D
         workout=w,
         intent=t.intent,
     )
+
+
+def _progress(week: SeasonWeek) -> tuple[str, float, float]:
+    n_load = 6 if week.phase in ("base", "build", "threshold") else 2
+    step = 1 / max(n_load - 1, 1)
+    return week.phase, (week.progression_index - 1) * step, step
+
+
+def plan_horizon(
+    ds: Dataset,
+    cfg: AthleteConfig,
+    *,
+    today: dt.date,
+    now_local: dt.datetime,
+    bias: Mapping[str, float] | None = None,
+    library: Mapping[str, Template] | None = None,
+    overrides: PlanOverrides | None = None,
+) -> PlanRun:
+    """Plan the horizon starting ``today`` (pure; see module docstring)."""
+    ov = overrides or PlanOverrides()
+    cfg = ov.apply_to(cfg)
+    lib = library if library is not None else load_library()
+    sk = build_skeleton(cfg)
+    run = PlanRun(today=today, season_key=season_key(sk))
+    first = max(today, sk.start)
+    last = min(today + dt.timedelta(days=cfg.planner.horizon_days - 1), sk.weeks[-1].end)
+    if first > last:
+        return run
+    cutoff = cfg.planner.today_cutoff_local
+    mutable_from = today if now_local.time() < cutoff else today + dt.timedelta(days=1)
+    run.mutable_from = mutable_from
+
+    cal_minutes, athlete_events = _overrides_and_events(ds, first, last)
+    for d, m in ov.date_minutes.items():
+        cal_minutes[d] = min(cal_minutes.get(d, m), m)
+    ctx = PlanContext(
+        cfg=cfg,
+        library=lib,
+        bias=dict(ov.bias if ov.bias is not None else (bias or {})),
+        overrides=cal_minutes,
+        indoor_days=frozenset(ov.indoor_days),
+        goal_date=sk.goal_date,
+    )
+    weeks = [w for w in sk.weeks if w.end >= first and w.start <= last]
+    ctl, atl = ds.ctl_atl(weeks[0].start - dt.timedelta(days=1))
+    if ov.ctl is not None:
+        ctl = ov.ctl
+        atl = ov.atl if ov.atl is not None else ctl
+    prev_loading: float | None = None
+    all_days: list[DayPlan] = []
+    for w in weeks:
+        t = week_targets(
+            w,
+            ctl,
+            weekly_max_minutes=cfg.availability.weekly_max_minutes,
+            prev_loading_tss=prev_loading,
+            atl_start=atl,
+        )
+        run.week_targets[w.start] = t
+        days = plan_week(w, t, ctx)
+        all_days += days
+        seed = PMCState(w.start - dt.timedelta(days=1), ctl, atl)
+        end = simulate(
+            seed, [ds.loads.get(d.date, 0.0) if d.date < today else d.tss for d in days]
+        )[-1]
+        ctl, atl = end.ctl, end.atl
+        if not w.recovery and w.phase != "test":
+            prev_loading = t.target_tss
+    horizon = [d for d in all_days if first <= d.date <= last]
+
+    run.adaptations += adapt.apply_calendar(horizon, athlete_events)
+    week_today = sk.week_of(today)
+    if week_today is not None:
+        phase, progress, step = _progress(week_today)
+        y = today - dt.timedelta(days=1)
+        hard_y = any(a.classification in HARD_CLASSES for a in ds.on(y) if a.is_ride)
+        planned_rows = ds.planned.get(y, ())
+        planned_y = _dayplan_from_row(planned_rows[0], lib) if planned_rows else None
+        run.adaptations += adapt.apply_yesterday(
+            horizon,
+            adapt.Yesterday(planned_y, ds.loads.get(y), hard_y),
+            today,
+            ctx,
+            phase,
+            progress,
+        )
+        r = ds.readiness.get(today)
+        rec = ov.readiness or (r.recommendation if r else None)
+        fit_y = ds.fitness.get(y)
+        if mutable_from == today:
+            run.adaptations += adapt.apply_readiness(
+                horizon,
+                today,
+                rec,
+                tsb=fit_y.tsb if fit_y else None,
+                hard_yesterday=hard_y,
+                ctx=ctx,
+                phase=phase,
+                progress=progress,
+                progress_step=step,
+            )
+
+    seed_day = first - dt.timedelta(days=1)
+    c0, a0 = ds.ctl_atl(seed_day)
+    if ov.ctl is not None:
+        c0, a0 = ov.ctl, ov.atl if ov.atl is not None else ov.ctl
+    low = frozenset(
+        d
+        for d, r in ds.readiness.items()
+        if d >= first - dt.timedelta(days=7) and (r.score or 100) < 40
+    )
+    gi = GuardrailInputs(
+        seed=PMCState(seed_day, c0, a0),
+        phase_of=lambda d: (sk.week_of(d) or weeks[0]).phase,
+        recovery_weeks=frozenset(w.start for w in sk.weeks if w.recovery or w.phase == "test"),
+        history_loads={d: v for d, v in ds.loads.items() if d < first},
+        longest_ride_min_6w=_longest_ride_min(ds, today),
+        low_readiness_days=low,
+        ramp_cap=cfg.planner.ramp_cap,
+        tsb_floor=cfg.planner.tsb_floor,
+        hit_per_week=cfg.planner.hit_per_week,
+    )
+    run.repairs, run.violations = enforce(horizon, gi, ctx, mutable_from=mutable_from)
+    run.days = horizon
+    return run
 
 
 def build_plan(
@@ -192,120 +291,32 @@ def build_plan(
     library: Mapping[str, Template] | None = None,
     persist: bool = True,
     trigger: str = "manual",
+    overrides: PlanOverrides | None = None,
 ) -> PlanRun:
-    """Plan the horizon starting ``today`` (see module docstring).
+    """Plan from the cached dataset and (optionally) persist.
 
     Raises:
         AnalysisError: no athlete in the store.
     """
-    lib = dict(library or load_library())
-    sk = build_skeleton(cfg)
-    key = season_key(sk)
-    horizon_end = today + dt.timedelta(days=cfg.planner.horizon_days - 1)
-    run = PlanRun(today=today, season_key=key)
-    first = max(today, sk.start)
-    last = min(horizon_end, sk.weeks[-1].end)
-    if first > last:
-        return run
-    cutoff = cfg.planner.today_cutoff_local
-    mutable_from = today if now_local.time() < cutoff else today + dt.timedelta(days=1)
-
-    with factory() as s:
-        athlete_id = primary_athlete_id(s)
-        if athlete_id is None:
-            raise AnalysisError("no athlete in the store; run `cyp sync` first")
-        loads, _ = daily_loads(s)
-        overrides, athlete_events = _overrides_and_events(s, first, last)
-        ctx = PlanContext(
-            cfg=cfg, library=lib, bias=dict(bias or {}), overrides=overrides, goal_date=sk.goal_date
-        )
-        weeks = [w for w in sk.weeks if w.end >= first and w.start <= last]
-        ctl, atl = _ctl_atl(s, athlete_id, weeks[0].start - dt.timedelta(days=1))
-        prev_loading: float | None = None
-        all_days: list[DayPlan] = []
-        for w in weeks:
-            t = week_targets(
-                w,
-                ctl,
-                weekly_max_minutes=cfg.availability.weekly_max_minutes,
-                prev_loading_tss=prev_loading,
-                atl_start=atl,
+    ds = CACHE.get(factory)
+    if ds is None:
+        raise AnalysisError("no athlete in the store; run `cyp sync` first")
+    run = plan_horizon(
+        ds, cfg, today=today, now_local=now_local, bias=bias, library=library, overrides=overrides
+    )
+    if persist and run.days:
+        with factory() as s:
+            _persist(
+                s,
+                run,
+                build_skeleton((overrides or PlanOverrides()).apply_to(cfg)),
+                ds.athlete_id,
+                cfg,
+                run.mutable_from or today,
+                trigger,
             )
-            run.week_targets[w.start] = t
-            days = plan_week(w, t, ctx)
-            all_days += days
-            seed = PMCState(w.start - dt.timedelta(days=1), ctl, atl)
-            loads_week = [loads.get(d.date, 0.0) if d.date < today else d.tss for d in days]
-            end = simulate(seed, loads_week)[-1]
-            ctl, atl = end.ctl, end.atl
-            if not w.recovery and w.phase != "test":
-                prev_loading = t.target_tss
-        horizon = [d for d in all_days if first <= d.date <= last]
-
-        # --- adaptation (today only; calendar for the whole horizon)
-        run.adaptations += adapt.apply_calendar(horizon, athlete_events)
-        week_today = sk.week_of(today)
-        if week_today is not None:
-            phase, progress, step = _progress(week_today)
-            hard_y, load_y, planned_row = _yesterday_facts(s, athlete_id, today, loads)
-            planned_y = _dayplan_from_row(planned_row, lib) if planned_row else None
-            run.adaptations += adapt.apply_yesterday(
-                horizon, adapt.Yesterday(planned_y, load_y, hard_y), today, ctx, phase, progress
-            )
-            r = s.get(ReadinessDaily, (athlete_id, today))
-            tsb_row = s.get(FitnessDaily, (athlete_id, today - dt.timedelta(days=1)))
-            tsb = None
-            if tsb_row is not None:
-                tsb = tsb_row.tsb_icu if tsb_row.tsb_icu is not None else tsb_row.tsb_sim
-            if mutable_from == today:
-                run.adaptations += adapt.apply_readiness(
-                    horizon,
-                    today,
-                    r.recommendation if r else None,
-                    tsb=tsb,
-                    hard_yesterday=hard_y,
-                    ctx=ctx,
-                    phase=phase,
-                    progress=progress,
-                    progress_step=step,
-                )
-
-        # --- guardrails
-        seed_day = first - dt.timedelta(days=1)
-        c0, a0 = _ctl_atl(s, athlete_id, seed_day)
-        low = frozenset(
-            row.date_local
-            for row in s.scalars(
-                select(ReadinessDaily).where(
-                    ReadinessDaily.athlete_id == athlete_id,
-                    ReadinessDaily.date_local >= first - dt.timedelta(days=7),
-                )
-            )
-            if (row.score_0_100 or 100) < 40
-        )
-        gi = GuardrailInputs(
-            seed=PMCState(seed_day, c0, a0),
-            phase_of=lambda d: (sk.week_of(d) or weeks[0]).phase,
-            recovery_weeks=frozenset(w.start for w in sk.weeks if w.recovery or w.phase == "test"),
-            history_loads={d: v for d, v in loads.items() if d < first},
-            longest_ride_min_6w=_longest_ride_min(s, today),
-            low_readiness_days=low,
-            ramp_cap=cfg.planner.ramp_cap,
-            tsb_floor=cfg.planner.tsb_floor,
-            hit_per_week=cfg.planner.hit_per_week,
-        )
-        run.repairs, run.violations = enforce(horizon, gi, ctx, mutable_from=mutable_from)
-        run.days = horizon
-        if persist:
-            _persist(s, run, sk, athlete_id, cfg, mutable_from, trigger)
             s.commit()
     return run
-
-
-def _progress(week: SeasonWeek) -> tuple[str, float, float]:
-    n_load = 6 if week.phase in ("base", "build", "threshold") else 2
-    step = 1 / max(n_load - 1, 1)
-    return week.phase, (week.progression_index - 1) * step, step
 
 
 # --------------------------------------------------------------------------- persistence
@@ -387,6 +398,11 @@ def _persist(
         for w in sk.weeks
         if w.start in run.week_targets
     }
+    exts = [external_id(run.season_key, d.date, 1) for d in run.days]
+    existing_rows = {
+        r.external_id: r
+        for r in s.scalars(select(PlannedWorkout).where(PlannedWorkout.external_id.in_(exts)))
+    }
     before: dict[str, dict[str, Any]] = {}
     after: dict[str, dict[str, Any]] = {}
     created: list[str] = []
@@ -396,9 +412,7 @@ def _persist(
         if d.date < mutable_from:
             continue
         ext = external_id(run.season_key, d.date, 1)
-        existing = s.scalars(
-            select(PlannedWorkout).where(PlannedWorkout.external_id == ext)
-        ).first()
+        existing = existing_rows.get(ext)
         if existing is not None:
             before[ext] = {
                 "template_id": existing.template_id,

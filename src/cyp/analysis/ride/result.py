@@ -76,6 +76,7 @@ class RideMetrics:
     wbal_min_j: float | None = None
     estimated_power_meta: dict[str, Any] | None = None
     comparison: dict[str, Any] = field(default_factory=dict)
+    durability: dict[str, Any] | None = None
     classification: str = "mixed"
     status: str = "NORMAL"
     next_recommendation: str = "AS_PLANNED"
@@ -110,6 +111,7 @@ class RideMetrics:
             "wbal_min_j": _r(self.wbal_min_j, 0),
             "estimated_power_meta": self.estimated_power_meta,
             "comparison": self.comparison,
+            "durability": self.durability,
             "status": self.status,
             "next_recommendation": self.next_recommendation,
             "explanation": self.explanation.to_json_dict() if self.explanation else None,
