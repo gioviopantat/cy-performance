@@ -220,3 +220,19 @@ def test_serve_loopback_detection() -> None:
 
     assert is_loopback("127.0.0.1") and is_loopback("localhost") and is_loopback("::1")
     assert not is_loopback("0.0.0.0") and not is_loopback("192.168.1.10")
+
+
+def test_outdated_schema_gives_upgrade_hint(
+    data_dir: Path, db_url: str, athlete_yaml: Path
+) -> None:
+    """Regression: a DB one migration behind used to crash with a raw OperationalError."""
+    from alembic import command
+
+    from cyp.store.migrate import alembic_config, upgrade_head
+
+    upgrade_head(db_url)
+    command.downgrade(alembic_config(db_url), "-1")
+    env = {"CYP_DATA_DIR": str(data_dir), "CYP_DB_URL": db_url}
+    res = CliRunner().invoke(app, ["dev", "bench", "--athlete-config", str(athlete_yaml)], env=env)
+    assert res.exit_code == 2
+    assert "cyp db upgrade" in res.output and "Traceback" not in res.output

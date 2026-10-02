@@ -171,3 +171,20 @@ def test_recompute_is_fast_when_cached(client: TestClient) -> None:
     assert ftp_ms < 100, ftp_ms
     assert plan_ms < 300, plan_ms
     assert dt.date.fromisoformat(client.get("/v1/meta").json()["today"]) == TODAY
+
+
+def test_outdated_schema_is_a_clear_503(tmp_path: Path) -> None:
+    from alembic import command
+
+    from cyp.store.migrate import alembic_config, upgrade_head
+
+    data = tmp_path / "data"
+    url = f"sqlite:///{data / 'cyp.sqlite'}"
+    upgrade_head(url)
+    command.downgrade(alembic_config(url), "-1")
+    c = make_ctx(data)
+    with TestClient(create_app(c)) as cl:
+        r = cl.get("/v1/ftp")
+        assert r.status_code == 503 and r.json()["error"] == "schema"
+        assert "cyp db upgrade" in r.json()["message"]
+    c.close()

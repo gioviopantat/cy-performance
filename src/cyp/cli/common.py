@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from cyp.core.errors import ConfigError, CypError
 from cyp.logging import configure_logging, get_logger
-from cyp.services.context import AppContext, NoDataError
+from cyp.services.context import AppContext, NoDataError, SchemaOutdatedError
 from cyp.settings import DEFAULT_ATHLETE_CONFIG as DEFAULT_ATHLETE_CONFIG
 from cyp.settings import AthleteConfig, Settings, get_settings
 from cyp.settings import load_athlete_config as _load_athlete_config
@@ -55,11 +55,23 @@ def cli_settings() -> Settings:
 
 @contextmanager
 def app_context(
-    settings: Settings, athlete_config: Path | str = DEFAULT_ATHLETE_CONFIG
+    settings: Settings,
+    athlete_config: Path | str = DEFAULT_ATHLETE_CONFIG,
+    *,
+    check_schema: bool = True,
 ) -> Iterator[AppContext]:
-    """An :class:`AppContext` for one command; the engine is disposed on exit."""
+    """An :class:`AppContext` for one command; the engine is disposed on exit.
+
+    Exits 2 with "run `cyp db upgrade`" when migrations are pending (unless ``check_schema``
+    is off, for commands that migrate themselves or never touch the DB).
+    """
     ctx = AppContext.from_settings(settings, athlete_config=athlete_config)
     try:
+        if check_schema:
+            try:
+                ctx.check_schema()
+            except SchemaOutdatedError as exc:
+                fail(str(exc), code=2)
         yield ctx
     finally:
         ctx.close()
