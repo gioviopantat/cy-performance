@@ -134,3 +134,15 @@ def test_vectorised_safety_matches_scalar(seed: int) -> None:
         mono, strain = pmc.monotony_strain(loads, day.date)
         assert day.monotony_7 == pytest.approx(mono)
         assert day.strain_7 == pytest.approx(strain)
+
+
+def test_daily_load_prefers_icu_ctl_load(factory: sessionmaker[Session]) -> None:
+    """icu does not count e.g. strength/yoga towards CTL; its ctlLoad is the ledger."""
+    _seed(factory)
+    with factory() as s:
+        s.add(WellnessDaily(athlete_id=1, date_local=dt.date(2026, 9, 3), ctl=41.0, ctl_load=70.0))
+        s.commit()
+        ds = load_dataset(s)
+    assert ds is not None
+    assert ds.loads[dt.date(2026, 9, 3)] == 70.0  # not the activity sum (80 + yoga)
+    assert ds.activities[0].load == 80.0  # per-activity load unchanged

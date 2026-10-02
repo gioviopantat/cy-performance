@@ -69,9 +69,10 @@ def test_steady_ride_power_metrics(steady_ride: pl.DataFrame) -> None:
     assert pm.wbal_min_j == pytest.approx(20000.0)  # never above CP
 
 
-def test_np_requires_twenty_minutes() -> None:
-    assert power.normalized_power(np.full(1199, 220.0)) is None
-    assert power.normalized_power(np.full(1200, 220.0)) == pytest.approx(220.0)
+def test_np_requires_one_minute() -> None:
+    # Was 20 min; short rides (Rouvy segments, warm-ups) need a load too (ride-1.2.0).
+    assert power.normalized_power(np.full(59, 220.0)) is None
+    assert power.normalized_power(np.full(60, 220.0)) == pytest.approx(220.0)
 
 
 def test_np_weights_surges(interval_ride: pl.DataFrame) -> None:
@@ -109,3 +110,42 @@ def test_wbal_min_depletes_above_cp() -> None:
     # (DCP = 100 W), so about 9.3 kJ remains.
     assert 9000.0 < wmin < 10000.0
     assert power.wbal_min(p, cp=None, w_prime=20000.0) is None
+
+
+def test_trainer_zero_exclusion_counts_stopped_seconds_as_moving() -> None:
+    """Regression (real data, "include zeros" off): on a trainer, power *and* virtual speed are
+    empty while not pedalling. Those seconds must stay moving at 0 W, as on intervals.icu."""
+    import numpy as np
+
+    from cyp.analysis.ride.frames import RideFrame
+    from cyp.analysis.ride.power import moving_power, normalized_power
+    from tests.analysis.conftest import make_ride
+
+    n = 1200
+    watts = np.full(n, 200.0)
+    watts[::3] = np.nan  # every third second not pedalling
+    speed = np.where(np.isnan(watts), np.nan, 8.0)
+    import polars as pl
+
+    df = make_ride(n, watts=np.nan_to_num(watts), hr=140.0, speed=np.nan_to_num(speed))
+    gaps = pl.Series(np.isnan(watts))
+    df = df.with_columns(
+        pl.when(gaps).then(None).otherwise(pl.col("watts")).alias("watts"),
+        pl.when(gaps).then(None).otherwise(pl.col("speed_mps")).alias("speed_mps"),
+    )
+    road = RideFrame.from_df(df)
+    trainer = RideFrame.from_df(df, trainer=True)
+    assert road.moving_s < 850 and trainer.moving_s == n
+    np_trainer = normalized_power(moving_power(trainer))
+    np_road = normalized_power(moving_power(road))
+    assert np_trainer is not None and np_road is not None
+    assert np_trainer < np_road  # zeros kept -> lower, honest NP
+
+
+def test_short_rides_get_np() -> None:
+    import numpy as np
+
+    from cyp.analysis.ride.power import normalized_power
+
+    assert normalized_power(np.full(300, 220.0)) == 220.0
+    assert normalized_power(np.full(59, 220.0)) is None

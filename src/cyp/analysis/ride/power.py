@@ -27,7 +27,10 @@ from cyp.core.athlete import Zone, ZoneModel
 POWER_CURVE_DURATIONS: tuple[int, ...] = (1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 5400)
 NP_WINDOW_S = 30
 #: NP/IF/TSS are not meaningful under 20 min (strava-analyis convention).
-NP_MIN_DURATION_S = 1200
+#: Shortest moving time with an NP (and so IF/TSS). Coggan's caveat that NP is most meaningful
+#: over >= 20 min is about interpretation; short rides still need a load (Rouvy segments,
+#: warm-ups), as intervals.icu computes one.
+NP_MIN_DURATION_S = 60
 
 #: Coggan 7-zone upper bounds in % FTP (``None`` = open-ended Z7).
 COGGAN_PCT_BOUNDS: tuple[float | None, ...] = (55, 75, 90, 105, 120, 150, None)
