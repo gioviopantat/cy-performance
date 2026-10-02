@@ -28,6 +28,9 @@ from cyp.core.explain import Explanation
 from cyp.dataset import Dataset
 
 WINDOWS: dict[str, int] = {"42d": 42, "90d": 90}
+#: intervals.icu serves one ``mmp-model`` (its own, longer window). Comparing it with our 42-day
+#: fit reported a bogus -30 % on real data, so it is only paired with the 90-day window.
+ICU_MODEL_WINDOW = "90d"
 SERIES_DAYS = 56
 ROLLING_WINDOW = 42
 
@@ -177,7 +180,7 @@ def compute_ftp_status(
     for name, n in WINDOWS.items():
         mmp = _mmp(days, m, durations, as_of - dt.timedelta(days=n - 1), as_of)
         fit2, fit3 = pdc.fit_cp_2p(mmp), pdc.fit_cp_3p(mmp)
-        icu = ds.icu_models.get(name)
+        icu = ds.icu_models.get(name) if name == ICU_MODEL_WINDOW else None
         wf = WindowFit(name, mmp, fit2, fit3, dict(icu) if icu else None)
         if name == "42d":
             for f in (fit2, fit3):

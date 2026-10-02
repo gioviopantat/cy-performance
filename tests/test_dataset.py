@@ -146,3 +146,21 @@ def test_daily_load_prefers_icu_ctl_load(factory: sessionmaker[Session]) -> None
     assert ds is not None
     assert ds.loads[dt.date(2026, 9, 3)] == 70.0  # not the activity sum (80 + yoga)
     assert ds.activities[0].load == 80.0  # per-activity load unchanged
+
+
+def test_power_fix_uses_our_tss_up_to_the_date(factory: sessionmaker[Session]) -> None:
+    """Up to data_quality.power_zeros_excluded_until icu's load is not trusted."""
+    _seed(factory)
+    with factory() as s:
+        s.add(WellnessDaily(athlete_id=1, date_local=dt.date(2026, 9, 3), ctl=41.0, ctl_load=70.0))
+        s.commit()
+    cache = DatasetCache()
+    plain = cache.get(factory)
+    fixed = cache.get(factory, power_fix_until=dt.date(2026, 9, 5))
+    assert plain is not None and fixed is not None
+    assert plain.loads[dt.date(2026, 9, 3)] == 70.0  # icu ledger
+    assert fixed.loads[dt.date(2026, 9, 3)] == 78.0  # our TSS of ride 10 (+ yoga 0)
+    assert fixed.power_fix_until == dt.date(2026, 9, 5)
+    assert cache.get(factory, power_fix_until=dt.date(2026, 9, 5)) is fixed  # memoised
+    early = cache.get(factory, power_fix_until=dt.date(2026, 9, 1))
+    assert early is not None and early.loads[dt.date(2026, 9, 3)] == 70.0

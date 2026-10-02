@@ -40,6 +40,9 @@ location:
   weather_indoor_if: {rain_prob_pct: 60, temp_c_min: 8, temp_c_max: 36}
   test_venue: indoor               # ramp / 20-min tests on Rouvy for repeatability
 
+data_quality:
+  power_zeros_excluded_until: 2026-08-05   # head unit had "include zeros" off until 8/5; from 8/6 records are correct
+
 other_sports:
   plan: false                      # strength + yoga are NOT scheduled
   ingest_load: true                # their icu training load still counts in the PMC

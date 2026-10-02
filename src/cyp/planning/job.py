@@ -298,7 +298,7 @@ def build_plan(
     Raises:
         AnalysisError: no athlete in the store.
     """
-    ds = CACHE.get(factory)
+    ds = CACHE.get(factory, power_fix_until=cfg.data_quality.power_zeros_excluded_until)
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     run = plan_horizon(

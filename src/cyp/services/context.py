@@ -117,10 +117,15 @@ class AppContext:
             SchemaOutdatedError: migrations are pending.
         """
         self.check_schema()
-        ds = CACHE.get(self.factory)
+        ds = CACHE.get(self.factory, power_fix_until=self.power_fix_until())
         if ds is None:
             raise NoDataError("no athlete in the store; run `cyp sync` (or `cyp dev seed`)")
         return ds
+
+    def power_fix_until(self) -> dt.date | None:
+        """``data_quality.power_zeros_excluded_until`` from athlete.yaml (``None`` if unset)."""
+        cfg = self.athlete_config_or_none()
+        return cfg.data_quality.power_zeros_excluded_until if cfg else None
 
     def close(self) -> None:
         """Dispose the engine."""

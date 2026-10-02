@@ -244,6 +244,15 @@ class LocationConfig(_StrictModel):
     test_venue: Literal["indoor", "outdoor"] = "indoor"
 
 
+class DataQualityConfig(_StrictModel):
+    """Known problems in the athlete's historical data."""
+
+    #: Last day whose power files were recorded with "include zeros" off (empty power while
+    #: coasting). Up to and including this day the daily load uses our re-analysed TSS (empty
+    #: power = 0 W) instead of intervals.icu's load, and the PMC agreement check starts after it.
+    power_zeros_excluded_until: dt.date | None = None
+
+
 class OtherSportsConfig(_StrictModel):
     """How non-cycling activities (strength, yoga) are treated."""
 
@@ -285,6 +294,7 @@ class AthleteConfig(_StrictModel):
     availability: Availability
     location: LocationConfig = Field(default_factory=LocationConfig)
     other_sports: OtherSportsConfig = Field(default_factory=OtherSportsConfig)
+    data_quality: DataQualityConfig = Field(default_factory=DataQualityConfig)
     planner: PlannerConfig = Field(default_factory=PlannerConfig)
 
     @model_validator(mode="after")

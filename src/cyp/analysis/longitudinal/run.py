@@ -160,6 +160,9 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
     # ---- PMC replay, seeded from the earliest icu value in the window
     start = as_of - dt.timedelta(days=HISTORY_DAYS)
     icu = {d: (w.ctl, w.atl) for d, w in ds.wellness.items() if w.ctl is not None and d <= as_of}
+    if ds.power_fix_until is not None:
+        # icu's ledger is knowingly wrong up to the fix date: seed after it and compare after it.
+        icu = {d: v for d, v in icu.items() if d > ds.power_fix_until}
     seed_day = min((d for d in icu if d >= start), default=None)
     if seed_day is not None:
         c0, a0 = icu[seed_day]
@@ -413,17 +416,18 @@ def build_trends(
     phase: str | None = None,
     history_days: int = HISTORY_DAYS,
     reports_dir: Path | None = None,
+    power_fix_until: dt.date | None = None,
 ) -> TrendsReport:
     """Run every longitudinal model as of ``as_of``; persist and return the report.
 
     Raises:
         AnalysisError: no athlete in the store.
     """
-    ds = CACHE.get(factory)
+    ds = CACHE.get(factory, power_fix_until=power_fix_until)
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     if backfill_durability(factory, store, ds, as_of):
-        ds = CACHE.get(factory)
+        ds = CACHE.get(factory, power_fix_until=power_fix_until)
         assert ds is not None
     result = compute_trends(ds, as_of, phase=phase)
     with factory() as s:
