@@ -265,10 +265,16 @@ class Dataset:
         w = self.wellness.get(day)
         if w is not None and w.ctl is not None:
             return float(w.ctl), float(w.atl or w.ctl)
-        earlier = [d for d in self.fitness if d < day and self.fitness[d].ctl is not None]
-        if earlier:
-            r = self.fitness[max(earlier)]
-            return float(r.ctl or 0), float(r.atl or 0)
+        # Latest earlier value from either source (fitness rows only exist after trends ran).
+        best: tuple[dt.date, float, float] | None = None
+        for d, f in self.fitness.items():
+            if d < day and f.ctl is not None and (best is None or d > best[0]):
+                best = (d, float(f.ctl), float(f.atl or f.ctl))
+        for d, w in self.wellness.items():
+            if d < day and w.ctl is not None and (best is None or d > best[0]):
+                best = (d, float(w.ctl), float(w.atl or w.ctl))
+        if best is not None:
+            return best[1], best[2]
         return 0.0, 0.0
 
     def events_between(self, start: dt.date, end: dt.date) -> list[EventRow]:

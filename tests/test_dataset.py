@@ -96,7 +96,10 @@ def test_snapshot_content(factory: sessionmaker[Session]) -> None:
     assert ds.loads[dt.date(2026, 9, 3)] == 80.0
     assert ds.ftp_on(D) == 250.0 and ds.ftp_on(D + dt.timedelta(days=30)) == 260.0
     assert ds.wellness[D].eftp == 262.0
-    assert ds.ctl_atl(D) == (40.0, 45.0) and ds.ctl_atl(D + dt.timedelta(days=1)) == (0.0, 0.0)
+    assert ds.ctl_atl(D) == (40.0, 45.0)
+    # Past the last wellness day (no fitness rows yet): carry the latest known value.
+    assert ds.ctl_atl(D + dt.timedelta(days=30)) == (40.0, 45.0)
+    assert ds.ctl_atl(D - dt.timedelta(days=1)) == (0.0, 0.0)
     assert list(ds.rides()) == [ride]
 
 
