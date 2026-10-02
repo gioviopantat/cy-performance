@@ -43,7 +43,7 @@ src/cyp/            Python package (see docs/01-architecture.md §5)
   llm/              optional coach narrative + plan review (never computes numbers)   (M5)
   settings.py       pydantic-settings (.env) + config/athlete.yaml models
   logging.py        structlog -> data/logs/cyp.jsonl + console
-  cli.py            `cyp` entry point
+  cli/              `cyp` entry point (core, sync, analysis, planning, reports, dev, serve)
   api/              FastAPI app (webhooks, read-only JSON for a future UI)    (M6)
 tests/
 docs/
