@@ -1,0 +1,12 @@
+{
+ "type": "MS_2P",
+ "criticalPower": 262,
+ "wPrime": 19500,
+ "pMax": 1040,
+ "inputPointIndexes": [
+  3,
+  6,
+  9
+ ],
+ "ftp": 258
+}

@@ -1,0 +1,45 @@
+id: long_ride_late_ss
+version: 1
+name: "Long Ride {total_min} min + Late Sweet Spot {ss_reps}x{ss_min}"
+name_zh: "長騎 {total_min} 分 + 後段甜蜜點 {ss_reps}x{ss_min} 分"
+purpose_zh: "長騎後段在疲勞狀態下做甜蜜點間歇，耐久力的進階版。"
+intent: endurance
+phases: [build, threshold]
+slot_roles: [long_ride]
+requires_power: true
+indoor_ok: false
+outdoor_ok: true
+params:
+  total_min: {min: 180, max: 240, default: 210, step: 30}
+  ss_reps: {min: 1, max: 2, default: 2, step: 1}
+  ss_min: {min: 12, max: 20, default: 15, step: 3}
+  ss_pct: {min: 86, max: 92, default: 88}
+progression: [ss_min, ss_reps, ss_pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: "{total_min}-{ss_reps}*{ss_min}-{ss_reps}*5-35m", lo: 62, hi: 75, cadence: "85-95rpm"}
+  - repeat: "{ss_reps}"
+    cue: Late Sweet Spot
+    steps:
+      - {kind: work, duration: "{ss_min}m", lo: "{ss_pct}", hi: "{ss_pct}+4", cadence: "80-95rpm"}
+      - {kind: rest, duration: 5m, lo: 55, hi: 65}
+  - {cue: Finish Easy, kind: steady, duration: 20m, lo: 55, hi: 65}
+outdoor_rendering:
+  note: "Outdoor only. The SS reps need a 15-20 min climb or closed flat loop; the 5 min between reps is a descent or soft-pedal. Fuel 60-90 g carbs/h from hour one."
+  note_zh: "僅戶外。甜蜜點段需要 15–20 分鐘的坡或無路口的平路；兩趟之間的 5 分鐘用下坡或輕踩。從第一小時起每小時補 60–90 g 碳水。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "甜蜜點心率 90–97 % LTHR；長騎後段心率已漂高，前 2 分鐘以 RPE 7/10 控制，之後再看心率。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 78}
+    - {cue: Endurance, kind: steady, duration: "{total_min}-{ss_reps}*{ss_min}-{ss_reps}*5-35m", lo: 70, hi: 83, cadence: "85-95rpm"}
+    - repeat: "{ss_reps}"
+      cue: Late Sweet Spot
+      steps:
+        - {kind: work, duration: "{ss_min}m", lo: 90, hi: 97, cadence: "80-95rpm"}
+        - {kind: rest, duration: 5m, lo: 65, hi: 75}
+    - {cue: Finish Easy, kind: steady, duration: 20m, lo: 65, hi: 75}
+tss_model: closed_form
+explain_zh: "把甜蜜點放到長騎最後一小時，是在疲勞狀態下練 FTP 附近的輸出：研究顯示長時間後的功率衰退（durability）比新鮮狀態的 FTP 更能區分選手等級。它屬於建構期與閾值期，因為此時甜蜜點已不是本週唯一的高強度，而長騎仍需保留。"

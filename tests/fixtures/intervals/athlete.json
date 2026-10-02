@@ -1,0 +1,145 @@
+{
+ "id": "i123456",
+ "name": "Test Rider",
+ "firstname": "Roger",
+ "lastname": "C",
+ "profile_medium": "https://intervals.icu/athlete/i123456/profile.jpg",
+ "measurement_preference": "meters",
+ "weight": 64.0,
+ "email": "athlete@example.com",
+ "sex": "M",
+ "city": "Taipei",
+ "country": "Taiwan",
+ "timezone": "Asia/Taipei",
+ "locale": "en",
+ "icu_last_seen": "2026-10-02T00:10:00Z",
+ "status": "ACTIVE",
+ "icu_resting_hr": 48,
+ "icu_weight": 64.0,
+ "icu_weight_sync": "NONE",
+ "icu_activated": "2025-01-10T08:00:00Z",
+ "icu_effort_secs": [
+  5,
+  60,
+  300,
+  1200
+ ],
+ "icu_mmp_days": 90,
+ "icu_garmin_health": true,
+ "icu_garmin_training": true,
+ "icu_garmin_sync_activities": true,
+ "icu_garmin_upload_workouts": true,
+ "strava_allowed": true,
+ "strava_id": 188844906,
+ "strava_sync_activities": true,
+ "strava_authorized": true,
+ "height": 172.0,
+ "height_units": "CM",
+ "plan": "SUPPORTER",
+ "sportSettings": [
+  {
+   "id": 101,
+   "athlete_id": "i123456",
+   "types": [
+    "Ride",
+    "VirtualRide",
+    "GravelRide",
+    "MountainBikeRide"
+   ],
+   "warmup_time": 600,
+   "cooldown_time": 300,
+   "ftp": 250,
+   "indoor_ftp": 245,
+   "w_prime": 20000,
+   "p_max": 1050,
+   "power_zones": [
+    55,
+    75,
+    90,
+    105,
+    120,
+    150,
+    999
+   ],
+   "power_zone_names": [
+    "Z1",
+    "Z2",
+    "Z3",
+    "Z4",
+    "Z5",
+    "Z6",
+    "Z7"
+   ],
+   "sweet_spot_min": 84,
+   "sweet_spot_max": 97,
+   "power_spike_threshold": 2000,
+   "lthr": 165,
+   "max_hr": 190,
+   "hr_zones": [
+    133,
+    149,
+    158,
+    166,
+    175,
+    999
+   ],
+   "hr_zone_names": [
+    "Z1",
+    "Z2",
+    "Z3",
+    "Z4",
+    "Z5a",
+    "Z5b"
+   ],
+   "hr_load_type": "HRSS",
+   "load_order": "POWER_HR_PACE",
+   "mmp_model": {
+    "type": "MS_2P",
+    "criticalPower": 262,
+    "wPrime": 19500,
+    "pMax": 1040,
+    "inputPointIndexes": [
+     3,
+     6,
+     9
+    ],
+    "ftp": 258
+   },
+   "created": "2025-01-10T08:00:00Z",
+   "updated": "2026-09-20T07:30:00Z",
+   "iseFTPSupported": true
+  },
+  {
+   "id": 102,
+   "athlete_id": "i123456",
+   "types": [
+    "Run",
+    "TrailRun"
+   ],
+   "ftp": null,
+   "lthr": 170,
+   "max_hr": 190,
+   "hr_zones": [
+    136,
+    153,
+    162,
+    170,
+    180,
+    999
+   ],
+   "hr_zone_names": [
+    "Z1",
+    "Z2",
+    "Z3",
+    "Z4",
+    "Z5a",
+    "Z5b"
+   ],
+   "threshold_pace": 3.7,
+   "pace_units": "MINS_KM",
+   "created": "2025-01-10T08:00:00Z",
+   "updated": "2026-01-02T07:30:00Z"
+  }
+ ],
+ "custom_items": []
+}
