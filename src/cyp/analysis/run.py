@@ -15,6 +15,11 @@ Input resolution (``RideInputs``), in priority order:
 - Power zones: settings row (rescaled when its anchor differs from the FTP used) -> icu
   ``icu_power_zones`` (% FTP) from ``raw_intervals_json`` -> Coggan % of FTP.
 - HR zones: settings row -> icu ``icu_hr_zones`` (bpm upper bounds) -> none.
+- Power quality: ``data_quality.power_unreliable`` rules (:mod:`cyp.core.data_quality`) vs the
+  ride's icu ``power_meter_serial`` / gear. A match is persisted in
+  ``activity_metrics.comparison`` (``power_unreliable``, ``power_unreliable_rule``) and
+  quoted in the ride Explanation. When the rules change, :func:`analyze_pending` re-analyses
+  exactly the rides whose stored flag disagrees (no ``ALGO_VERSION`` bump needed).
 """
 
 from __future__ import annotations
@@ -31,11 +36,18 @@ from cyp.analysis.ride.pipeline import ALGO_VERSION, compute_ride_metrics
 from cyp.analysis.ride.power import coggan_zones, zones_from_pct_bounds
 from cyp.analysis.ride.result import RideInputs, RideMetrics
 from cyp.core.athlete import Zone, ZoneModel
+from cyp.core.data_quality import (
+    DataQuality,
+    PowerRule,
+    infer_meter_gears,
+    normalise_serial,
+    unreliable_rule,
+)
 from cyp.core.errors import AnalysisError, NotFoundError
 from cyp.core.timeutil import local_date, parse_iso
 from cyp.jobs.runs import RunContext, job_run
 from cyp.logging import get_logger
-from cyp.store.models import Activity, Athlete, AthleteSettingsHistory
+from cyp.store.models import Activity, ActivityMetrics, Athlete, AthleteSettingsHistory
 from cyp.store.repo.activities import ActivityRepo
 from cyp.store.repo.athlete_settings import AthleteSettingsRepo
 from cyp.store.repo.metrics import ActivityMetricsRepo
@@ -157,10 +169,66 @@ def _hr_zones_from_bounds(lthr: float | None, bounds: Any) -> ZoneModel | None:
     return ZoneModel(kind="hr", anchor=float(anchor), zones=zones)
 
 
-def resolve_inputs(session: Session, activity: Activity) -> RideInputs:
+def meter_gears(session: Session, dq: DataQuality | None) -> dict[str, frozenset[str]]:
+    """Bikes each rule's meter was recorded on (see :func:`infer_meter_gears`)."""
+    if dq is None or not dq.power_rules:
+        return {}
+    rows = session.execute(
+        select(
+            Activity.start_local,
+            Activity.start_utc,
+            Activity.tz,
+            Activity.gear_id,
+            Activity.raw_intervals_json["power_meter_serial"].as_string(),
+        ).where(Activity.is_ride.is_(True))
+    ).all()
+    return infer_meter_gears(
+        (
+            (local_day_of(sl, su, tz), normalise_serial(serial), gear)
+            for sl, su, tz, gear, serial in rows
+        ),
+        dq.power_rules,
+    )
+
+
+def local_day_of(start_local: str | None, start_utc: str, tz: str | None) -> dt.date:
+    """Local day from raw columns (same rule as :func:`activity_local_date`)."""
+    if start_local:
+        try:
+            return dt.datetime.fromisoformat(start_local).date()
+        except ValueError:
+            pass
+    return local_date(parse_iso(start_utc), tz or "Asia/Taipei")
+
+
+def power_rule_for(
+    activity: Activity, dq: DataQuality | None, gears: dict[str, frozenset[str]]
+) -> PowerRule | None:
+    """The ``power_unreliable`` rule matching ``activity`` (``None`` = power is trusted)."""
+    if dq is None or not dq.power_rules or not activity.has_power:
+        return None
+    raw: dict[str, Any] = activity.raw_intervals_json or {}
+    return unreliable_rule(
+        dq.power_rules,
+        _ride_local_date(activity),
+        normalise_serial(raw.get("power_meter_serial")),
+        activity.gear_id,
+        gears,
+    )
+
+
+def resolve_inputs(
+    session: Session,
+    activity: Activity,
+    *,
+    data_quality: DataQuality | None = None,
+    gears: dict[str, frozenset[str]] | None = None,
+) -> RideInputs:
     """Build :class:`RideInputs` for ``activity`` (see module docstring for the precedence)."""
     raw: dict[str, Any] = activity.raw_intervals_json or {}
     ride_date = _ride_local_date(activity)
+    if gears is None:
+        gears = meter_gears(session, data_quality)
     settings_repo = AthleteSettingsRepo(session)
     athlete_id = activity.athlete_id
     if athlete_id is None:
@@ -253,6 +321,8 @@ def resolve_inputs(session: Session, activity: Activity) -> RideInputs:
         icu_intensity=_num(activity.icu_intensity),
         icu_decoupling=_num(activity.icu_decoupling),
         icu_ftp=_num(activity.icu_ftp),
+        power_meter_serial=normalise_serial(raw.get("power_meter_serial")),
+        power_unreliable=power_rule_for(activity, data_quality, gears),
     )
 
 
@@ -265,6 +335,8 @@ def analyze_activity(
     *,
     store: StreamStore,
     force: bool = False,
+    data_quality: DataQuality | None = None,
+    gears: dict[str, frozenset[str]] | None = None,
 ) -> AnalyzeResult:
     """Analyse one activity in ``session`` (caller commits).
 
@@ -295,7 +367,7 @@ def analyze_activity(
         frame = load_frame(store, activity_id, trainer=bool(activity.trainer))
     except NotFoundError:
         return AnalyzeResult(activity_id, "skipped_no_streams")
-    inputs = resolve_inputs(session, activity)
+    inputs = resolve_inputs(session, activity, data_quality=data_quality, gears=gears)
     metrics = compute_ride_metrics(frame, inputs)
     metrics_repo.upsert(activity_id, metrics.to_row())
     activities.mark_done(activity, "analysis")
@@ -341,6 +413,25 @@ def _candidates(session: Session, *, force: bool, limit: int | None) -> list[int
     return ids[:limit] if limit is not None else ids
 
 
+def stale_power_flags(
+    session: Session, dq: DataQuality | None, gears: dict[str, frozenset[str]]
+) -> list[int]:
+    """Analysed rides whose stored ``power_unreliable`` flag disagrees with ``dq``."""
+    rows = session.execute(
+        select(Activity, ActivityMetrics.comparison)
+        .join(ActivityMetrics, ActivityMetrics.activity_id == Activity.id)
+        .where(Activity.is_ride.is_(True))
+        .order_by(Activity.start_utc)
+    ).all()
+    out: list[int] = []
+    for activity, comparison in rows:
+        stored = bool((comparison or {}).get("power_unreliable"))
+        expected = power_rule_for(activity, dq, gears) is not None
+        if stored != expected:
+            out.append(activity.id)
+    return out
+
+
 def analyze_pending(
     factory: sessionmaker[Session],
     *,
@@ -349,17 +440,36 @@ def analyze_pending(
     force: bool = False,
     activity_ids: list[int] | None = None,
     log_path: str | None = None,
+    data_quality: DataQuality | None = None,
 ) -> AnalyzeSummary:
-    """Analyse the queue (or ``activity_ids``) under ``job_run("analyze")``; see module doc."""
+    """Analyse the queue (or ``activity_ids``) under ``job_run("analyze")``; see module doc.
+
+    Rides whose ``power_unreliable`` flag no longer matches ``data_quality`` are re-analysed
+    too (forced), so editing ``athlete.yaml`` takes effect on the next run.
+    """
     with job_run("analyze", factory, log_path=log_path) as ctx:
         summary = AnalyzeSummary(run_id=ctx.run_id)
-        if activity_ids is None:
-            with factory() as session:
-                ids = _candidates(session, force=force, limit=limit)
-        else:
-            ids = list(activity_ids)
+        with factory() as session:
+            gears = meter_gears(session, data_quality)
+            reflag = set(stale_power_flags(session, data_quality, gears))
+            if activity_ids is None:
+                ids = _candidates(session, force=force, limit=None)
+                ids += [i for i in sorted(reflag) if i not in set(ids)]
+                ids = ids[:limit] if limit is not None else ids
+            else:
+                ids = list(activity_ids)
         for aid in ids:
-            summary.results.append(_analyze_one(factory, aid, store=store, force=force, ctx=ctx))
+            summary.results.append(
+                _analyze_one(
+                    factory,
+                    aid,
+                    store=store,
+                    force=force or aid in reflag,
+                    ctx=ctx,
+                    data_quality=data_quality,
+                    gears=gears,
+                )
+            )
     return summary
 
 
@@ -370,10 +480,19 @@ def _analyze_one(
     store: StreamStore,
     force: bool,
     ctx: RunContext,
+    data_quality: DataQuality | None = None,
+    gears: dict[str, frozenset[str]] | None = None,
 ) -> AnalyzeResult:
     with factory() as session:
         try:
-            result = analyze_activity(session, activity_id, store=store, force=force)
+            result = analyze_activity(
+                session,
+                activity_id,
+                store=store,
+                force=force,
+                data_quality=data_quality,
+                gears=gears,
+            )
             session.commit()
         except (AnalysisError, NotFoundError, ValueError, KeyError) as exc:
             session.rollback()

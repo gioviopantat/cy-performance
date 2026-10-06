@@ -60,6 +60,7 @@ def analyze(
             limit=limit,
             force=force,
             activity_ids=activity,
+            data_quality=ctx.data_quality(),
             log_path=str(settings.logs_dir / "cyp.jsonl"),
         )
         typer.echo(f"analyze (algo {ALGO_VERSION}, run {summary.run_id})")
@@ -104,6 +105,11 @@ def _proposal_line(fp: dict[str, Any], current: float | None) -> str:
         return (
             f"FTP proposal: {cur_s} -> {fp['proposed_ftp']:.0f} W "
             f"({fp['change_pct']:+.1f} %, {fp['days_sustained']} d) — NOT applied"
+        )
+    if fp.get("insufficient_evidence"):
+        return (
+            f"FTP proposal: withheld — estimates down for {fp['days_sustained']} d but no "
+            "near-maximal effort in the last 42 d (近 42 天沒有接近極限的長時間努力，無法判斷)"
         )
     if fp.get("unsupported"):
         best = fp.get("best_20min_w")
@@ -170,6 +176,14 @@ def echo_trends(report: dict[str, Any]) -> None:
         typer.echo(f"  repeat climbs: {len(climbs)} (top: {climbs[0]['n']} efforts)")
     for lim in report.get("limiters", []):
         typer.echo(f"  limiter {lim['id']} ({lim['severity']:.2f}): {lim['title_zh']}")
+    for chk in report.get("limiter_checks", []):
+        typer.echo(f"  limiter {chk['id']}: {chk['status']} — {chk['reason_zh']}")
+    pu = report.get("power_unreliable")
+    if pu:
+        typer.echo(
+            f"  power_unreliable: {pu['n_rides']} rides {pu['first']}..{pu['last']} "
+            "excluded from power models"
+        )
 
 
 def trends(

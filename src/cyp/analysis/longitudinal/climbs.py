@@ -77,6 +77,21 @@ class ClimbBoard:
         return float(np.median(g)) if g else None
 
 
+POWER_KEYS = ("avg_w", "w_kg", "np_w", "max_w")
+
+
+def strip_power(climbs: Any) -> list[dict[str, Any]]:
+    """Climbs without their power fields (ride flagged ``power_unreliable``).
+
+    Time, VAM and heart rate stay: they do not depend on the power meter.
+    """
+    if not isinstance(climbs, list | tuple):
+        return []
+    return [
+        {k: v for k, v in c.items() if k not in POWER_KEYS} for c in climbs if isinstance(c, dict)
+    ]
+
+
 def leaderboard(
     rides: Iterable[tuple[int, dt.date, Any]], *, min_efforts: int = 2
 ) -> list[ClimbBoard]:

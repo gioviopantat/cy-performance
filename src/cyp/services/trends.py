@@ -31,7 +31,7 @@ def recompute(ctx: AppContext, *, as_of: dt.date | None = None) -> dict[str, Any
         report = build_trends(
             ctx.factory,
             ctx.store,
-            power_fix_until=ctx.power_fix_until(),
+            data_quality=ctx.data_quality(),
             as_of=day,
             phase=season_phase(ctx, day),
             reports_dir=ctx.reports_dir,

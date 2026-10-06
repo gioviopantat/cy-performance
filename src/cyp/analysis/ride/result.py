@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from cyp.analysis.ride.durability import DEFAULT_THRESHOLDS, Thresholds
 from cyp.core.athlete import ZoneModel
+from cyp.core.data_quality import PowerRule
 from cyp.core.explain import Explanation
 
 TssSource = Literal["power", "hr", "estimated"]
@@ -38,6 +39,9 @@ class RideInputs:
     icu_intensity: float | None = None
     icu_decoupling: float | None = None
     icu_ftp: float | None = None
+    # data quality (docs/04 §7)
+    power_meter_serial: str | None = None
+    power_unreliable: PowerRule | None = None
     thresholds: Thresholds = DEFAULT_THRESHOLDS
 
 

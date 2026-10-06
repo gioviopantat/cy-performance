@@ -34,6 +34,7 @@ def analyze(ctx: AppContext, *, force: bool = False, limit: int | None = None) -
             store=ctx.store,
             force=force,
             limit=limit,
+            data_quality=ctx.data_quality(),
             log_path=str(ctx.settings.logs_dir / "cyp.jsonl"),
         )
     return summary.counts()

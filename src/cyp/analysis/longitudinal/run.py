@@ -33,6 +33,7 @@ from cyp.analysis.longitudinal import pmc
 from cyp.analysis.longitudinal import tid as tid_mod
 from cyp.analysis.longitudinal.ftp import FtpStatus, compute_ftp_status
 from cyp.analysis.ride.frames import load_frame
+from cyp.core.data_quality import DataQuality
 from cyp.core.errors import AnalysisError, NotFoundError
 from cyp.core.explain import Explanation
 from cyp.dataset import CACHE, Dataset, local_day
@@ -114,6 +115,11 @@ class TrendsReport:
     tid_weeks: list[dict[str, Any]] = field(default_factory=list)
     climbs: list[dict[str, Any]] = field(default_factory=list)
     limiters: list[dict[str, Any]] = field(default_factory=list)
+    #: Best-effort rules that could not be judged (``status: insufficient_data``).
+    limiter_checks: list[dict[str, Any]] = field(default_factory=list)
+    max_efforts: dict[str, Any] | None = None
+    #: Rides whose power is excluded by ``data_quality.power_unreliable`` (docs/04 §7).
+    power_unreliable: dict[str, Any] | None = None
     planner_bias: dict[str, float] = field(default_factory=dict)
     explanations: list[dict[str, Any]] = field(default_factory=list)
     version: str = TRENDS_VERSION
@@ -218,14 +224,31 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
             "change_pct": p.change_pct,
             "best_20min_w": p.best_20min_w,
             "unsupported": p.unsupported,
+            "insufficient_evidence": p.insufficient_evidence,
             "sources": p.sources,
+        }
+    report.max_efforts = ftp_status.max_efforts.to_json()
+    flagged = ds.power_unreliable_rides
+    if flagged:
+        report.power_unreliable = {
+            "n_rides": len(flagged),
+            "first": min(a.date for a in flagged),
+            "last": max(a.date for a in flagged),
+            "activity_ids": [a.id for a in flagged],
+            "rules": [
+                r.to_json() for r in (ds.data_quality.power_rules if ds.data_quality else ())
+            ],
         }
 
     # ---- durability (stored per ride)
     lo = as_of - dt.timedelta(days=DURABILITY_LOOKBACK_DAYS)
     dur = [
         r
-        for r in (dur_mod.from_json(a.id, a.date, a.durability) for a in ds.rides(lo, as_of))
+        for r in (
+            dur_mod.from_json(a.id, a.date, a.durability)
+            for a in ds.rides(lo, as_of)
+            if a.power_unreliable is None
+        )
         if r is not None
     ]
     blocks = dur_mod.durability_trend(dur, end=as_of)
@@ -236,7 +259,10 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
     tid_lo = tid_mod.week_start(as_of) - dt.timedelta(weeks=TID_WEEKS - 1)
     tiz_rides = []
     for a in ds.rides(tid_lo, as_of):
-        picked = tid_mod.tiz_from_metrics(a.tiz_power, a.tiz_hr, a.icu_zone_times)
+        if a.power_unreliable is None:
+            picked = tid_mod.tiz_from_metrics(a.tiz_power, a.tiz_hr, a.icu_zone_times)
+        else:  # power zones (ours and icu's) come from the unreliable meter: use HR
+            picked = tid_mod.tiz_from_metrics(None, a.tiz_hr, None)
         if picked:
             tiz_rides.append(tid_mod.RideTiz(a.date, picked[0], picked[1]))
     weeks = tid_mod.weekly_tid(tiz_rides)
@@ -261,7 +287,10 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
     mid_share = sum(w.mid_s for w in recent) / tot if tot > 0 else None
 
     # ---- repeat climbs
-    boards = climbs_mod.leaderboard((a.id, a.date, list(a.climbs)) for a in ds.rides(None, as_of))
+    boards = climbs_mod.leaderboard(
+        (a.id, a.date, climbs_mod.strip_power(a.climbs) if a.power_unreliable else list(a.climbs))
+        for a in ds.rides(None, as_of)
+    )
     for b in boards[:20]:
         report.climbs.append(
             {
@@ -296,11 +325,18 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
             durability_ratio=last_ratio,
             mid_share_4w=mid_share,
             ctl=report.pmc_today["ctl"] if report.pmc_today else None,
+            max_efforts=ftp_status.max_efforts,
         )
         if ftp
         else []
     )
     for lim in limiters:
+        if lim.status != "limiter":
+            report.limiter_checks.append(
+                {"id": lim.id, "status": lim.status, "reason_zh": lim.title_zh}
+            )
+            report.add(lim.explanation)
+            continue
         report.limiters.append(
             {
                 "id": lim.id,
@@ -417,17 +453,18 @@ def build_trends(
     history_days: int = HISTORY_DAYS,
     reports_dir: Path | None = None,
     power_fix_until: dt.date | None = None,
+    data_quality: DataQuality | None = None,
 ) -> TrendsReport:
     """Run every longitudinal model as of ``as_of``; persist and return the report.
 
     Raises:
         AnalysisError: no athlete in the store.
     """
-    ds = CACHE.get(factory, power_fix_until=power_fix_until)
+    ds = CACHE.get(factory, power_fix_until=power_fix_until, data_quality=data_quality)
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     if backfill_durability(factory, store, ds, as_of):
-        ds = CACHE.get(factory, power_fix_until=power_fix_until)
+        ds = CACHE.get(factory, power_fix_until=power_fix_until, data_quality=data_quality)
         assert ds is not None
     result = compute_trends(ds, as_of, phase=phase)
     with factory() as s:

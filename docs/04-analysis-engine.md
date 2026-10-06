@@ -71,3 +71,32 @@ Jinja2 → Markdown and HTML into `data/reports/`. Daily: yesterday's ride analy
 today's workout with rationale. Weekly: load vs plan, TID, PDC changes, durability, next week.
 Optionally mirrored to an icu NOTE and the Strava description footer. The LLM narrator, when
 enabled, rewrites the *same structured facts* in coach voice (zh-TW), never adding numbers.
+
+## 7. Data quality: unreliable power
+
+`data_quality.power_unreliable` in `config/athlete.yaml` lists power meters whose power is not
+trusted up to a date: `{until, power_meter_serial (null = every meter), reason_zh}`. The old
+`power_zeros_excluded_until` still works as a serial-less alias. Logic: `cyp.core.data_quality`.
+
+- A ride with measured power on/before `until` is flagged when its icu `power_meter_serial`
+  matches, or, without a serial, when its bike carried that meter before `until`.
+- Flagged rides keep HR, time, distance and elevation. Their power is excluded from power
+  curves, CP/W′ fits, cyp PDC snapshots, FTP evidence and proposals, climb power and W/kg
+  trends, baselines and limiters. The flag and rule are stored in
+  `activity_metrics.comparison` (`power_unreliable`, `power_unreliable_rule`) and quoted in the
+  ride Explanation.
+- Daily loads up to the latest `until` use our own TSS instead of icu's ledger (icu computed
+  them from the same files), and icu's eFTP is not used while its lookback contains flagged
+  rides.
+
+Current entry: the 4iiii on bike A read ≈20 % high until 2026-08-05 (same 爬坡 A climb at
+the same HR: 301–351 W before, 231–286 W after; Favero vs 4iiii W/bpm in July 1.68 vs 2.07,
+equal in September).
+
+### Evidence for downward FTP judgements
+
+"Did not ride hard" is not "cannot ride hard". The `sustained_power` limiter and any downward
+FTP proposal need a near-maximal attempt in the last 42 days: a test, or ≥ 15 min at ≥ 100 %
+FTP or ≥ 98 % LTHR. Sweet spot does not count. Without it the limiter reports
+`insufficient_data` and the proposal is withheld. A downward proposal is also floored at
+0.95 × the best 20-min power of the window.

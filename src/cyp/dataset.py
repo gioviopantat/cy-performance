@@ -22,6 +22,13 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from cyp.core.data_quality import (
+    DataQuality,
+    PowerRule,
+    infer_meter_gears,
+    normalise_serial,
+    unreliable_rule,
+)
 from cyp.store.models import (
     Activity,
     ActivityMetrics,
@@ -85,11 +92,21 @@ class ActivityRow:
     status: str | None = None
     classification: str | None = None
     durability: Mapping[str, Any] | None = None
+    # --- data quality (docs/04 §7)
+    power_meter_serial: str | None = None
+    gear_id: str | None = None
+    #: Set by :meth:`Dataset.with_data_quality` when a ``power_unreliable`` rule matches.
+    power_unreliable: PowerRule | None = None
 
     @property
     def measured_power(self) -> bool:
         """Analysed with a real power meter (not HR / estimated)."""
         return self.tss_source == "power"
+
+    @property
+    def power_ok(self) -> bool:
+        """Measured power that may feed power models (curves, CP, FTP, climbs, limiters)."""
+        return self.measured_power and self.power_unreliable is None
 
 
 @dataclass(frozen=True)
@@ -218,6 +235,38 @@ class Dataset:
     planned: Mapping[dt.date, tuple[PlannedRow, ...]] = field(default_factory=dict)
     #: Set by :meth:`with_power_fix`: loads up to this day come from our re-analysis.
     power_fix_until: dt.date | None = None
+    #: Set by :meth:`with_data_quality`.
+    data_quality: DataQuality | None = None
+
+    def with_data_quality(self, dq: DataQuality | None) -> Dataset:
+        """Copy with the load fix (``dq.load_fix_until``) and ``power_unreliable`` flags applied.
+
+        Flags use :func:`cyp.core.data_quality.unreliable_rule` on every ride with power; the
+        same function flags ``activity_metrics.comparison`` at analysis time.
+        """
+        if dq is None or dq.empty:
+            return self
+        ds = self.with_power_fix(dq.load_fix_until)
+        if dq.power_rules:
+            gears = infer_meter_gears(
+                ((a.date, a.power_meter_serial, a.gear_id) for a in ds.activities if a.is_ride),
+                dq.power_rules,
+            )
+            acts = []
+            for a in ds.activities:
+                rule = (
+                    unreliable_rule(dq.power_rules, a.date, a.power_meter_serial, a.gear_id, gears)
+                    if a.is_ride and a.has_power
+                    else None
+                )
+                acts.append(replace(a, power_unreliable=rule) if rule is not None else a)
+            ds = replace(ds, activities=tuple(acts))
+        return replace(ds, data_quality=dq)
+
+    @property
+    def power_unreliable_rides(self) -> list[ActivityRow]:
+        """Rides flagged ``power_unreliable``."""
+        return [a for a in self.activities if a.power_unreliable is not None]
 
     def with_power_fix(self, until: dt.date | None) -> Dataset:
         """Copy whose daily loads up to ``until`` use our TSS instead of icu's ledger.
@@ -413,6 +462,8 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
             Activity.icu_zone_times,
             Activity.feel,
             Activity.icu_rpe,
+            Activity.gear_id,
+            Activity.raw_intervals_json["power_meter_serial"].as_string().label("pm_serial"),
             ActivityMetrics.activity_id,
             ActivityMetrics.tss,
             ActivityMetrics.tss_source,
@@ -478,6 +529,8 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
                 if isinstance(pacing.get("classification"), str)
                 else None,
                 durability=r.durability if isinstance(r.durability, dict) else None,
+                power_meter_serial=normalise_serial(r.pm_serial),
+                gear_id=r.gear_id,
             )
         )
     acts.sort(key=lambda a: (a.date, a.id))
@@ -681,24 +734,32 @@ class DatasetCache:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._entries: dict[str, Dataset] = {}
-        self._fixed: dict[tuple[str, dt.date], Dataset] = {}
+        self._fixed: dict[tuple[str, DataQuality], Dataset] = {}
         self.loads = 0  # how many times a snapshot was (re)loaded — for tests / metrics
 
     def get(
-        self, factory: sessionmaker[Session], *, power_fix_until: dt.date | None = None
+        self,
+        factory: sessionmaker[Session],
+        *,
+        power_fix_until: dt.date | None = None,
+        data_quality: DataQuality | None = None,
     ) -> Dataset | None:
         """Current snapshot (one version query when nothing changed).
 
-        ``power_fix_until`` returns the :meth:`Dataset.with_power_fix` view (memoised).
+        ``data_quality`` returns the :meth:`Dataset.with_data_quality` view (memoised);
+        ``power_fix_until`` alone is shorthand for a load fix without power rules.
         """
         ds = self._get(factory)
-        if ds is None or power_fix_until is None:
+        dq = data_quality
+        if dq is None and power_fix_until is not None:
+            dq = DataQuality(load_fix_until=power_fix_until)
+        if ds is None or dq is None or dq.empty:
             return ds
-        key = (ds.version, power_fix_until)
+        key = (ds.version, dq)
         with self._lock:
             hit = self._fixed.get(key)
         if hit is None:
-            hit = ds.with_power_fix(power_fix_until)
+            hit = ds.with_data_quality(dq)
             with self._lock:
                 self._fixed = {key: hit}
         return hit

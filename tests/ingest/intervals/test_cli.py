@@ -7,8 +7,9 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from cyp.cli import app
+from cyp.ingest.intervals.sync import CURSOR_ACTIVITIES, SOURCE
 from cyp.store.db import make_engine, session_factory
-from cyp.store.repo import ActivityRepo, IcuEventRepo, JobRunRepo, WellnessRepo
+from cyp.store.repo import ActivityRepo, IcuEventRepo, JobRunRepo, SyncCursorRepo, WellnessRepo
 from tests.ingest.intervals.conftest import ATHLETE_ID, FAKE_KEY, FakeIcu
 
 runner = CliRunner()
@@ -135,7 +136,13 @@ def test_sync_intervals_end_to_end_and_doctor(
     assert "cursor wellness_newest: 2" in after.output
     assert "last runs" not in after.output  # nothing failed
 
-    # Streams can be fetched later for the pending ride.
+    # Streams can be fetched later for the pending ride. The cursor is "today" (real clock) and
+    # the fixtures are dated 2026-09-28..30: pin it so the 3-day overlap reaches them on any date.
+    engine = make_engine(db_url)
+    with session_factory(engine)() as s:
+        SyncCursorRepo(s).set(SOURCE, CURSOR_ACTIVITIES, "2026-10-01")
+        s.commit()
+    engine.dispose()
     again = runner.invoke(app, ["sync", "intervals", "--stage", "activities"], env=env)
     assert again.exit_code == 0, again.output
     assert "streams_written=1" in again.output

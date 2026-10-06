@@ -189,6 +189,7 @@ class FtpProposalOut(Model):
     change_pct: float | None
     best_20min_w: float | None
     unsupported: bool
+    insufficient_evidence: bool = False
     sources: list[str]
 
 
@@ -207,6 +208,8 @@ class FtpStatusOut(Model):
     w_kg: float | None
     windows: dict[str, PowerWindow]
     estimate_source: str
+    max_efforts: dict[str, Any] | None = None
+    power_unreliable_excluded: int = 0
     estimates: list[EstimatePoint]
     proposal: FtpProposalOut | None
     history: list[dict[str, Any]]

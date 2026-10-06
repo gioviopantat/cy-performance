@@ -15,6 +15,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from cyp.core.data_quality import DataQuality, PowerRule, normalise_serial
 from cyp.core.errors import ConfigError
 
 DEFAULT_ATHLETE_CONFIG = Path("config/athlete.yaml")
@@ -235,6 +236,26 @@ class WeatherIndoorIf(_StrictModel):
         return self
 
 
+ClimbUse = Literal["endurance", "tempo", "sweetspot", "threshold", "vo2", "test"]
+
+
+class ClimbConfig(_StrictModel):
+    """A local climb the planner may suggest for long outdoor work steps."""
+
+    name_zh: str
+    minutes_min: Annotated[float, Field(gt=0)]
+    minutes_max: Annotated[float, Field(gt=0)]
+    distance_km: Annotated[float, Field(gt=0)]
+    grade_pct: float
+    good_for: list[ClimbUse] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _ordered(self) -> ClimbConfig:
+        if self.minutes_min > self.minutes_max:
+            raise ValueError(f"climb {self.name_zh!r}: minutes_min > minutes_max")
+        return self
+
+
 class LocationConfig(_StrictModel):
     """Indoor/outdoor preferences."""
 
@@ -242,15 +263,68 @@ class LocationConfig(_StrictModel):
     indoor_platform: str | None = None
     weather_indoor_if: WeatherIndoorIf = Field(default_factory=WeatherIndoorIf)
     test_venue: Literal["indoor", "outdoor"] = "indoor"
+    #: Local climbs for outdoor work steps ≥ 8 min (planning/routes.py).
+    climbs: list[ClimbConfig] = Field(default_factory=list)
+
+
+class PowerUnreliableEntry(_StrictModel):
+    """One ``data_quality.power_unreliable`` entry (docs/04 §7)."""
+
+    #: Last day (inclusive) whose power from this meter is not trusted.
+    until: dt.date
+    #: icu ``power_meter_serial``; ``null`` = every power meter.
+    power_meter_serial: str | None = None
+    #: zh-TW reason, quoted in ride Explanations.
+    reason_zh: str = ""
+
+    @field_validator("power_meter_serial", mode="before")
+    @classmethod
+    def _serial_text(cls, value: object) -> object:
+        # YAML parses an unquoted serial as an int; icu stores it as text.
+        return normalise_serial(value) if value is not None else None
 
 
 class DataQualityConfig(_StrictModel):
     """Known problems in the athlete's historical data."""
 
-    #: Last day whose power files were recorded with "include zeros" off (empty power while
-    #: coasting). Up to and including this day the daily load uses our re-analysed TSS (empty
-    #: power = 0 W) instead of intervals.icu's load, and the PMC agreement check starts after it.
+    #: Power meters whose power is unreliable up to a date (see ``cyp.core.data_quality``).
+    #: Matching rides keep HR / time / elevation but are excluded from every power model.
+    power_unreliable: list[PowerUnreliableEntry] = Field(default_factory=list)
+    #: DEPRECATED alias: equals one ``power_unreliable`` entry with ``power_meter_serial: null``
+    #: (every meter). Last day whose power files were recorded with "include zeros" off.
     power_zeros_excluded_until: dt.date | None = None
+
+    @property
+    def entries(self) -> list[PowerUnreliableEntry]:
+        """``power_unreliable`` plus the deprecated alias (as a serial-less entry)."""
+        out = list(self.power_unreliable)
+        if self.power_zeros_excluded_until is not None:
+            out.append(
+                PowerUnreliableEntry(
+                    until=self.power_zeros_excluded_until,
+                    power_meter_serial=None,
+                    reason_zh="碼表「包含零值」關閉，滑行時功率空白（power_zeros_excluded_until）",
+                )
+            )
+        return out
+
+    @property
+    def load_fix_until(self) -> dt.date | None:
+        """Up to this day the daily load uses our re-analysed TSS (latest entry's ``until``).
+
+        icu's daily loads for those days were computed from the same unreliable files, so the
+        PMC is seeded and compared only after it.
+        """
+        return max((e.until for e in self.entries), default=None)
+
+    def resolved(self) -> DataQuality:
+        """Pure, hashable view used by the dataset and the analysis."""
+        return DataQuality(
+            power_rules=tuple(
+                PowerRule(e.until, e.power_meter_serial, e.reason_zh) for e in self.entries
+            ),
+            load_fix_until=self.load_fix_until,
+        )
 
 
 class OtherSportsConfig(_StrictModel):

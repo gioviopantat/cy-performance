@@ -262,6 +262,10 @@ class FtpProposal:
     sources: list[str] = field(default_factory=list)
     best_20min_w: float | None = None
     unsupported: bool = False
+    #: A *down* proposal withheld: no near-maximal effort in the evidence window.
+    insufficient_evidence: bool = False
+    evidence_window_days: int = 42
+    notes_zh: list[str] = field(default_factory=list)
     explanation: Explanation | None = None
 
     @property
@@ -281,6 +285,9 @@ def ftp_proposal(
     min_days: int = PROPOSAL_MIN_DAYS,
     sources: Sequence[str] = (),
     best_20min_w: float | None = None,
+    recent_max_effort: bool | None = None,
+    evidence_window_days: int = 42,
+    notes_zh: Sequence[str] = (),
 ) -> FtpProposal:
     """Propose an FTP change when daily estimates sit ≥ ``threshold`` away for ``min_days``.
 
@@ -290,6 +297,10 @@ def ftp_proposal(
     to 1 W. An *upward* proposal also needs a supporting effort (glossary eftp.md): when
     ``best_20min_w`` (recent best 20 min) is given, ``0.95 × best_20min_w`` must reach the
     proposal minus ``threshold``; otherwise the proposal is withheld (``unsupported=True``).
+    A *downward* proposal needs a recent near-maximal attempt: with ``recent_max_effort``
+    ``False`` it is withheld (``insufficient_evidence=True``) — absent hard efforts are not
+    evidence of lost fitness. It is also floored at ``0.95 × best_20min_w`` (a recent 20-min
+    power proves at least that FTP) and dropped when the floor is within ``threshold``.
     """
     if current_ftp <= 0:
         raise ValueError("current_ftp must be positive")
@@ -317,6 +328,21 @@ def ftp_proposal(
         and 0.95 * best_20min_w < proposed * (1 - threshold)
     ):
         proposed, unsupported = None, True
+    insufficient = False
+    if proposed is not None and direction == "down" and recent_max_effort is False:
+        proposed, insufficient = None, True
+    notes = list(notes_zh)
+    if proposed is not None and direction == "down" and best_20min_w is not None:
+        # A recent 20-min power proves FTP ≥ 0.95 × that power: never propose below it.
+        floor = float(round(0.95 * best_20min_w))
+        if proposed < floor:
+            notes.append(
+                f"近期 20 分鐘最佳 {best_20min_w:.0f} W 代表 FTP 至少約 {floor:.0f} W，"
+                f"模型估計 {proposed:.0f} W 被這個下限擋住"
+            )
+            proposed = floor
+            if proposed > current_ftp * (1 - threshold):
+                proposed = None
     window = (as_of - dt.timedelta(days=n - 1), as_of) if n else None
     prop = FtpProposal(
         current_ftp=current_ftp,
@@ -328,7 +354,12 @@ def ftp_proposal(
         sources=list(sources),
         best_20min_w=best_20min_w,
         unsupported=unsupported,
+        insufficient_evidence=insufficient,
+        evidence_window_days=evidence_window_days,
+        notes_zh=notes,
     )
+    if insufficient:
+        prop.direction = "none"
     prop.explanation = _explain_proposal(prop, as_of, threshold, min_days, estimates)
     return prop
 
@@ -379,7 +410,25 @@ def _explain_proposal(
                 evidence={"best_20min_w": prop.best_20min_w, "unsupported": prop.unsupported},
             )
         )
-    if prop.proposed_ftp is not None:
+    for note in prop.notes_zh:
+        because.append(Reason(text_zh=note, evidence={"sources": prop.sources}))
+    no_max = f"近 {prop.evidence_window_days} 天沒有接近極限的長時間努力，無法判斷 FTP 是否下降"
+    if prop.insufficient_evidence:
+        because.append(
+            Reason(
+                text_zh=no_max + "（沒騎硬 ≠ 能力下降），先不提案",
+                evidence={
+                    "insufficient_evidence": True,
+                    "window_days": prop.evidence_window_days,
+                    "median_estimate": round(prop.median_estimate, 1)
+                    if prop.median_estimate is not None
+                    else None,
+                },
+            )
+        )
+    if prop.insufficient_evidence:
+        headline = f"FTP {prop.current_ftp:.0f} W 維持不變：{no_max}"
+    elif prop.proposed_ftp is not None:
         headline = (
             f"建議把 FTP 從 {prop.current_ftp:.0f} W 調為 {prop.proposed_ftp:.0f} W"
             f"（{prop.change_pct:+.1f} %）— 需你確認，系統不會自動改"

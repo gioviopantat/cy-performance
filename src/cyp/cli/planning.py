@@ -23,11 +23,11 @@ from cyp.cli.common import (
     today,
 )
 from cyp.core.errors import CypError
-from cyp.planning.job import PlanRun, build_plan, event_specs
+from cyp.planning.job import PlanRun, build_plan, climbs_from_config, event_specs
 from cyp.schemas import PlanOut, PlanPreviewRequest, SeasonOut
 from cyp.services import plan as plan_service
 from cyp.services.context import AppContext
-from cyp.settings import Settings
+from cyp.settings import AthleteConfig, Settings
 from cyp.store.repo.sync_cursors import SyncCursorRepo
 
 publish_app = typer.Typer(help="intervals.icu calendar publishing (M3).", no_args_is_help=True)
@@ -86,7 +86,7 @@ def plan(
     else:
         echo_plan(out)
     if run is not None:
-        _publish_plan(settings, run, now_local, apply=apply)
+        _publish_plan(settings, run, now_local, apply=apply, cfg=cfg)
     if out.needs_review:
         raise typer.Exit(code=3)
 
@@ -114,7 +114,14 @@ def echo_plan(out: PlanOut) -> None:
         typer.echo("  changes: " + ", ".join(f"{k} {len(v)}" for k, v in out.changes.items()))
 
 
-def _publish_plan(settings: Settings, run: PlanRun, now_local: dt.datetime, *, apply: bool) -> None:
+def _publish_plan(
+    settings: Settings,
+    run: PlanRun,
+    now_local: dt.datetime,
+    *,
+    apply: bool,
+    cfg: AthleteConfig | None = None,
+) -> None:
     """Diff (and with ``apply`` write) the plan against the live intervals.icu calendar."""
     from cyp.ingest.intervals.auth import ApiKeyAuth
     from cyp.ingest.intervals.client import IntervalsClient
@@ -129,7 +136,7 @@ def _publish_plan(settings: Settings, run: PlanRun, now_local: dt.datetime, *, a
             mode = SyncCursorRepo(s).get(PUBLISH_CURSOR_SOURCE, PUBLISH_CURSOR_MODE)
         if apply and mode not in ("upsert", "uid"):
             fail("run `cyp publish spike --confirm-write` first to learn the upsert mode", code=2)
-        specs = event_specs(run, render=render)
+        specs = event_specs(run, render=render, climbs=climbs_from_config(cfg))
         window = (run.days[0].date, run.days[-1].date) if run.days else (run.today, run.today)
         client = IntervalsClient(auth=ApiKeyAuth(key), athlete_id=settings.intervals_athlete_id)
         try:

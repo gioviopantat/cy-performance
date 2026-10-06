@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+import yaml
 from fastapi.testclient import TestClient
 
 from cyp.api.app import create_app
@@ -40,9 +41,22 @@ def seeded_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return root
 
 
+def synthetic_athlete_config(data: Path) -> Path:
+    """The repo athlete.yaml without ``data_quality``.
+
+    Its entries describe the real athlete's power-meter history (dates in mid-2026) and would
+    flag the synthetic rides, which carry no such problem.
+    """
+    cfg = yaml.safe_load((REPO / "config" / "athlete.yaml").read_text(encoding="utf-8"))
+    cfg.pop("data_quality", None)
+    path = data / "athlete.synthetic.yaml"
+    path.write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
+    return path
+
+
 def make_ctx(data: Path, **settings: object) -> AppContext:
     s = Settings(cyp_data_dir=data, cyp_db_url=f"sqlite:///{data / 'cyp.sqlite'}", **settings)  # type: ignore[arg-type]
-    c = AppContext.from_settings(s, athlete_config=REPO / "config" / "athlete.yaml")
+    c = AppContext.from_settings(s, athlete_config=synthetic_athlete_config(data))
     c.fixed_now = NOW
     return c
 

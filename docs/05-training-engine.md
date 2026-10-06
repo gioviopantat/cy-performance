@@ -170,3 +170,11 @@ history where possible), random compliance noise (85 % done, 10 % partial, 5 % s
 synthetic readiness. Assertions: converges to CTL target ±5; zero guardrail breaches after
 repair; no two HIT within 48 h; horizon stable (day-to-day churn ≤ 20 % of events). This is the
 regression suite for every planner change.
+
+## 9. Suggested climbs for outdoor sessions
+
+`location.climbs` in `config/athlete.yaml` lists local climbs with the athlete's recorded ascent
+times. For outdoor workouts whose longest hard step is ≥ 8 min, `planning/routes.py` adds one
+description footer line `建議路段：…`: the shortest climb whose `minutes_min` holds the step in
+one ascent, filtered by the session intent (`good_for`). When no climb is long enough, the
+longest one is named with a hint to turn at the top or finish on the flat.

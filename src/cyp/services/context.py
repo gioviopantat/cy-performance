@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from cyp.core.data_quality import DataQuality
 from cyp.core.errors import ConfigError, CypError
 from cyp.core.timeutil import now_utc
 from cyp.dataset import CACHE, Dataset
@@ -117,15 +118,20 @@ class AppContext:
             SchemaOutdatedError: migrations are pending.
         """
         self.check_schema()
-        ds = CACHE.get(self.factory, power_fix_until=self.power_fix_until())
+        ds = CACHE.get(self.factory, data_quality=self.data_quality())
         if ds is None:
             raise NoDataError("no athlete in the store; run `cyp sync` (or `cyp dev seed`)")
         return ds
 
-    def power_fix_until(self) -> dt.date | None:
-        """``data_quality.power_zeros_excluded_until`` from athlete.yaml (``None`` if unset)."""
+    def data_quality(self) -> DataQuality | None:
+        """Resolved ``data_quality`` from athlete.yaml (``None`` without a config)."""
         cfg = self.athlete_config_or_none()
-        return cfg.data_quality.power_zeros_excluded_until if cfg else None
+        return cfg.data_quality.resolved() if cfg else None
+
+    def power_fix_until(self) -> dt.date | None:
+        """Load-fix date of ``data_quality`` (``None`` if unset)."""
+        dq = self.data_quality()
+        return dq.load_fix_until if dq else None
 
     def close(self) -> None:
         """Dispose the engine."""

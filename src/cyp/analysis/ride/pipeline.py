@@ -53,7 +53,11 @@ def _comparison(
         "np_recorded_w": round(pm.np_recorded_w, 1) if pm.np_recorded_w is not None else None,
         "icu_decoupling": inputs.icu_decoupling,
         "decoupling_ours": round(dec.pct, 2) if dec is not None else None,
+        "power_meter_serial": inputs.power_meter_serial,
+        "power_unreliable": inputs.power_unreliable is not None,
     }
+    if inputs.power_unreliable is not None:
+        comp["power_unreliable_rule"] = inputs.power_unreliable.to_json()
     if m.tss is not None and inputs.icu_training_load is not None:
         delta = m.tss - inputs.icu_training_load
         comp["tss_delta"] = round(delta, 1)
