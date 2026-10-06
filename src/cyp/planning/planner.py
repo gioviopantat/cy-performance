@@ -464,6 +464,9 @@ def explain_day(
             f"{day.date.isoformat()} {w.name_zh}（{ROLE_ZH[day.role]}，{venue}，"
             f"約 {w.tss:.0f} TSS／{round(w.duration_s / 60)} 分）"
         )
+        # Swap / adaptation reasons first: the calendar footer shows only the first two.
+        for n in day.notes:
+            because.append(Reason(text_zh=n, evidence={}))
         because.append(
             Reason(text_zh=t.explain_zh, evidence={"template_id": t.id, "version": t.version})
         )
@@ -501,8 +504,6 @@ def explain_day(
                 else "此模板只有室內版"
             )
             because.append(Reason(text_zh=f"室內：{reason}", evidence={"outdoor": False}))
-        for n in day.notes:
-            because.append(Reason(text_zh=n, evidence={}))
     because.append(
         Reason(
             text_zh=f"本週目標 {targets.target_tss:.0f} TSS、約 {targets.target_hours:.1f} 小時",
