@@ -35,7 +35,7 @@ from cyp.core.timeutil import iso_utc, now_utc
 from cyp.dataset import CACHE, Dataset, PlannedRow
 from cyp.planning import adapt, routes
 from cyp.planning.guardrails import GuardrailInputs, Repair, Violation, enforce
-from cyp.planning.planner import DayPlan, PlanContext, Role, plan_week
+from cyp.planning.planner import DayPlan, PlanContext, Role, explain_day, plan_week
 from cyp.planning.season import SeasonSkeleton, SeasonWeek, build_skeleton, week_targets
 from cyp.planning.templates import Template, TemplateError, load_library, resolve
 from cyp.publish.events import EventSpec, external_id
@@ -277,8 +277,29 @@ def plan_horizon(
         hit_per_week=cfg.planner.hit_per_week,
     )
     run.repairs, run.violations = enforce(horizon, gi, ctx, mutable_from=mutable_from)
+    _refresh_explanations(horizon, run, sk, ctx)
     run.days = horizon
     return run
+
+
+def _refresh_explanations(
+    days: list[DayPlan], run: PlanRun, sk: SeasonSkeleton, ctx: PlanContext
+) -> None:
+    """Re-explain every day after adaptations and guardrail repairs.
+
+    ``plan_week`` explains the workout it chose; a later swap (yesterday over plan, readiness,
+    calendar, guardrails) would otherwise publish the old workout's reasons. Swap reasons are
+    kept as day notes, so they appear in the new explanation.
+    """
+    for r in run.repairs:
+        day = next((d for d in days if d.date == r.date), None)
+        if day is not None and r.explanation.headline_zh not in day.notes:
+            day.notes.append(r.explanation.headline_zh)
+    for day in days:
+        week = sk.week_of(day.date)
+        targets = run.week_targets.get(week.start) if week is not None else None
+        if week is not None and targets is not None:
+            day.explanation = explain_day(day, week, targets, ctx)
 
 
 def build_plan(
