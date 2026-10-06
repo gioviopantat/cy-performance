@@ -7,7 +7,7 @@ Order (ADR-0003: intervals.icu is primary, Strava secondary)::
       -> strava (if STRAVA_ENABLED)     # summaries, detail/efforts, zones, fallback streams
       -> matcher.rematch_all            # merge the Strava rows just created onto icu rows
 
-Every stage runs under :func:`cyp.jobs.runs.job_run`; the whole run is additionally recorded
+Every stage runs under :func:`cyp.store.runs.job_run`; the whole run is additionally recorded
 as one ``sync`` (or ``backfill``) row whose counts aggregate the stages. A failing source is
 recorded and the others still run (docs/02 §4); the aggregated error is raised at the end so
 the umbrella row is ``failed`` and the CLI exits non-zero.
@@ -26,10 +26,10 @@ from cyp.ingest.intervals.sync import STAGES, IntervalsSyncer, SyncOptions, Sync
 from cyp.ingest.matcher import JOB as MATCH_JOB
 from cyp.ingest.matcher import Matcher, MatchReport
 from cyp.ingest.strava.sync import StravaSyncer, StravaSyncSummary
-from cyp.jobs.runs import job_run
 from cyp.logging import get_logger
 from cyp.settings import Settings
 from cyp.store.db import engine_from_settings, session_factory
+from cyp.store.runs import job_run
 from cyp.store.streams import StreamStore
 
 log = get_logger(__name__)

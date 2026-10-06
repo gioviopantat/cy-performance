@@ -128,11 +128,6 @@ class AppContext:
         cfg = self.athlete_config_or_none()
         return cfg.data_quality.resolved() if cfg else None
 
-    def power_fix_until(self) -> dt.date | None:
-        """Load-fix date of ``data_quality`` (``None`` if unset)."""
-        dq = self.data_quality()
-        return dq.load_fix_until if dq else None
-
     def close(self) -> None:
         """Dispose the engine."""
         self.engine.dispose()

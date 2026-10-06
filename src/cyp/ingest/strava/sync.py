@@ -47,7 +47,6 @@ from cyp.core.errors import CypError, IngestError, RateLimitError
 from cyp.core.timeutil import epoch_s, iso_utc, now_utc, parse_iso
 from cyp.ingest.matcher import STRAVA_SUMMARY_COLUMNS, is_icu_stub
 from cyp.ingest.strava.client import StravaClient
-from cyp.jobs.runs import RunContext
 from cyp.logging import get_logger
 from cyp.settings import Settings
 from cyp.store.models import Activity, Athlete, StreamFile
@@ -55,6 +54,7 @@ from cyp.store.repo.activities import ActivityRepo
 from cyp.store.repo.segments import SegmentRepo
 from cyp.store.repo.sync_cursors import SyncCursorRepo
 from cyp.store.repo.zones import ActivityZonesRepo
+from cyp.store.runs import RunContext
 from cyp.store.streams import StreamStore
 
 log = get_logger(__name__)

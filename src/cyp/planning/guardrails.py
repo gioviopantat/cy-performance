@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 
 from cyp.analysis.longitudinal.pmc import PMCState, simulate
 from cyp.core.explain import Explanation, MethodRef, Reason
+from cyp.core.timeutil import week_start
 from cyp.planning.planner import DayPlan, PlanContext, fill_endurance
 
 GUARDRAILS_VERSION = "guardrails_v1"
@@ -68,10 +69,6 @@ class GuardrailInputs:
     ramp_cap: Mapping[str, float] = field(default_factory=dict)
     tsb_floor: Mapping[str, float] = field(default_factory=dict)
     hit_per_week: Mapping[str, int] = field(default_factory=dict)
-
-
-def _monday(d: dt.date) -> dt.date:
-    return d - dt.timedelta(days=d.weekday())
 
 
 def check(days: Sequence[DayPlan], gi: GuardrailInputs) -> list[Violation]:
@@ -132,7 +129,7 @@ def check(days: Sequence[DayPlan], gi: GuardrailInputs) -> list[Violation]:
 
     weeks: dict[dt.date, list[DayPlan]] = {}
     for d in days:
-        weeks.setdefault(_monday(d.date), []).append(d)
+        weeks.setdefault(week_start(d.date), []).append(d)
     hist_weeks = _history_weeks(gi.history_loads)
     for monday, wdays in sorted(weeks.items()):
         phase = gi.phase_of(monday)
@@ -163,7 +160,7 @@ def check(days: Sequence[DayPlan], gi: GuardrailInputs) -> list[Violation]:
                 )
         full_week = len(wdays) == 7
         n_rest = sum(1 for d in wdays if d.role == "rest")
-        need = 2 if sum(1 for d in gi.low_readiness_days if _monday(d) == monday) >= 2 else 1
+        need = 2 if sum(1 for d in gi.low_readiness_days if week_start(d) == monday) >= 2 else 1
         if full_week and n_rest < need:
             out.append(
                 Violation(
@@ -191,7 +188,7 @@ def check(days: Sequence[DayPlan], gi: GuardrailInputs) -> list[Violation]:
 def _history_weeks(loads: Mapping[dt.date, float]) -> dict[dt.date, float]:
     out: dict[dt.date, float] = {}
     for d, v in loads.items():
-        out[_monday(d)] = out.get(_monday(d), 0.0) + v
+        out[week_start(d)] = out.get(week_start(d), 0.0) + v
     return out
 
 
@@ -265,7 +262,7 @@ def _target_for(v: Violation, days: list[DayPlan], mutable_from: dt.date) -> Day
     if v.rule in ("hit_spacing", "hit_per_week", "single_ride"):
         return next((d for d in mutable if d.date == v.date), None)
     if v.rule in ("rest_days", "weekly_tss_vs_mean"):
-        week = [d for d in mutable if _monday(d.date) == _monday(v.date)]
+        week = [d for d in mutable if week_start(d.date) == week_start(v.date)]
     else:  # ramp_rate / tsb_floor: anything up to the violating day
         week = [d for d in mutable if d.date <= v.date]
     if not week:

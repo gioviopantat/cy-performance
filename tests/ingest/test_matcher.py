@@ -10,11 +10,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from cyp.ingest.matcher import Matcher, effective_strava_id, is_icu_stub, within_time_window
-from cyp.jobs.runs import job_run
 from cyp.store.models import Activity, ActivityZones, SegmentEffort, StreamFile
 from cyp.store.repo import ActivityRepo, JobRunRepo
 from cyp.store.repo.segments import SegmentRepo
 from cyp.store.repo.zones import ActivityZonesRepo
+from cyp.store.runs import job_run
 from cyp.store.streams import StreamStore
 
 STUB_NOTE = "STRAVA activities are not available via the API"

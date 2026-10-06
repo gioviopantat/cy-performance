@@ -29,7 +29,6 @@ from cyp.ingest.strava.sync import (
     parse_strava_timezone,
     streams_to_frame,
 )
-from cyp.jobs.runs import job_run
 from cyp.settings import Settings
 from cyp.store.models import Athlete, StreamFile
 from cyp.store.repo.activities import ActivityRepo
@@ -37,6 +36,7 @@ from cyp.store.repo.job_runs import JobRunRepo
 from cyp.store.repo.segments import SegmentRepo
 from cyp.store.repo.sync_cursors import SyncCursorRepo
 from cyp.store.repo.zones import ActivityZonesRepo
+from cyp.store.runs import job_run
 from cyp.store.streams import StreamStore
 from tests.ingest.strava.conftest import FAKE_ACCESS, SleepRecorder, api, load_fixture, ok
 

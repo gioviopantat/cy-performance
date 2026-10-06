@@ -17,6 +17,7 @@ from typing import Any
 
 from cyp.analysis.ride.power import tiz_three_zone
 from cyp.core.explain import Explanation, MethodRef, Reason
+from cyp.core.timeutil import week_start
 
 TID_VERSION = "tid_v1"
 #: Target low/mid/high fractions per phase (docs/05 §2.1).
@@ -80,11 +81,6 @@ class WeekTid:
         if high > mid and (pi is None or pi > 2.0):
             return "polarized"
         return "pyramidal"
-
-
-def week_start(day: dt.date) -> dt.date:
-    """Monday of ``day``'s ISO week."""
-    return day - dt.timedelta(days=day.weekday())
 
 
 def weekly_tid(rides: Iterable[RideTiz]) -> list[WeekTid]:

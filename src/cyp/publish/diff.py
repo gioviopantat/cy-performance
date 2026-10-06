@@ -16,7 +16,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from cyp.publish.events import EventSpec, is_ours, parse_external_id, remote_fingerprint
+from cyp.core.ids import parse_external_id
+from cyp.publish.events import EventSpec, is_ours, remote_fingerprint
 
 MAX_EVENTS_PER_RUN = 20
 

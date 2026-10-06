@@ -28,6 +28,7 @@ from cyp.analysis.readiness import (
     YesterdayRide,
     compute_readiness,
 )
+from cyp.core.data_quality import DataQuality
 from cyp.core.errors import AnalysisError
 from cyp.core.load import Readiness
 from cyp.dataset import CACHE, Dataset, WellnessRow
@@ -159,14 +160,14 @@ def run_readiness(
     factory: sessionmaker[Session],
     days: Iterable[dt.date],
     *,
-    power_fix_until: dt.date | None = None,
+    data_quality: DataQuality | None = None,
 ) -> list[Readiness]:
     """Compute and persist readiness for each day; returns the verdicts in order.
 
     Raises:
         AnalysisError: no athlete in the store.
     """
-    ds = CACHE.get(factory, power_fix_until=power_fix_until)
+    ds = CACHE.get(factory, data_quality=data_quality)
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     out = [readiness_for(ds, d) for d in days]

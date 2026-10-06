@@ -21,7 +21,7 @@ Nothing here talks to intervals.icu; publishing is :mod:`cyp.publish` and needs 
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -31,14 +31,14 @@ from sqlalchemy.orm import Session, sessionmaker
 from cyp.analysis.longitudinal.pmc import PMCState, simulate
 from cyp.core.errors import AnalysisError
 from cyp.core.explain import Explanation
+from cyp.core.ids import external_id
 from cyp.core.timeutil import iso_utc, now_utc
 from cyp.dataset import CACHE, Dataset, PlannedRow
-from cyp.planning import adapt, routes
+from cyp.planning import adapt
 from cyp.planning.guardrails import GuardrailInputs, Repair, Violation, enforce
 from cyp.planning.planner import DayPlan, PlanContext, Role, explain_day, plan_week
 from cyp.planning.season import SeasonSkeleton, SeasonWeek, build_skeleton, week_targets
 from cyp.planning.templates import Template, TemplateError, load_library, resolve
-from cyp.publish.events import EventSpec, external_id
 from cyp.settings import AthleteConfig
 from cyp.store.models import Block as BlockRow
 from cyp.store.models import PlannedWorkout, PlanRevision, WeekPlan
@@ -505,49 +505,3 @@ def _persist(
     s.add(rev)
     s.flush()
     run.revision_id = rev.id
-
-
-# ------------------------------------------------------------------------------ publish
-
-
-def event_specs(
-    run: PlanRun, *, render: Any, climbs: Sequence[routes.Climb] = ()
-) -> list[EventSpec]:
-    """Our desired calendar for the horizon (rest days produce no event).
-
-    ``climbs`` (``location.climbs``) adds a ``建議路段`` footer line to long outdoor work.
-    """
-    out: list[EventSpec] = []
-    for d in run.days:
-        if d.workout is None:
-            continue
-        lines: list[str] = []
-        if d.explanation is not None:
-            lines = [d.explanation.headline_zh] + [r.text_zh for r in d.explanation.because[:2]]
-        route = routes.footer_line(climbs, d.workout, d.intent)
-        if route:
-            lines.append(route)
-        footer = "\n\n" + "\n".join(f"# {line}" for line in lines) if lines else ""
-        out.append(
-            EventSpec(
-                external_id=external_id(run.season_key, d.date, 1),
-                date=d.date,
-                name=d.workout.name_zh,
-                description=render(d.workout) + footer,
-                indoor=not d.outdoor,
-                moving_time_s=d.workout.duration_s,
-                target_load=round(d.tss, 1),
-                tags=[d.intent, d.role],
-            )
-        )
-    return out
-
-
-def climbs_from_config(cfg: AthleteConfig | None) -> list[routes.Climb]:
-    """``location.climbs`` as :class:`cyp.planning.routes.Climb` (empty without config)."""
-    if cfg is None:
-        return []
-    return [
-        routes.Climb(c.name_zh, c.minutes_min, c.minutes_max, c.grade_pct, tuple(c.good_for))
-        for c in cfg.location.climbs
-    ]

@@ -29,7 +29,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from cyp.core.timeutil import parse_iso
-from cyp.jobs.runs import RunContext
 from cyp.logging import get_logger
 from cyp.store.models import (
     Activity,
@@ -40,6 +39,7 @@ from cyp.store.models import (
     SegmentEffort,
     StreamFile,
 )
+from cyp.store.runs import RunContext
 from cyp.store.streams import StreamStore
 
 log = get_logger(__name__)

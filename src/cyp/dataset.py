@@ -741,18 +741,14 @@ class DatasetCache:
         self,
         factory: sessionmaker[Session],
         *,
-        power_fix_until: dt.date | None = None,
         data_quality: DataQuality | None = None,
     ) -> Dataset | None:
         """Current snapshot (one version query when nothing changed).
 
-        ``data_quality`` returns the :meth:`Dataset.with_data_quality` view (memoised);
-        ``power_fix_until`` alone is shorthand for a load fix without power rules.
+        ``data_quality`` returns the :meth:`Dataset.with_data_quality` view (memoised).
         """
         ds = self._get(factory)
         dq = data_quality
-        if dq is None and power_fix_until is not None:
-            dq = DataQuality(load_fix_until=power_fix_until)
         if ds is None or dq is None or dq.empty:
             return ds
         key = (ds.version, dq)

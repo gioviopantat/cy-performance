@@ -23,7 +23,8 @@ from cyp.cli.common import (
     today,
 )
 from cyp.core.errors import CypError
-from cyp.planning.job import PlanRun, build_plan, climbs_from_config, event_specs
+from cyp.planning.job import PlanRun, build_plan
+from cyp.publish.plan_events import climbs_from_config, event_specs
 from cyp.schemas import PlanOut, PlanPreviewRequest, SeasonOut
 from cyp.services import plan as plan_service
 from cyp.services.context import AppContext
@@ -125,7 +126,6 @@ def _publish_plan(
     """Diff (and with ``apply`` write) the plan against the live intervals.icu calendar."""
     from cyp.ingest.intervals.auth import ApiKeyAuth
     from cyp.ingest.intervals.client import IntervalsClient
-    from cyp.planning.renderer import render
     from cyp.publish.publisher import Publisher
 
     key = settings.intervals_api_key.get_secret_value()
@@ -136,7 +136,7 @@ def _publish_plan(
             mode = SyncCursorRepo(s).get(PUBLISH_CURSOR_SOURCE, PUBLISH_CURSOR_MODE)
         if apply and mode not in ("upsert", "uid"):
             fail("run `cyp publish spike --confirm-write` first to learn the upsert mode", code=2)
-        specs = event_specs(run, render=render, climbs=climbs_from_config(cfg))
+        specs = event_specs(run, climbs=climbs_from_config(cfg))
         window = (run.days[0].date, run.days[-1].date) if run.days else (run.today, run.today)
         client = IntervalsClient(auth=ApiKeyAuth(key), athlete_id=settings.intervals_athlete_id)
         try:

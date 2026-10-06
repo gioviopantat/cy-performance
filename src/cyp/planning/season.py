@@ -28,6 +28,7 @@ from typing import Literal
 
 from cyp.analysis.longitudinal.pmc import PMCState, load_for_ctl_target, simulate
 from cyp.core.explain import Explanation, MethodRef, Reason
+from cyp.core.timeutil import week_start
 from cyp.settings import AthleteConfig
 
 SEASON_VERSION = "season_v1"
@@ -95,10 +96,6 @@ class SeasonSkeleton:
         return [w for w in self.weeks if w.block_idx == block_idx]
 
 
-def _monday(day: dt.date) -> dt.date:
-    return day - dt.timedelta(days=day.weekday())
-
-
 def _block_lengths(total: int) -> list[tuple[PlanPhase, int]]:
     body = total - TEST_WEEKS
     if body < MIN_BASE_WEEKS:
@@ -150,8 +147,8 @@ def build_skeleton(
     )
     if goal is None:
         raise ValueError("athlete config has no goal")
-    start = _monday(cfg.season.start)
-    total = (_monday(goal.date) - start).days // 7 + 1
+    start = week_start(cfg.season.start)
+    total = (week_start(goal.date) - start).days // 7 + 1
     cycle = 4 if cfg.season.load_pattern == "3:1" else 3
     sk = SeasonSkeleton(start=start, goal_date=goal.date, load_pattern=cfg.season.load_pattern)
     idx = 0

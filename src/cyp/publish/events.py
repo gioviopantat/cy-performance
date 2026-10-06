@@ -3,31 +3,11 @@
 from __future__ import annotations
 
 import datetime as dt
-import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-PREFIX = "cyp:"
-TAG = "cyp"
-_EXTERNAL_RE = re.compile(r"^cyp:(?P<season>[^:]+):(?P<date>\d{4}-\d{2}-\d{2}):(?P<slot>\d+)$")
-
-
-def external_id(season_key: str, day: dt.date, slot: int = 1) -> str:
-    """``cyp:{season}:{YYYY-MM-DD}:{slot}``."""
-    if ":" in season_key or not season_key:
-        raise ValueError(f"season key must be non-empty and colon-free: {season_key!r}")
-    return f"{PREFIX}{season_key}:{day.isoformat()}:{slot}"
-
-
-def parse_external_id(value: str | None) -> tuple[str, dt.date, int] | None:
-    """Inverse of :func:`external_id`; ``None`` for foreign / malformed ids."""
-    if not value:
-        return None
-    m = _EXTERNAL_RE.match(value)
-    if m is None:
-        return None
-    return m["season"], dt.date.fromisoformat(m["date"]), int(m["slot"])
+from cyp.core.ids import PREFIX, TAG
 
 
 def is_ours(event: dict[str, Any]) -> bool:

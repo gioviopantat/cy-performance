@@ -14,11 +14,11 @@ from cyp.ingest.matcher import Matcher
 from cyp.ingest.strava.client import StravaClient
 from cyp.ingest.strava.oauth import StravaAuth, TokenStore, import_token_file
 from cyp.ingest.strava.sync import StravaSyncer
-from cyp.jobs.runs import job_run
 from cyp.jobs.sync import JOB_STRAVA, SyncResult, run_sync
 from cyp.settings import Settings
 from cyp.store.db import engine_from_settings, session_factory
 from cyp.store.migrate import schema_status
+from cyp.store.runs import job_run
 from cyp.store.streams import StreamStore
 
 auth_app = typer.Typer(help="OAuth / API-key setup for the data sources.", no_args_is_help=True)

@@ -36,6 +36,7 @@ from cyp.analysis.ride.pipeline import ALGO_VERSION, compute_ride_metrics
 from cyp.analysis.ride.power import coggan_zones, zones_from_pct_bounds
 from cyp.analysis.ride.result import RideInputs, RideMetrics
 from cyp.core.athlete import Zone, ZoneModel
+from cyp.core.convert import as_float
 from cyp.core.data_quality import (
     DataQuality,
     PowerRule,
@@ -45,12 +46,12 @@ from cyp.core.data_quality import (
 )
 from cyp.core.errors import AnalysisError, NotFoundError
 from cyp.core.timeutil import local_date, parse_iso
-from cyp.jobs.runs import RunContext, job_run
 from cyp.logging import get_logger
 from cyp.store.models import Activity, ActivityMetrics, Athlete, AthleteSettingsHistory
 from cyp.store.repo.activities import ActivityRepo
 from cyp.store.repo.athlete_settings import AthleteSettingsRepo
 from cyp.store.repo.metrics import ActivityMetricsRepo
+from cyp.store.runs import RunContext, job_run
 from cyp.store.streams import StreamStore
 
 log = get_logger(__name__)
@@ -94,17 +95,6 @@ class AnalyzeSummary:
 
 
 # ------------------------------------------------------------------------------- inputs
-
-
-def _num(value: Any) -> float | None:
-    if isinstance(value, bool) or value is None:
-        return None
-    if isinstance(value, int | float):
-        return float(value)
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
 
 
 def _ride_local_date(activity: Activity) -> dt.date:
@@ -155,7 +145,7 @@ def _hr_zones_from_bounds(lthr: float | None, bounds: Any) -> ZoneModel | None:
     zones: list[Zone] = []
     lo = 0.0
     for i, b in enumerate(bounds):
-        v = _num(b)
+        v = as_float(b)
         if v is None:
             continue
         hi: float | None = None if v >= 900 else v
@@ -249,8 +239,8 @@ def resolve_inputs(
         ftp, ftp_source = float(row.ftp), f"settings_history:{row.effective_from.isoformat()}"
     elif activity.icu_ftp:
         ftp, ftp_source = float(activity.icu_ftp), "activity.icu_ftp"
-    elif _num(raw.get("icu_ftp")):
-        ftp, ftp_source = _num(raw.get("icu_ftp")), "raw_intervals_json.icu_ftp"
+    elif as_float(raw.get("icu_ftp")):
+        ftp, ftp_source = as_float(raw.get("icu_ftp")), "raw_intervals_json.icu_ftp"
     elif latest is not None and latest.ftp:
         ftp, ftp_source = float(latest.ftp), "settings_history:latest"
     else:
@@ -258,7 +248,7 @@ def resolve_inputs(
 
     def pick(*candidates: Any) -> float | None:
         for c in candidates:
-            v = _num(c)
+            v = as_float(c)
             if v is not None and v > 0:
                 return v
         return None
@@ -314,13 +304,13 @@ def resolve_inputs(
         power_zones=power_zones,
         hr_zones=hr_zones,
         zones_source=zones_source,
-        icu_training_load=_num(activity.icu_training_load),
+        icu_training_load=as_float(activity.icu_training_load),
         # Only icu's own NP is a valid cross-check target; ``activities.np_w`` may hold
         # Strava's weighted_average_watts for Strava-only rides.
         icu_np_w=pick(raw.get("icu_weighted_avg_watts")),
-        icu_intensity=_num(activity.icu_intensity),
-        icu_decoupling=_num(activity.icu_decoupling),
-        icu_ftp=_num(activity.icu_ftp),
+        icu_intensity=as_float(activity.icu_intensity),
+        icu_decoupling=as_float(activity.icu_decoupling),
+        icu_ftp=as_float(activity.icu_ftp),
         power_meter_serial=normalise_serial(raw.get("power_meter_serial")),
         power_unreliable=power_rule_for(activity, data_quality, gears),
     )

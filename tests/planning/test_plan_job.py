@@ -10,8 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 from typer.testing import CliRunner
 
 from cyp.cli import app
-from cyp.planning.job import build_plan, event_specs
+from cyp.planning.job import build_plan
 from cyp.planning.renderer import render
+from cyp.publish.plan_events import event_specs
 from cyp.settings import AthleteConfig
 from cyp.store.models import (
     Athlete,

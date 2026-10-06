@@ -104,23 +104,38 @@ Details in [05-training-engine](05-training-engine.md).
 - `renderer.py` — `PlannedWorkout` → intervals.icu workout text (see 02 §4.6) and `EventEx` payload.
 
 ### 5.6 `publish/`
-- `intervals_calendar.py` — desired-state → diff → `POST /events/bulk?upsert=true` (external_id
-  `cyp:{plan_id}:{date}:{slot}`) and `PUT /events/bulk-delete` for stale ones. Never touches
-  events without our prefix. Writes `publish_log`.
-- `report.py` — Markdown/HTML daily + weekly report (Jinja2), optionally posted as an
-  intervals.icu NOTE event and/or Strava activity description footer (the existing `RIDE.LOG`
-  block the athlete already uses).
+- `events.py` — `EventSpec`, the icu `EventEx` payload, `is_ours`. The `external_id` scheme
+  `cyp:{season}:{date}:{slot}` lives in `core/ids.py` because the planner stores it too.
+- `plan_events.py` — a `PlanRun` as `EventSpec`s: rendered workout text, explanation footer,
+  suggested climb. Lives here so `planning` never imports `publish`.
+- `diff.py` — desired state vs live calendar → create / update / delete / noop.
+- `publisher.py` — applies the diff via `POST /events/bulk` (upsert or uid mode), reads back
+  `icu_training_load`, writes `publish_log`. Never touches events without our prefix.
+- `spike.py` — one-off probe of which upsert mode works with this API key.
 
-### 5.7 `jobs/`
-Orchestration only; each stage is independently runnable and resumable.
-- `sync.py` — `run_sync()`: intervals (all stages or month-paged backfill) → matcher → Strava
-  (if enabled) → matcher; each stage under `job_run`, one umbrella `sync`/`backfill` row.
-  Backs `cyp sync` and `cyp backfill --days N`.
-- `daily.py` — sync → analyze → readiness → replan horizon → publish → report
-- `weekly.py` — FTP/eFTP review, block progression, next-week template, weekly report
-- (backfill lives in `sync.py`; history import is bounded by the Strava rate budget and
-  resumable via `sync_cursors`)
-- `scheduler.py` — APScheduler wiring for `cyp serve`; launchd/cron call `cyp daily` directly
+### 5.7 `jobs/` and `services/`
+- `jobs/sync.py` — `run_sync()`: intervals (all stages or month-paged backfill) → matcher →
+  Strava (if enabled) → matcher. Backs `cyp sync` and `cyp backfill --days N`.
+- `store/runs.py` — `job_run()` records every stage in `job_runs`. It sits in `store` so that
+  `ingest` and `analysis` can use it without depending on the orchestration layer.
+- `services/pipeline.py` — the `cyp daily` / `cyp weekly` composites (analyze → trends →
+  readiness → report), shared with API jobs. Re-planning and publishing are separate commands
+  (`cyp plan --publish / --apply`) until daily automation is decided.
+
+### 5.7.1 Layering (enforced by `tests/test_layering.py`)
+A package may import only from its own layer or lower ones:
+
+| Layer | Packages |
+|-------|----------|
+| 0 | `core` (pure domain: models, ids, explanations, data-quality rules, conversions) |
+| 1 | `settings`, `logging`, `schemas` |
+| 2 | `store` |
+| 3 | `dataset`, `ingest` |
+| 4 | `analysis` |
+| 5 | `planning`, `reports` |
+| 6 | `publish` |
+| 7 | `jobs`, `services`, `llm` |
+| 8 | `cli`, `api`, `devtools` |
 
 ### 5.8 `llm/` (optional, off by default)
 - `narrator.py` — turns the structured daily/weekly result into a coach note in zh-TW/English.

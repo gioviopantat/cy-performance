@@ -23,6 +23,7 @@ from cyp.analysis.longitudinal.run import load_latest_report, primary_athlete_id
 from cyp.analysis.ride.classify import CLASS_ZH
 from cyp.analysis.run import activity_local_date
 from cyp.core.errors import AnalysisError
+from cyp.core.timeutil import week_start
 from cyp.settings import AthleteConfig
 from cyp.store.models import (
     Activity,
@@ -297,7 +298,7 @@ def daily_facts(
 
 def week_bounds(day: dt.date) -> tuple[dt.date, dt.date]:
     """Monday..Sunday of ``day``'s ISO week."""
-    start = day - dt.timedelta(days=day.weekday())
+    start = week_start(day)
     return start, start + dt.timedelta(days=6)
 
 

@@ -36,6 +36,7 @@ from cyp.analysis.ride.frames import load_frame
 from cyp.core.data_quality import DataQuality
 from cyp.core.errors import AnalysisError, NotFoundError
 from cyp.core.explain import Explanation
+from cyp.core.timeutil import week_start
 from cyp.dataset import CACHE, Dataset, local_day
 from cyp.logging import get_logger
 from cyp.store.models import (
@@ -256,7 +257,7 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
     report.add(dur_mod.explain_durability(blocks, as_of=as_of))
 
     # ---- TID
-    tid_lo = tid_mod.week_start(as_of) - dt.timedelta(weeks=TID_WEEKS - 1)
+    tid_lo = week_start(as_of) - dt.timedelta(weeks=TID_WEEKS - 1)
     tiz_rides = []
     for a in ds.rides(tid_lo, as_of):
         if a.power_unreliable is None:
@@ -282,7 +283,7 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
         )
     if weeks:
         report.add(tid_mod.explain_week(weeks[-1], phase))
-    recent = [w for w in weeks if w.week_start >= tid_mod.week_start(as_of) - dt.timedelta(weeks=3)]
+    recent = [w for w in weeks if w.week_start >= week_start(as_of) - dt.timedelta(weeks=3)]
     tot = sum(w.total_s for w in recent)
     mid_share = sum(w.mid_s for w in recent) / tot if tot > 0 else None
 
@@ -450,9 +451,7 @@ def build_trends(
     *,
     as_of: dt.date,
     phase: str | None = None,
-    history_days: int = HISTORY_DAYS,
     reports_dir: Path | None = None,
-    power_fix_until: dt.date | None = None,
     data_quality: DataQuality | None = None,
 ) -> TrendsReport:
     """Run every longitudinal model as of ``as_of``; persist and return the report.
@@ -460,11 +459,11 @@ def build_trends(
     Raises:
         AnalysisError: no athlete in the store.
     """
-    ds = CACHE.get(factory, power_fix_until=power_fix_until, data_quality=data_quality)
+    ds = CACHE.get(factory, data_quality=data_quality)
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     if backfill_durability(factory, store, ds, as_of):
-        ds = CACHE.get(factory, power_fix_until=power_fix_until, data_quality=data_quality)
+        ds = CACHE.get(factory, data_quality=data_quality)
         assert ds is not None
     result = compute_trends(ds, as_of, phase=phase)
     with factory() as s:

@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from cyp.jobs.runs import job_run
 from cyp.store.repo import ActivityRepo, JobRunRepo, SyncCursorRepo
+from cyp.store.runs import job_run
 
 
 def test_success_recorded(factory: sessionmaker[Session]) -> None:

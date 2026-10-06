@@ -14,10 +14,11 @@ from sqlalchemy.orm import Session, sessionmaker
 from typer.testing import CliRunner
 
 from cyp.cli import app
+from cyp.core.ids import external_id, parse_external_id
 from cyp.ingest.intervals.auth import ApiKeyAuth
 from cyp.ingest.intervals.client import BASE_URL, IntervalsClient
 from cyp.publish.diff import compute_diff, mutable
-from cyp.publish.events import EventSpec, external_id, is_ours, parse_external_id
+from cyp.publish.events import EventSpec, is_ours
 from cyp.publish.publisher import Publisher, verify_load
 from cyp.publish.spike import SPIKE_NAME, plan_spike, run_spike
 from cyp.store.models import PublishLog

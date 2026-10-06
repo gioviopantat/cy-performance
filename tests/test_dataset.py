@@ -9,6 +9,7 @@ import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from cyp.analysis.longitudinal import pmc
+from cyp.core.data_quality import DataQuality
 from cyp.dataset import DatasetCache, data_version, load_dataset
 from cyp.store.models import (
     Activity,
@@ -156,11 +157,13 @@ def test_power_fix_uses_our_tss_up_to_the_date(factory: sessionmaker[Session]) -
         s.commit()
     cache = DatasetCache()
     plain = cache.get(factory)
-    fixed = cache.get(factory, power_fix_until=dt.date(2026, 9, 5))
+    fixed = cache.get(factory, data_quality=DataQuality(load_fix_until=dt.date(2026, 9, 5)))
     assert plain is not None and fixed is not None
     assert plain.loads[dt.date(2026, 9, 3)] == 70.0  # icu ledger
     assert fixed.loads[dt.date(2026, 9, 3)] == 78.0  # our TSS of ride 10 (+ yoga 0)
     assert fixed.power_fix_until == dt.date(2026, 9, 5)
-    assert cache.get(factory, power_fix_until=dt.date(2026, 9, 5)) is fixed  # memoised
-    early = cache.get(factory, power_fix_until=dt.date(2026, 9, 1))
+    assert (
+        cache.get(factory, data_quality=DataQuality(load_fix_until=dt.date(2026, 9, 5))) is fixed
+    )  # memoised
+    early = cache.get(factory, data_quality=DataQuality(load_fix_until=dt.date(2026, 9, 1)))
     assert early is not None and early.loads[dt.date(2026, 9, 3)] == 70.0

@@ -1,6 +1,6 @@
 """intervals.icu sync job (docs/01 §5.2, docs/02 §3, ADR-0003).
 
-Stages (each wrapped in :func:`cyp.jobs.runs.job_run`, each independently runnable):
+Stages (each wrapped in :func:`cyp.store.runs.job_run`, each independently runnable):
 
 ``athlete``       ``GET /athlete`` + ``/sport-settings`` -> ``athletes`` +
                   ``athlete_settings_history`` (new row only when values change)
@@ -32,7 +32,6 @@ from cyp.core.timeutil import DEFAULT_TZ, tz
 from cyp.ingest.intervals import mapping
 from cyp.ingest.intervals.client import POWER_CURVE_WINDOWS, IntervalsClient
 from cyp.ingest.intervals.streams import icu_streams_to_parquet_frame
-from cyp.jobs.runs import RunContext, job_run
 from cyp.logging import get_logger
 from cyp.store.models import Activity, StreamFile
 from cyp.store.repo.activities import ActivityRepo
@@ -42,6 +41,7 @@ from cyp.store.repo.intervals import ActivityIntervalRepo
 from cyp.store.repo.power_curves import PowerCurveRepo
 from cyp.store.repo.sync_cursors import SyncCursorRepo
 from cyp.store.repo.wellness import WellnessRepo
+from cyp.store.runs import RunContext, job_run
 from cyp.store.streams import StreamStore
 
 log = get_logger(__name__)

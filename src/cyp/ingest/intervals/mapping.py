@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from cyp.core.activity import RIDE_SPORT_TYPES
 from cyp.core.athlete import Zone, ZoneModel
+from cyp.core.convert import as_float
 from cyp.core.timeutil import DEFAULT_TZ, ensure_utc, iso_utc, parse_iso
 
 JsonDict = dict[str, Any]
@@ -26,19 +27,8 @@ JsonDict = dict[str, Any]
 # --------------------------------------------------------------------------- small helpers
 
 
-def _num(value: Any) -> float | None:
-    if value is None or isinstance(value, bool):
-        return None
-    if isinstance(value, int | float):
-        return float(value)
-    try:
-        return float(str(value))
-    except ValueError:
-        return None
-
-
 def _int(value: Any) -> int | None:
-    f = _num(value)
+    f = as_float(value)
     return None if f is None else round(f)
 
 
@@ -139,7 +129,7 @@ def zone_times_secs(value: Any) -> list[float] | None:
         if isinstance(item, dict):
             out.append(float(item.get("secs") or 0))
         else:
-            n = _num(item)
+            n = as_float(item)
             out.append(n if n is not None else 0.0)
     return out
 
@@ -156,7 +146,7 @@ def activity_row(
     moving = _int(raw.get("moving_time"))
     elapsed = _int(raw.get("elapsed_time"))
     gear = raw.get("gear") if isinstance(raw.get("gear"), dict) else {}
-    joules = _num(raw.get("icu_joules"))
+    joules = as_float(raw.get("icu_joules"))
     strava_id = stub_strava_id(raw)
     row: JsonDict = {
         "athlete_id": athlete_id,
@@ -171,8 +161,8 @@ def activity_row(
         "tz": tz_name,
         "moving_s": moving if moving is not None else elapsed,
         "elapsed_s": elapsed if elapsed is not None else moving,
-        "distance_m": _num(raw.get("icu_distance") or raw.get("distance")),
-        "elev_gain_m": _num(raw.get("total_elevation_gain")),
+        "distance_m": as_float(raw.get("icu_distance") or raw.get("distance")),
+        "elev_gain_m": as_float(raw.get("total_elevation_gain")),
         "trainer": bool(raw.get("trainer")),
         "commute": bool(raw.get("commute")) or raw.get("sub_type") == "COMMUTE",
         "race": bool(raw.get("race")) or raw.get("sub_type") == "RACE",
@@ -184,24 +174,24 @@ def activity_row(
         "device_name": _str(raw.get("device_name")),
         "gear_id": _str(gear.get("id")) if gear else None,
         "gear_name": _str(gear.get("name")) if gear else None,
-        "avg_w": _num(raw.get("icu_average_watts")),
-        "np_w": _num(raw.get("icu_weighted_avg_watts")),
-        "max_w": _num(raw.get("max_watts")),
+        "avg_w": as_float(raw.get("icu_average_watts")),
+        "np_w": as_float(raw.get("icu_weighted_avg_watts")),
+        "max_w": as_float(raw.get("max_watts")),
         "kj": round(joules / 1000.0, 1) if joules is not None else None,
-        "avg_hr": _num(raw.get("average_heartrate")),
-        "max_hr": _num(raw.get("max_heartrate")),
-        "avg_cad": _num(raw.get("average_cadence")),
-        "icu_training_load": _num(raw.get("icu_training_load")),
-        "icu_intensity": _num(raw.get("icu_intensity")),
-        "icu_ftp": _num(raw.get("icu_ftp")),
-        "icu_eftp": _num(raw.get("icu_pm_ftp")),
-        "icu_pm_cp": _num(raw.get("icu_pm_cp")),
-        "icu_pm_w_prime": _num(raw.get("icu_pm_w_prime")),
-        "icu_pm_p_max": _num(raw.get("icu_pm_p_max")),
-        "icu_decoupling": _num(raw.get("decoupling")),
-        "icu_polarization_index": _num(raw.get("polarization_index")),
-        "icu_joules_above_ftp": _num(raw.get("icu_joules_above_ftp")),
-        "icu_max_wbal_depletion": _num(raw.get("icu_max_wbal_depletion")),
+        "avg_hr": as_float(raw.get("average_heartrate")),
+        "max_hr": as_float(raw.get("max_heartrate")),
+        "avg_cad": as_float(raw.get("average_cadence")),
+        "icu_training_load": as_float(raw.get("icu_training_load")),
+        "icu_intensity": as_float(raw.get("icu_intensity")),
+        "icu_ftp": as_float(raw.get("icu_ftp")),
+        "icu_eftp": as_float(raw.get("icu_pm_ftp")),
+        "icu_pm_cp": as_float(raw.get("icu_pm_cp")),
+        "icu_pm_w_prime": as_float(raw.get("icu_pm_w_prime")),
+        "icu_pm_p_max": as_float(raw.get("icu_pm_p_max")),
+        "icu_decoupling": as_float(raw.get("decoupling")),
+        "icu_polarization_index": as_float(raw.get("polarization_index")),
+        "icu_joules_above_ftp": as_float(raw.get("icu_joules_above_ftp")),
+        "icu_max_wbal_depletion": as_float(raw.get("icu_max_wbal_depletion")),
         "icu_zone_times": zone_times_secs(raw.get("icu_zone_times")),
         "icu_hr_zone_times": zone_times_secs(raw.get("icu_hr_zone_times")),
         "paired_event_id": _int(raw.get("paired_event_id")),
@@ -241,17 +231,17 @@ def interval_rows(payload: JsonDict) -> list[JsonDict]:
                 "type": kind if kind in INTERVAL_TYPES else "OTHER",
                 "start_s": start,
                 "duration_s": duration,
-                "avg_w": _num(it.get("average_watts")),
-                "np_w": _num(it.get("weighted_average_watts")),
-                "intensity": _num(it.get("intensity")),
-                "avg_hr": _num(it.get("average_heartrate")),
-                "max_hr": _num(it.get("max_heartrate")),
-                "avg_cad": _num(it.get("average_cadence")),
-                "decoupling": _num(it.get("decoupling")),
-                "wbal_start": _num(it.get("wbal_start")),
-                "wbal_end": _num(it.get("wbal_end")),
+                "avg_w": as_float(it.get("average_watts")),
+                "np_w": as_float(it.get("weighted_average_watts")),
+                "intensity": as_float(it.get("intensity")),
+                "avg_hr": as_float(it.get("average_heartrate")),
+                "max_hr": as_float(it.get("max_heartrate")),
+                "avg_cad": as_float(it.get("average_cadence")),
+                "decoupling": as_float(it.get("decoupling")),
+                "wbal_start": as_float(it.get("wbal_start")),
+                "wbal_end": as_float(it.get("wbal_end")),
                 "zone": _int(it.get("zone")),
-                "training_load": _num(it.get("training_load")),
+                "training_load": as_float(it.get("training_load")),
                 "raw_json": it,
             }
         )
@@ -272,7 +262,7 @@ def athlete_row(raw: JsonDict) -> JsonDict:
         "name": name or None,
         "sex": _str(raw.get("sex")),
         "timezone": _str(raw.get("timezone")) or DEFAULT_TZ,
-        "weight_kg": _num(raw.get("icu_weight")) or _num(raw.get("weight")),
+        "weight_kg": as_float(raw.get("icu_weight")) or as_float(raw.get("weight")),
         "raw_intervals_json": raw,
     }
 
@@ -294,7 +284,7 @@ def power_zone_model(ftp: float | None, pct_bounds: Any, names: Any) -> dict[str
     lo = 0.0
     labels = names if isinstance(names, list) else []
     for i, pct in enumerate(pct_bounds):
-        p = _num(pct)
+        p = as_float(pct)
         if p is None:
             continue
         hi: float | None = None if p >= 900 else round(ftp * p / 100.0, 1)
@@ -315,7 +305,7 @@ def hr_zone_model(lthr: float | None, bpm_bounds: Any, names: Any) -> dict[str, 
     lo = 0.0
     labels = names if isinstance(names, list) else []
     for i, bpm in enumerate(bpm_bounds):
-        b = _num(bpm)
+        b = as_float(bpm)
         if b is None:
             continue
         hi: float | None = None if b >= 900 else float(b)
@@ -330,19 +320,19 @@ def hr_zone_model(lthr: float | None, bpm_bounds: Any, names: Any) -> dict[str, 
 
 def settings_history_values(sport: JsonDict, athlete: JsonDict) -> JsonDict:
     """``athlete_settings_history`` comparable fields from a ``SportSettings`` + athlete."""
-    ftp = _num(sport.get("ftp"))
-    lthr = _num(sport.get("lthr"))
+    ftp = as_float(sport.get("ftp"))
+    lthr = as_float(sport.get("lthr"))
     model = sport.get("mmp_model") if isinstance(sport.get("mmp_model"), dict) else {}
     return {
         "ftp": ftp,
-        "indoor_ftp": _num(sport.get("indoor_ftp")),
-        "eftp": _num(model.get("ftp")) if model else None,
-        "w_prime": _num(sport.get("w_prime")),
-        "p_max": _num(sport.get("p_max")),
+        "indoor_ftp": as_float(sport.get("indoor_ftp")),
+        "eftp": as_float(model.get("ftp")) if model else None,
+        "w_prime": as_float(sport.get("w_prime")),
+        "p_max": as_float(sport.get("p_max")),
         "lthr": _int(lthr),
         "max_hr": _int(sport.get("max_hr")),
         "resting_hr": _int(athlete.get("icu_resting_hr")),
-        "weight_kg": _num(athlete.get("icu_weight")) or _num(athlete.get("weight")),
+        "weight_kg": as_float(athlete.get("icu_weight")) or as_float(athlete.get("weight")),
         "power_zones": power_zone_model(
             ftp, sport.get("power_zones"), sport.get("power_zone_names")
         ),
@@ -357,27 +347,27 @@ def wellness_row(raw: JsonDict) -> tuple[dt.date, JsonDict]:
     """``(date_local, wellness_daily columns)`` from an icu ``Wellness`` object (``id`` = date)."""
     date_local = dt.date.fromisoformat(str(raw["id"])[:10])
     values: JsonDict = {
-        "ctl": _num(raw.get("ctl")),
-        "atl": _num(raw.get("atl")),
-        "ramp_rate": _num(raw.get("rampRate")),
-        "ctl_load": _num(raw.get("ctlLoad")),
-        "atl_load": _num(raw.get("atlLoad")),
-        "resting_hr": _num(raw.get("restingHR")),
-        "hrv": _num(raw.get("hrv")),
-        "hrv_sdnn": _num(raw.get("hrvSDNN")),
+        "ctl": as_float(raw.get("ctl")),
+        "atl": as_float(raw.get("atl")),
+        "ramp_rate": as_float(raw.get("rampRate")),
+        "ctl_load": as_float(raw.get("ctlLoad")),
+        "atl_load": as_float(raw.get("atlLoad")),
+        "resting_hr": as_float(raw.get("restingHR")),
+        "hrv": as_float(raw.get("hrv")),
+        "hrv_sdnn": as_float(raw.get("hrvSDNN")),
         "sleep_s": _int(raw.get("sleepSecs")),
-        "sleep_score": _num(raw.get("sleepScore")),
+        "sleep_score": as_float(raw.get("sleepScore")),
         "sleep_quality": _int(raw.get("sleepQuality")),
-        "avg_sleeping_hr": _num(raw.get("avgSleepingHR")),
+        "avg_sleeping_hr": as_float(raw.get("avgSleepingHR")),
         "soreness": _int(raw.get("soreness")),
         "fatigue": _int(raw.get("fatigue")),
         "stress": _int(raw.get("stress")),
         "mood": _int(raw.get("mood")),
         "motivation": _int(raw.get("motivation")),
         "injury": _int(raw.get("injury")),
-        "readiness_icu": _num(raw.get("readiness")),
-        "weight_kg": _num(raw.get("weight")),
-        "vo2max": _num(raw.get("vo2max")),
+        "readiness_icu": as_float(raw.get("readiness")),
+        "weight_kg": as_float(raw.get("weight")),
+        "vo2max": as_float(raw.get("vo2max")),
         "steps": _int(raw.get("steps")),
         "comments": _str(raw.get("comments")),
         "raw_json": raw,
@@ -391,18 +381,18 @@ def wellness_row(raw: JsonDict) -> tuple[dt.date, JsonDict]:
 def power_curve_snapshot_values(curve: JsonDict, model: JsonDict | None) -> JsonDict:
     """``power_curve_snapshots`` columns from one ``DataCurve`` (+ optional ``PowerModel``)."""
     secs = [int(s) for s in curve.get("secs") or []]
-    watts = [_num(v) for v in curve.get("values") or []]
-    weight = _num(curve.get("weight"))
+    watts = [as_float(v) for v in curve.get("values") or []]
+    weight = as_float(curve.get("weight"))
     w_kg = [round(w / weight, 3) if (w is not None and weight) else None for w in watts]
     m = model or {}
     return {
         "durations_s": secs,
         "watts": watts,
         "w_kg": w_kg,
-        "cp": _num(m.get("criticalPower")),
-        "w_prime": _num(m.get("wPrime")),
-        "p_max": _num(m.get("pMax")),
-        "eftp_icu": _num(m.get("ftp")),
+        "cp": as_float(m.get("criticalPower")),
+        "w_prime": as_float(m.get("wPrime")),
+        "p_max": as_float(m.get("pMax")),
+        "eftp_icu": as_float(m.get("ftp")),
         "raw_json": {"curve": curve, "mmp_model": model},
     }
 
@@ -421,7 +411,7 @@ def event_row(raw: JsonDict) -> JsonDict:
         "description": _str(raw.get("description")),
         "type": _str(raw.get("type")),
         "external_id": _str(raw.get("external_id")),
-        "icu_training_load": _num(raw.get("icu_training_load")),
+        "icu_training_load": as_float(raw.get("icu_training_load")),
         "training_availability": _str(raw.get("training_availability")),
         "max_training_time": _int(raw.get("max_training_time")),
         "raw_json": raw,
