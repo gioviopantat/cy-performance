@@ -35,7 +35,7 @@ from cyp.core.ids import external_id
 from cyp.core.timeutil import iso_utc, now_utc
 from cyp.dataset import CACHE, Dataset, PlannedRow
 from cyp.planning import adapt
-from cyp.planning.guardrails import GuardrailInputs, Repair, Violation, enforce
+from cyp.planning.guardrails import RULE_ZH, GuardrailInputs, Repair, Violation, enforce
 from cyp.planning.planner import DayPlan, PlanContext, Role, explain_day, plan_week
 from cyp.planning.season import SeasonSkeleton, SeasonWeek, build_skeleton, week_targets
 from cyp.planning.templates import Template, TemplateError, load_library, resolve
@@ -291,10 +291,31 @@ def _refresh_explanations(
     calendar, guardrails) would otherwise publish the old workout's reasons. Swap reasons are
     kept as day notes, so they appear in the new explanation.
     """
+
+    def name(tid: str | None) -> str:
+        """Template name without unresolved ``{param}`` parts (e.g. "恢復騎 {total_min} 分")."""
+        t = ctx.library.get(tid or "")
+        if t is None:
+            return "休息"
+        return t.name_zh.split("{")[0].strip() or t.name_zh
+
+    by_day: dict[dt.date, list[Repair]] = {}
     for r in run.repairs:
-        day = next((d for d in days if d.date == r.date), None)
-        if day is not None and r.explanation.headline_zh not in day.notes:
-            day.notes.append(r.explanation.headline_zh)
+        by_day.setdefault(r.date, []).append(r)
+    for date, reps in by_day.items():
+        day = next((d for d in days if d.date == date), None)
+        if day is None:
+            continue
+        # One plain-language line per day: first "before" -> final "after", last rule's numbers.
+        last = reps[-1]
+        rule = RULE_ZH.get(last.violation.rule, last.violation.rule)
+        note = (
+            f"為了守住「{rule}」：{name(reps[0].before)} → "
+            f"{day.workout.name_zh if day.workout is not None else '休息'}"
+            f"（{last.violation.detail_zh}）"
+        )
+        if note not in day.notes:
+            day.notes.append(note)
     for day in days:
         week = sk.week_of(day.date)
         targets = run.week_targets.get(week.start) if week is not None else None

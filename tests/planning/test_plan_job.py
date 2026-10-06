@@ -144,3 +144,19 @@ def test_cli_plan_dry_run_and_guards(data_dir: Path, db_url: str, athlete_yaml: 
     assert no_confirm.exit_code == 2 and "--confirm-write" in no_confirm.output
     no_key = runner.invoke(app, ["plan", "--date", "2026-10-06", "--publish", *cfg_opt], env=env)
     assert no_key.exit_code == 2 and "INTERVALS_API_KEY" in no_key.output
+
+
+def test_guardrail_rules_have_plain_chinese_names() -> None:
+    from cyp.planning.guardrails import RULE_ZH
+
+    expected = {
+        "tsb_floor",
+        "ramp_rate",
+        "hit_spacing",
+        "hit_per_week",
+        "weekly_tss_vs_mean",
+        "rest_days",
+        "single_ride",
+    }
+    assert set(RULE_ZH) == expected
+    assert all("_" not in label for label in RULE_ZH.values())

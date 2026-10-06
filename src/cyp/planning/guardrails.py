@@ -257,6 +257,18 @@ def enforce(
     return repairs, check(days, gi)
 
 
+#: Plain zh-TW name of each rule, for explanations shown to the athlete.
+RULE_ZH: dict[str, str] = {
+    "tsb_floor": "疲勞不可壓得太深（TSB 下限）",
+    "ramp_rate": "體能（CTL）不可漲太快",
+    "hit_spacing": "高強度之間至少隔 48 小時",
+    "hit_per_week": "每週高強度次數上限",
+    "weekly_tss_vs_mean": "單週負荷不可比近 4 週平均多 15 % 以上",
+    "rest_days": "每週至少要有休息日",
+    "single_ride": "單趟不可超過可騎時間或近期最長騎乘太多",
+}
+
+
 def _target_for(v: Violation, days: list[DayPlan], mutable_from: dt.date) -> DayPlan | None:
     mutable = [d for d in days if d.date >= mutable_from and d.workout is not None]
     if v.rule in ("hit_spacing", "hit_per_week", "single_ride"):
