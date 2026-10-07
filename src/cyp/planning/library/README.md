@@ -7,7 +7,7 @@ chooses parameter values inside the declared ranges from the block's progression
 `workout_templates` table at startup (docs/03). Edits to a template must bump `version`.
 
 The library is tuned for the current `ftp_target` season (docs/05 §2.4): FTP 250 W → 300 W in
-26 weeks, 70 kg, ≤ 15 h/wk, outdoor-first, no race. Every template therefore carries an
+26 weeks, ≤ 15 h/wk, outdoor-first, no race. Every template therefore carries an
 `outdoor_rendering` block and (where it makes physiological sense) an `hr_fallback` for rides
 without a power meter.
 

@@ -33,7 +33,7 @@ from cyp.store.repo.activities import ActivityRepo
 from cyp.store.repo.athlete_settings import AthleteSettingsRepo
 from cyp.store.streams import StreamStore
 
-WEIGHT_KG = 64.0
+WEIGHT_KG = 70.0
 HOME = (25.0330, 121.5654)
 CLIMB_START = (25.1000, 121.5300)
 K42, K7 = 1 - math.exp(-1 / 42), 1 - math.exp(-1 / 7)

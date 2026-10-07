@@ -1,8 +1,8 @@
 {
  "id": "i123456",
  "name": "Test Rider",
- "firstname": "Roger",
- "lastname": "C",
+ "firstname": "Test",
+ "lastname": "Rider",
  "profile_medium": "https://intervals.icu/athlete/i123456/profile.jpg",
  "measurement_preference": "meters",
  "weight": 64.0,

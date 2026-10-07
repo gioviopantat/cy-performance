@@ -10,6 +10,7 @@ Each milestone is independently useful and ends with the pipeline still running 
 | **M3 Publish spike** (2 d) | Hand-written 3-event plan → `events/bulk` upsert on `external_id`, read-back `icu_training_load`, bulk-delete, verify Garmin push appears on the Edge 850. Confirm whether `upsert=true` works with API-key auth or needs `uid` | Idempotent re-run produces zero diff; events visible on device |
 | **M4 Planner v1** (2 wk) | `config/athlete.yaml`, goals from icu calendar, season/blocks/weeks, ~25 YAML templates + renderer, daily replan loop, guardrails, `plan --dry-run` diff, simulation harness, replay against 2026 history | 16-wk synthetic season passes assertions; dry-run diff reviewed for 1 real week; then `CYP_PLAN_MODE=apply` |
 | **M5 Adaptive + Explain** (ongoing) | Weekly review automation (FTP proposals, block adjustments), limiter-driven template bias, HR-fallback workouts; **explainability layer** per [07](07-explainability.md): zh-TW glossary of every model, daily/weekly reports that explain each verdict and workout, icu description footer + NOTE, `cyp explain`, LLM narrator (opt-in) | 4 weeks of unattended plans with compliance ≥ 80 % and no `needs_review` |
+| **M4.5 Profiles + autopilot** (ADR-0006/0007) | P0 AI-native base: `CLAUDE.md`, `poe check` gate (mypy in CI), runbooks, skills. P1 profiles: `--profile`/`CYP_PROFILE`, `ProfileStore`, `profile add/adopt/promote`, icu write guard. P2 `cyp run [--all]` (sync → analyze → plan → publish → report, one subprocess per profile). P3 `cyp schedule install` (launchd 05:30) + failure notice | Two profiles plan and publish unattended for 7 days; the second athlete installed nothing |
 | **M6 Service** (optional) | `cyp serve` FastAPI + APScheduler, Strava webhooks, container + Litestream, read-only JSON API for a future UI | Same daily output from a VPS; webhook → analysis within 5 min of ride upload |
 
 ## Decisions taken (2026-10-02)
@@ -20,6 +21,6 @@ Each milestone is independently useful and ends with the pipeline still running 
 3. Strength/yoga stay load-only.
 
 ## Explicitly deferred
-Frontend, multi-athlete, nutrition/fuelling planning (icu `carbs_per_hour` exists; later),
+Frontend, multi-tenant DB / sign-up (ADR-0006 L4; profiles cover a few athletes on one host), nutrition/fuelling planning (icu `carbs_per_hour` exists; later),
 run/swim planning, automatic FTP changes, route/weather-aware scheduling (icu has
 `weather-forecast`; nice M5+ add-on for outdoor vs indoor choice).

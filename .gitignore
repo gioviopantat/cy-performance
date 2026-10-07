@@ -223,3 +223,7 @@ data/
 
 # agent worktrees
 .claude/worktrees/
+
+# personal data: never in the public repo (ADR-0006 §8)
+profiles/
+config/athlete.yaml

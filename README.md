@@ -14,9 +14,10 @@ project, `cyp` CLI, settings, structlog, SQLite + Alembic schema, Parquet stream
 `job_runs`, `cyp doctor`, CI; intervals.icu + Strava clients and sync jobs, the Strava ↔ icu
 matcher, and the unified `cyp sync` / `cyp backfill` orchestration. **M2 Analysis** done (per-ride
 metrics, PMC replay vs icu, CP/W′, FTP proposals, durability, TID, repeat climbs, limiters,
-readiness v1, daily/weekly zh-TW reports). **M3 Publish** code done; the live `events/bulk`
-upsert spike still has to be run once on a machine that can reach intervals.icu. **M4 Planner**
-v1 done (season skeleton, week planning, guardrails, daily adaptation) in `propose` mode.
+readiness v1, daily/weekly zh-TW reports). **M3 Publish** done (live `events/bulk` upsert
+spike 2026-10-03, first real plan applied 2026-10-06). **M4 Planner** v1 done (season skeleton,
+week planning, guardrails, daily adaptation). Next: **M4.5 profiles + autopilot**
+([ADR-0006](docs/adr/0006-profiles-and-tenancy.md), [ADR-0007](docs/adr/0007-ai-native-development.md)).
 
 | Doc | What it covers |
 |-----|----------------|

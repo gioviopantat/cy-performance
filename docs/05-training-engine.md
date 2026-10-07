@@ -7,7 +7,7 @@ simulatable, and bounded by guardrails ([ADR-0004](adr/0004-deterministic-planne
 ## 1. Inputs
 | Input | Source |
 |-------|--------|
-| `AthleteProfile`: FTP (250 W today), weight (70 kg → 3.9 W/kg), LTHR, max HR, zones, CP/W′/Pmax, eFTP | icu sport settings + `power_curve_snapshots` + `athlete_settings_history` |
+| `AthleteProfile`: FTP, weight (→ W/kg), LTHR, max HR, zones, CP/W′/Pmax, eFTP | icu sport settings + `power_curve_snapshots` + `athlete_settings_history` |
 | `FitnessState`: CTL/ATL/TSB, ramp rate, ACWR, monotony | icu wellness + `fitness_daily` |
 | `Readiness` for today | `readiness_daily` |
 | Goals: `RACE_A/B/C`, targets (e.g. FTP 280, 4.4 W/kg, climb X under Y min) | icu calendar + `goals` |

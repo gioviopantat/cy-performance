@@ -15,7 +15,8 @@
 ## 2. Non-goals (v1)
 
 - No web UI. The CLI, log files, and the intervals.icu calendar itself are the UI.
-- No multi-athlete / coach mode. One athlete, one API key, one Strava OAuth token.
+- No multi-tenant service / coach mode. A few athletes on one host run as isolated profiles
+  ([ADR-0006](adr/0006-profiles-and-tenancy.md)); a shared DB with sign-up is deferred.
 - No run/swim planning. Other sports are ingested only as **load** (so the PMC is correct).
 - No device sync. intervals.icu already pushes workouts to Garmin/Zwift/Rouvy.
 
@@ -189,10 +190,10 @@ the athlete's intent, not secrets.
 - Replay: run the planner against the athlete's real 2026 history and inspect the plan it
   *would* have produced each week (regression snapshot).
 
-## 10. Athlete answers (2026-10-02)
+## 10. Reference athlete answers (2026-10-02, example values)
 
-1. Garmin Edge 850 **is** linked directly to intervals.icu → icu is the stream source.
-2. No race. Goal: **FTP ≥ 300 W within 6 months** (icu FTP 265 W on 2026-10-02, Strava still 250; 70 kg → 4.7 W/kg). Season type
+1. The head unit **is** linked directly to intervals.icu → icu is the stream source.
+2. No race. Goal: **FTP ≥ 300 W within 6 months** (icu and Strava FTP can disagree; icu is canonical). Season type
    `ftp_target`, target date 2027-04-02. See [05 §2.4](05-training-engine.md).
 3. **≤ 15 h / week**, outdoor strongly preferred; indoor only as weather fallback and for tests.
 4. Strength and yoga are **not** planned; they are ingested as load only.

@@ -89,9 +89,9 @@ trusted up to a date: `{until, power_meter_serial (null = every meter), reason_z
   them from the same files), and icu's eFTP is not used while its lookback contains flagged
   rides.
 
-Current entry: the 4iiii on bike A read ≈20 % high until 2026-08-05 (same 爬坡 A climb at
-the same HR: 301–351 W before, 231–286 W after; Favero vs 4iiii W/bpm in July 1.68 vs 2.07,
-equal in September).
+Example: a crank meter reads ≈20 % high until a fix date (the same climb at the same HR gives
+~15 % more watts before than after, and its W/bpm is ~20 % above a second meter's in the same
+month, equal afterwards). Real entries live in the athlete's private `athlete.yaml`.
 
 ### Evidence for downward FTP judgements
 
