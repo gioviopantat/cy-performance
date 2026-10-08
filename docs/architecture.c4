@@ -1,0 +1,145 @@
+// cy-performance: container-level architecture (LikeC4).
+// Backed by: README.md, CLAUDE.md, pyproject.toml, .env.example, src/cyp/cli/*, src/cyp/api/*,
+// src/cyp/services/{autopilot,publish,ride_log,ride_feedback,strava_write}.py, src/cyp/jobs/{runner,launchd,notify}.py,
+// src/cyp/profiles.py, src/cyp/settings.py, src/cyp/store/{db,streams}.py,
+// src/cyp/ingest/{intervals,strava}/client.py, docs/adr/0003, 0005, 0006, 0008.
+// Not drawn: Strava webhooks (src/cyp/ingest/strava/webhook.py, not wired until M6) and the
+// LLM narrator (src/cyp/llm/ is empty; ANTHROPIC_API_KEY is configured but never called).
+
+specification {
+  element actor {
+    style {
+      shape person
+    }
+  }
+  element system
+  element container
+  element store {
+    style {
+      shape storage
+    }
+  }
+  element extsys {
+    style {
+      color muted
+    }
+  }
+  tag optional
+}
+
+model {
+  owner = actor 'Owner' {
+    description 'Runs the Mac, onboards athletes (docs/onboarding-questions.md), promotes profiles to apply mode, reviews plans'
+  }
+  athlete = actor 'Athlete' {
+    description 'Any profile, e.g. a family member; installs nothing, sees workouts in intervals.icu and on the head unit'
+  }
+
+  cyp = system 'cy-performance' {
+    description 'Ride analysis and adaptive training plans written to intervals.icu, one isolated profile per athlete'
+
+    launchd = container 'launchd agent' {
+      technology 'macOS LaunchAgent com.cy-performance.autopilot'
+      description 'Daily 05:30 (catches up on wake): python -m cyp.cli run --all (jobs/launchd.py)'
+    }
+    cli = container 'cyp CLI' {
+      technology 'Python 3.12, typer'
+      description 'profile, run, plan, sync, analyze, report, doctor, schedule; global --profile (src/cyp/cli)'
+    }
+    runner = container 'Autopilot run' {
+      technology 'Python subprocess per profile + flock'
+      description 'lock -> migrate -> sync -> analyze -> reports -> plan -> publish -> notify on failure; each stage behind a feature flag (jobs/runner.py, services/autopilot.py)'
+    }
+    api = container 'HTTP API' {
+      technology 'FastAPI + uvicorn (cyp serve)'
+      description 'JSON reads, what-ifs, plan preview/commit, jobs, profiles (X-CYP-Profile), autopilot runs, RIDE.LOG; localhost by default (src/cyp/api)'
+    }
+    web = container 'Web dashboard' {
+      technology 'Vite + React + TypeScript (web/), served by cyp serve'
+      description 'Today / plan / rides / runs per profile; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write (docs/specs/web-ui.md)'
+    }
+    profileFiles = store 'Profile workspace' {
+      technology 'profiles/<slug>/: .env, athlete.yaml, profile.yaml'
+      description 'Per-athlete secrets, intent, feature flags and write-guard identity; git-ignored (profiles.py, ADR-0006)'
+    }
+    db = store 'Profile database' {
+      technology 'SQLite + SQLAlchemy/Alembic'
+      description 'Activities, metrics, wellness, plans, publish_log, job_runs, sync cursors; one file per profile (store/)'
+    }
+    streams = store 'Stream store' {
+      technology 'Parquet per activity'
+      description 'Per-second ride streams under data/streams (store/streams.py)'
+    }
+    reports = store 'Reports and logs' {
+      technology 'Markdown + JSON, structlog JSON lines'
+      description 'data/reports/{daily,weekly,autopilot}, data/logs/cyp.jsonl per profile'
+    }
+    rideFiles = store 'Ride notes' {
+      technology 'Text + JSON files per ride'
+      description 'Edited RIDE.LOG texts (data/ride_logs/<id>.txt, previous version .prev.txt) and post-ride RPE / feel (data/ride_feedback/<id>.json) per profile (services/ride_log.py, services/ride_feedback.py)'
+    }
+  }
+
+  icu = extsys 'intervals.icu' {
+    technology 'REST v1, API key per athlete'
+    description 'Canonical load ledger, activity streams, wellness, sport settings and the training calendar (ADR-0003)'
+  }
+  strava = extsys 'Strava' {
+    #optional
+    technology 'REST v3, OAuth2'
+    description 'Segments/PRs and fallback streams; optional per profile (feature sync.strava)'
+  }
+  garmin = extsys 'Garmin Connect / head unit' {
+    description 'Receives planned workouts pushed by intervals.icu; uploads rides to intervals.icu'
+  }
+  macNotify = extsys 'macOS Notification Center' {
+    #optional
+    technology 'osascript'
+    description 'Failure notice when feature notify.macos is on (jobs/notify.py)'
+  }
+
+  // who calls what
+  owner -> cyp.cli 'runs commands, onboards and promotes profiles'
+  owner -> cyp.web 'views today, plan, rides; runs the autopilot with buttons'
+  cyp.web -> cyp.api 'GET/POST /v1 with X-CYP-Profile'
+  cyp.api -> cyp.runner 'POST /v1/autopilot (dry run, or confirmed write)'
+  cyp.api -> cyp.profileFiles 'lists profiles, reads flags'
+  cyp.launchd -> cyp.cli 'starts run --all daily'
+  cyp.cli -> cyp.runner 'run [--all] [--no-write]: one subprocess per profile'
+  cyp.cli -> cyp.profileFiles 'profile add/adopt/promote; reads settings and flags'
+  cyp.cli -> cyp.db 'reads, migrates, plans'
+  cyp.runner -> cyp.profileFiles 'loads .env, athlete.yaml, flags, icu_athlete_id'
+  cyp.runner -> cyp.db 'stores synced data, plans, publish_log, job_runs'
+  cyp.runner -> cyp.streams 'writes and reads ride streams'
+  cyp.runner -> cyp.reports 'writes daily/weekly reports and logs'
+  cyp.runner -> icu 'checks key owner, syncs activities/wellness; diffs and upserts our events (write guard, apply mode only)'
+  cyp.runner -> strava 'syncs efforts and fallback streams'
+  cyp.runner -> macNotify 'failure notice'
+  cyp.api -> cyp.db 'reads and commits plans'
+  cyp.api -> cyp.reports 'serves reports'
+  cyp.api -> cyp.rideFiles 'saves RIDE.LOG texts and post-ride feelings'
+  cyp.api -> icu 'POST /v1/jobs/sync: background sync for the selected profile'
+  cyp.runner -> cyp.rideFiles 'reads post-ride feelings for readiness (flag readiness.ride_feel)'
+  cyp.cli -> cyp.rideFiles 'ride-log show/save/push'
+  cyp.cli -> icu 'sync, plan --apply --confirm-write, publish spike'
+  cyp.cli -> strava 'auth strava (OAuth callback on :8721), sync strava, ride-log push (description, flag-gated)'
+  cyp.api -> strava 'writes a ride description after confirmation (flag strava.write_description)'
+  icu -> garmin 'pushes planned workouts'
+  garmin -> icu 'uploads rides'
+  athlete -> garmin 'rides the planned workouts'
+  athlete -> icu 'views the plan and reports'
+}
+
+views {
+  view index {
+    title 'cy-performance: context'
+    include owner, athlete, cyp, icu, strava, garmin, macNotify
+  }
+
+  view containers of cyp {
+    title 'cy-performance: containers'
+    include *
+    include cyp.*
+    include owner, athlete, icu, strava, garmin, macNotify
+  }
+}

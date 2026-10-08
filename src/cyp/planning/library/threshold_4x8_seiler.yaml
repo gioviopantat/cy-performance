@@ -1,0 +1,41 @@
+id: threshold_4x8_seiler
+version: 1
+name: "Seiler 4x8 @ {pct}%"
+name_zh: "Seiler 4x8 分 @ {pct}%"
+purpose_zh: "四段 8 分鐘略高於閾值的努力，研究中效益最高的長間歇。"
+intent: threshold
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 98, max: 108, default: 102}
+  rest_min: 2
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 75}
+  - repeat: 4
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 8m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 12m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Each 8 min on a steady climb (the planner names one) or an uninterrupted flat; the 2 min rest is a soft-pedal."
+  note_zh: "每段 8 分鐘放在穩定的坡（系統會建議一條）或沒有路口的平路；2 分鐘休息輕踩。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "以約 90 % 最大心率（約 98–103 % LTHR）為目標，前 2 分鐘心率還沒上來時以 RPE 8/10 控制。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 80}
+    - repeat: 4
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 8m, lo: 98, hi: 103, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 12m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "Seiler 等人 2013 年讓受訓自行車手分別做 4×4、4×8、4×16 分鐘間歇：4×8（約 90 % 最大心率、略高於 FTP）的進步最大，投入時間的報酬最好。這堂課是閾值的主力之一。"

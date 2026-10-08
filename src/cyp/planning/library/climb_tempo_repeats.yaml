@@ -1,0 +1,43 @@
+id: climb_tempo_repeats
+version: 1
+name: "Climb Tempo Repeats {reps}x{climb_min}"
+name_zh: "爬坡 Tempo 重複 {reps}x{climb_min} 分"
+purpose_zh: "在熟悉的坡上用 Tempo 強度重複爬，練爬坡耐力與配速。"
+intent: tempo
+phases: [base, build]
+slot_roles: [hit]
+requires_power: false
+indoor_ok: false
+outdoor_ok: true
+params:
+  reps: {min: 2, max: 4, default: 3, step: 1}
+  climb_min: {min: 8, max: 20, default: 12, step: 2}
+  pct: {min: 78, max: 88, default: 82}
+  descent_min: {min: 5, max: 10, default: 8, step: 1}
+progression: [climb_min, reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 70}
+  - repeat: "{reps}"
+    cue: Climb Repeats
+    steps:
+      - {kind: work, duration: "{climb_min}m", lo: "{pct}", hi: "{pct}+5", cadence: "75-90rpm"}
+      - {kind: freeride, duration: "{descent_min}m", tss_assume: 40}
+  - {cue: Cooldown, kind: steady, duration: 12m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Outdoor only: the planner names one of your climbs that holds {climb_min} min. Same pace on every repeat; descents are freeride."
+  note_zh: "僅戶外：系統會從你常騎的坡選一條約 {climb_min} 分鐘的。每趟同樣配速，下坡自由騎。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "爬坡心率 84–92 % LTHR，能講短句的強度；每趟坡道時間可以當作進步指標。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 78}
+    - repeat: "{reps}"
+      cue: Climb Repeats
+      steps:
+        - {kind: work, duration: "{climb_min}m", lo: 84, hi: 92, cadence: "75-90rpm"}
+        - {kind: freeride, duration: "{descent_min}m", tss_assume: 40}
+    - {cue: Cooldown, kind: steady, duration: 12m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "在真實的坡上做 Tempo，同時練到爬坡的肌耐力與配速；同一條坡每週重複，坡道時間就是最直觀的進步證據。適合耐力型目標與喜歡戶外的選手。"

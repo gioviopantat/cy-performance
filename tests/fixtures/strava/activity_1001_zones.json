@@ -1,0 +1,4 @@
+[{"type": "heartrate", "sensor_based": true, "custom_zones": false, "points": 42,
+  "distribution_buckets": [{"min": 0, "max": 120, "time": 600}, {"min": 121, "max": 150, "time": 1800}, {"min": 151, "max": 170, "time": 900}, {"min": 171, "max": 185, "time": 300}, {"min": 186, "max": -1, "time": 0}]},
+ {"type": "power", "sensor_based": true, "custom_zones": false,
+  "distribution_buckets": [{"min": 0, "max": 137, "time": 1200}, {"min": 138, "max": 187, "time": 1200}, {"min": 188, "max": 225, "time": 600}, {"min": 226, "max": 262, "time": 400}, {"min": 263, "max": 300, "time": 150}, {"min": 301, "max": 375, "time": 40}, {"min": 376, "max": -1, "time": 10}]}]

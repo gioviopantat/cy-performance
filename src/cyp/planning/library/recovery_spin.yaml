@@ -1,0 +1,27 @@
+id: recovery_spin
+version: 1
+name: "Recovery Spin {total_min} min"
+name_zh: "恢復騎 {total_min} 分"
+purpose_zh: "促進血流、放鬆雙腿，不累積任何訓練壓力。"
+intent: recovery
+phases: [base, build, threshold, test]
+slot_roles: [recovery]
+requires_power: false
+indoor_ok: true
+outdoor_ok: true
+params:
+  total_min: {min: 30, max: 60, default: 45, step: 15}
+steps:
+  - {cue: Easy Spin, kind: steady, duration: "{total_min}m", lo: 45, hi: 55, cadence: "90-100rpm"}
+outdoor_rendering:
+  note: "Flat route only, no climbs; stay under 55 % even on short rises. If the route forces harder efforts, ride indoors."
+  note_zh: "只走平路、避開爬坡；短上坡也不要超過 55 %。路線做不到就改在室內。"
+  widen_pct: 5
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "心率低於 68 % LTHR，能輕鬆講話的強度。"
+  steps:
+    - {cue: Easy Spin, kind: steady, duration: "{total_min}m", lo: 55, hi: 68, cadence: "90-100rpm"}
+tss_model: closed_form
+explain_zh: "恢復騎的目的是在不增加疲勞的前提下促進恢復，所以強度壓在 55 % FTP 以下。它出現在每個階段的恢復日與長騎隔天，用來填補休息日又不讓身體完全停擺。"

@@ -1,0 +1,32 @@
+id: endurance_fast_finish_150
+version: 1
+name: "Endurance 150 min, Fast Finish"
+name_zh: "有氧 150 分 + 後段加速 15 分"
+purpose_zh: "Z2 長騎的最後 15 分鐘提到 Tempo 上緣，練疲勞下的輸出。"
+intent: endurance
+phases: [base, build, threshold]
+slot_roles: [long_ride]
+requires_power: false
+indoor_ok: false
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 110m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Fast Finish, kind: work, duration: 15m, lo: 82, hi: 88, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Plan the route so the last 15 min hard is on a steady road home, not in traffic."
+  note_zh: "路線安排讓最後 15 分鐘落在回家的穩定路段，避開車多的地方。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 心率 69–83 % LTHR，後段 88–94 % LTHR。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 110m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Fast Finish, kind: work, duration: 15m, lo: 88, hi: 94, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "後段加速是耐久力的直接訓練：在已經累積 2 小時的疲勞下維持 Tempo 上緣，模擬長距離騎乘的最後一段；弱項是耐久力的選手特別受用。"

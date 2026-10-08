@@ -1,0 +1,30 @@
+id: z2_endurance_60
+version: 1
+name: "Endurance Z2 60 min"
+name_zh: "Z2 有氧耐力 60 分"
+purpose_zh: "短時間 Z2 有氧騎乘，填補平日的基礎訓練量。"
+intent: endurance
+phases: [base, build, threshold]
+slot_roles: [endurance]
+requires_power: false
+indoor_ok: true
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 8m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 47m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 5m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Steady Z2 means holding 62-75 % on flats and keeping climbs under 80 %; soft-pedal descents. Avoid surges at traffic lights."
+  note_zh: "平路維持 62–75 %，爬坡不要超過 80 %，下坡輕踩；紅燈起步不要衝。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 心率 69–83 % LTHR；前 20 分鐘心率偏低屬正常，不要為了追心率加壓。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 8m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 47m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 5m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "Z2 是粒線體密度與脂肪氧化能力的主要刺激，也是把 CTL 推向 15 小時上限最便宜的方式。60 分版本用在平日時間有限、或高強度日前後需要低壓力訓練量的日子。"

@@ -1,0 +1,30 @@
+id: z2_endurance_180
+version: 1
+name: "Endurance Z2 180 min"
+name_zh: "Z2 有氧耐力 180 分"
+purpose_zh: "三小時純 Z2 長騎，建立耐久力與脂肪氧化能力。"
+intent: endurance
+phases: [base, build, threshold]
+slot_roles: [long_ride]
+requires_power: false
+indoor_ok: false
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 150m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 15m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Outdoor only. Hold 62-75 % on flats, climbs under 80 %, soft-pedal descents. 60 g carbs/h, 500-750 ml fluid/h in Taipei heat."
+  note_zh: "僅戶外。平路 62–75 %，爬坡不超過 80 %，下坡輕踩；每小時 60 g 碳水、台北高溫下每小時 500–750 ml 水分。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 心率 69–83 % LTHR。第三小時心率漂升是預期內的，超過 85 % 就把功率再降一格。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 150m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 15m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "三小時 Z2 是基礎期週末長騎的基本款，累積約 2 000 kJ 的功，直接訓練「長時間後仍能維持輸出」的耐久力。它屬於基礎期的核心，在建構期與閾值期則維持每週一次以保住有氧基礎。"

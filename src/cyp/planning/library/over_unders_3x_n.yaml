@@ -1,0 +1,59 @@
+id: over_unders_3x_n
+version: 1
+name: "Over-Unders 3x{cycles}x(2/1)"
+name_zh: "Over-Under 3 組 x{cycles} 循環（2 分/1 分）"
+purpose_zh: "在閾值上下交替，訓練乳酸清除與超過閾值後回穩的能力。"
+intent: threshold
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  cycles: {min: 3, max: 5, default: 3, step: 1}
+  under_pct: {min: 92, max: 97, default: 93}
+  over_pct: {min: 103, max: 110, default: 105}
+  set_rest_min: 5
+progression: [cycles, over_pct, under_pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 92}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: "{cycles}"
+    cue: Set 1
+    steps:
+      - {kind: work, duration: 2m, lo: "{under_pct}", hi: "{under_pct}+3", cadence: "85-95rpm"}
+      - {kind: work, duration: 1m, lo: "{over_pct}", hi: "{over_pct}+5", cadence: "90-100rpm"}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{cycles}"
+    cue: Set 2
+    steps:
+      - {kind: work, duration: 2m, lo: "{under_pct}", hi: "{under_pct}+3", cadence: "85-95rpm"}
+      - {kind: work, duration: 1m, lo: "{over_pct}", hi: "{over_pct}+5", cadence: "90-100rpm"}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{cycles}"
+    cue: Set 3
+    steps:
+      - {kind: work, duration: 2m, lo: "{under_pct}", hi: "{under_pct}+3", cadence: "85-95rpm"}
+      - {kind: work, duration: 1m, lo: "{over_pct}", hi: "{over_pct}+5", cadence: "90-100rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Each set is 9-15 min continuous; use one steady climb per set and make the 'over' minute by shifting one gear harder, not by standing up. Recover on the descent. Indoors (ERG) is preferred for the first two sessions of a block."
+  note_zh: "每組 9–15 分鐘連續；一組用一段穩定的坡，Over 那一分鐘靠加重一檔而不是站起來。組間休息用下坡。每個區塊的前兩次建議在室內 ERG 做，先學會節奏。"
+  widen_pct: 2
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "心率無法跟上 1 分鐘的切換，所以 HR 版本把整組當作連續閾值（97–103 % LTHR），Over 段用 RPE 8–9/10 自行加壓。這只是替代方案，有功率計時不要用。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 80}
+    - {kind: steady, duration: 3m, lo: 88, hi: 94}
+    - {kind: steady, duration: 3m, lo: 60, hi: 70}
+    - {cue: Set 1, kind: work, duration: "{cycles}*3m", lo: 97, hi: 103, cadence: "85-100rpm"}
+    - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 60, hi: 70}
+    - {cue: Set 2, kind: work, duration: "{cycles}*3m", lo: 97, hi: 103, cadence: "85-100rpm"}
+    - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 60, hi: 70}
+    - {cue: Set 3, kind: work, duration: "{cycles}*3m", lo: 97, hi: 103, cadence: "85-100rpm"}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "Over-Under 讓身體在 105 % FTP 製造乳酸、再回到 93 % 把它清掉，訓練的是閾值上緣的代謝彈性，這對把 FTP 從 280 推到 300 的最後階段特別重要。依季節計畫它從建構期第 13 週（第二個 3:1 區塊）加入，循環數 3 → 4 → 5 逐週增加。"

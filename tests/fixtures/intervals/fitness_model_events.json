@@ -1,0 +1,22 @@
+[
+ {
+  "id": 80001,
+  "athlete_id": "i123456",
+  "category": "SET_EFTP",
+  "start_date_local": "2026-07-01T00:00:00",
+  "name": "eFTP 250",
+  "icu_ftp": 250,
+  "w_prime": 20000,
+  "p_max": 1050,
+  "type": "Ride"
+ },
+ {
+  "id": 80002,
+  "athlete_id": "i123456",
+  "category": "FITNESS_DAYS",
+  "start_date_local": "2025-01-10T00:00:00",
+  "name": "Fitness 42 / Fatigue 7",
+  "ctl_days": 42,
+  "atl_days": 7
+ }
+]

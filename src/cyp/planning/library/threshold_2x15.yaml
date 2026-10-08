@@ -1,0 +1,45 @@
+id: threshold_2x15
+version: 1
+name: "Threshold 2x15"
+name_zh: "閾值 2x15 分"
+purpose_zh: "兩段 15 分鐘閾值，疲勞週或時間受限時的閾值課。"
+intent: threshold
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 95, max: 100, default: 96}
+  rest_min: {min: 5, max: 8, default: 6, step: 1}
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: 2
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 15m, lo: "{pct}", hi: "{pct}+5", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "15 min reps on a 5-7 km climb or flat; rest = descent."
+  note_zh: "15 分鐘一趟放在 5–7 km 的坡或平路；休息用下坡。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "閾值心率 97–103 % LTHR，前 3 分鐘以 RPE 8/10 控制。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 80}
+    - {kind: steady, duration: 3m, lo: 88, hi: 94}
+    - {kind: steady, duration: 3m, lo: 60, hi: 70}
+    - repeat: 2
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 15m, lo: 97, hi: 103, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "2×15 提供 30 分鐘閾值工作、TSS 約 65，是閾值課裡最「輕」的一個，適合週二/四 120 分的時段，或當 readiness 偏低、原本的 2×20 被縮短時使用。它讓進程在不完全中斷的情況下維持閾值刺激。"

@@ -1,0 +1,45 @@
+id: tempo_with_surges
+version: 1
+name: "Tempo 3x12 with Surges"
+name_zh: "Tempo 3x12 分 + 加速"
+purpose_zh: "Tempo 中每 2 分鐘插入 10 秒加速，模擬團騎與起伏路的變速。"
+intent: tempo
+phases: [base, build]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 76, max: 86, default: 80}
+  rest_min: 4
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 70}
+  - repeat: 6
+    cue: Block 1
+    steps:
+      - {kind: work, duration: 110s, lo: "{pct}", hi: "{pct}+5", cadence: "85-95rpm"}
+      - {kind: work, duration: 10s, lo: 130, hi: 150, cadence: "100-110rpm"}
+  - {cue: Recover, kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - repeat: 6
+    cue: Block 2
+    steps:
+      - {kind: work, duration: 110s, lo: "{pct}", hi: "{pct}+5", cadence: "85-95rpm"}
+      - {kind: work, duration: 10s, lo: 130, hi: 150, cadence: "100-110rpm"}
+  - {cue: Recover, kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - repeat: 6
+    cue: Block 3
+    steps:
+      - {kind: work, duration: 110s, lo: "{pct}", hi: "{pct}+5", cadence: "85-95rpm"}
+      - {kind: work, duration: 10s, lo: 130, hi: 150, cadence: "100-110rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "A flat or rolling road; the surges are seated accelerations, then settle straight back into tempo."
+  note_zh: "平路或起伏路；加速時坐著踩快，結束後立刻回到 Tempo。"
+  widen_pct: 5
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "10 秒加速心率無法反映，不提供 HR 版本。"
+tss_model: closed_form
+explain_zh: "加速會讓 Tempo 的乳酸短暫上升，身體得在持續輸出中把它清掉，這正是起伏路與團騎需要的能力，也讓 Tempo 課不那麼單調。"

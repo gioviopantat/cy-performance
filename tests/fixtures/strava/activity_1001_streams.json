@@ -1,0 +1,11 @@
+{"time": {"data": [0, 1, 2, 4, 5], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "distance": {"data": [0.0, 8.0, 16.5, 33.0, 41.0], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "latlng": {"data": [[25.03, 121.56], [25.0301, 121.5601], [25.0302, 121.5602], [25.0304, 121.5604], [25.0305, 121.5605]], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "altitude": {"data": [10.0, 10.2, 10.4, 10.9, 11.0], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "velocity_smooth": {"data": [0.0, 8.0, 8.3, 8.2, 8.0], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "heartrate": {"data": [120, 122, 125, 130, 131], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "cadence": {"data": [0, 85, 88, 90, 90], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "watts": {"data": [0, 180, 200.0, 220, 215], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "temp": {"data": [28, 28, 28, 29, 29], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "moving": {"data": [false, true, true, true, true], "series_type": "distance", "original_size": 5, "resolution": "high"},
+ "grade_smooth": {"data": [0.0, 1.2, 1.5, 2.0, 1.8], "series_type": "distance", "original_size": 5, "resolution": "high"}}

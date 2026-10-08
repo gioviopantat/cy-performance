@@ -1,0 +1,93 @@
+{% from "_explain.md.j2" import explain %}
+# 每日報告 · {{ date.isoformat() }}（{{ date | weekday }}）
+{% if season_week %}
+賽季第 {{ season_week }} 週{% if goal %} · 目標 {{ goal.name }}（{{ goal.date.isoformat() }}，還有 {{ goal.weeks_left }} 週）{% endif %}
+
+{% endif %}
+FTP 設定 {{ ftp | num }} W{% if goal and goal.target_ftp %} · 距離目標 {{ goal.target_ftp | num }} W 還差 {{ goal.gap_w | num }} W{% if goal.next_checkpoint %} · 下一個檢查點：第 {{ goal.next_checkpoint.week }} 週 {{ goal.next_checkpoint.ftp | num }} W{% endif %}{% endif %}
+
+
+## 1. 今天的判斷
+{% if readiness %}
+**準備度 {{ readiness.score | num }} 分 → {{ readiness.recommendation | rec_zh }}**（狀態：{{ readiness.status | status_zh }}）
+
+{% if readiness.rule_hits %}
+> 硬規則命中：{% for r in readiness.rule_hits %}{{ r }}{% if not loop.last %}；{% endif %}{% endfor %}
+
+
+{% endif %}
+{% if readiness.components %}
+| 因素 | 相對你的基準 | 權重 |
+|------|-------------|------|
+{% for c in readiness.components %}
+| {{ c.name | component_zh }} | {{ c.z | signed("+.2f") }} | {{ c.share | pct }} |
+{% endfor %}
+
+{% endif %}
+{% if readiness.missing %}
+缺少的輸入（權重已重新分配）：{% for m in readiness.missing %}{{ m | component_zh }}{% if not loop.last %}、{% endif %}{% endfor %}
+
+
+{% endif %}
+{{ explain(readiness.explanation) }}
+{% else %}
+今天還沒有準備度結果（先跑 `cyp readiness` 或 `cyp analyze`）。
+{% endif %}
+
+## 2. 今天的課表
+{% if plan %}
+{% for p in plan %}
+- **{{ p.name }}**{% if p.target_tss %} · 目標 TSS {{ p.target_tss | num }}{% endif %}{% if p.duration_min %} · {{ p.duration_min }} 分鐘{% endif %}{% if p.indoor is not none %} · {{ "室內" if p.indoor else "室外" }}{% endif %}{% if p.source == "icu" %} · （icu 日曆上你自己排的）{% endif %}
+
+{% if readiness and readiness.recommendation in ("REST", "EASY") and p.intent not in (none, "recovery", "endurance") %}
+  - ⚠️ 準備度建議「{{ readiness.recommendation | rec_zh }}」，這堂課會在重排時降級或順延。
+{% endif %}
+{% if p.explanation %}
+{{ explain(p.explanation, "  ") }}
+{% endif %}
+{% endfor %}
+{% else %}
+尚無課表（排程器 M4 上線後會自動產生；目前依準備度建議：**{{ readiness.recommendation | rec_zh if readiness else "照你的計畫" }}**）。
+{% endif %}
+
+## 3. 昨天（{{ yesterday.isoformat() }}）的訓練
+{% if activities %}
+{% for a in activities %}
+### {{ a.name }}{% if a.is_ride and a.classification_zh %} · {{ a.classification_zh }}{% endif %}
+
+{% if a.is_ride %}
+- {{ a.moving_min }} 分鐘{% if a.distance_km %} · {{ a.distance_km }} km{% endif %}{% if a.elev_gain_m %} · 爬升 {{ a.elev_gain_m }} m{% endif %}{% if a.climbs %} · {{ a.climbs }} 段爬坡{% endif %}
+
+- NP {{ a.np_w | num }} W · IF {{ a.get("if") | num(".2f") }} · TSS {{ a.tss | num }}（{{ a.tss_source or "–" }}）· EF {{ a.ef | num(".2f") }} · 解耦 {{ a.decoupling_pct | num(".1f") }} % · HR lag {{ a.hr_lag_s | num }} 秒
+- 騎後狀態：{{ a.status | status_zh }} → 建議 {{ a.next | rec_zh }}
+{{ explain(a.explanation) }}
+{% else %}
+- {{ a.sport }} · {{ a.moving_min }} 分鐘 · 負荷 {{ a.load | num }}（計入 PMC）
+{% endif %}
+
+{% endfor %}
+{% else %}
+昨天沒有訓練紀錄（休息日）。
+{% endif %}
+
+## 4. 體能與負荷（截至昨天）
+{% if fitness %}
+| CTL 體能 | ATL 疲勞 | TSB 狀態 | 一週 CTL 變化 | ACWR | 單調度 |
+|---------|---------|---------|--------------|------|--------|
+| {{ fitness.ctl | num(".1f") }} | {{ fitness.atl | num(".1f") }} | {{ fitness.tsb | signed }} | {{ fitness.ramp_rate | signed }} | {{ fitness.acwr | num(".2f") }} | {{ fitness.monotony | num(".2f") }} |
+
+<sub>來源：{{ "intervals.icu 帳本" if fitness.source == "icu" else "我們的 PMC 重播" }} · 名詞：{{ "banister_pmc" | glossary }}、{{ "ramp_rate_acwr_monotony" | glossary }}</sub>
+{% if warnings %}
+
+{% for w in warnings %}
+- ⚠️ {{ w }}
+{% endfor %}
+{% endif %}
+{% else %}
+尚無體能資料（先跑 `cyp trends`）。
+{% endif %}
+{% if ftp_proposal %}
+
+## 5. FTP 提案（需要你確認）
+{{ explain(ftp_proposal_explanation) }}
+{% endif %}

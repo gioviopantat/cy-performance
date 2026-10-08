@@ -1,0 +1,47 @@
+id: climb_repeats_goal_power
+version: 1
+name: "Climb Repeats {reps}x{climb_min} @ Goal Power ({pct}%)"
+name_zh: "爬坡重複 {reps}x{climb_min} 分 @ 目標功率（{pct}%）"
+purpose_zh: "在真實坡道上以目標 FTP（300 W）附近的功率重複爬坡，練習配速與目標功率的體感。"
+intent: threshold
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: false
+outdoor_ok: true
+params:
+  reps: {min: 3, max: 5, default: 4, step: 1}
+  climb_min: {min: 5, max: 12, default: 7, step: 1}
+  pct: {min: 100, max: 120, default: 112}
+  descent_min: {min: 4, max: 8, default: 6, step: 1}
+progression: [climb_min, reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 70}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: freeride, duration: 5m, tss_assume: 55}
+  - repeat: "{reps}"
+    cue: Climb Repeats
+    steps:
+      - {kind: work, duration: "{climb_min}m", lo: "{pct}-2", hi: "{pct}+3", cadence: "75-90rpm"}
+      - {kind: freeride, duration: "{descent_min}m", tss_assume: 40}
+  - {cue: Cooldown, kind: steady, duration: 15m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Outdoor only. Pick one climb whose duration at goal power is {climb_min} min (fingerprint it so repeats are compared across weeks). The planner sets pct = min(goal_ftp / ftp_now × 100, 120): with FTP 250 and goal 300 that is 120 % today and converges to 100 % as FTP rises. Descents are freeride. Compare VAM and W/kg per repeat in the ride report."
+  note_zh: "僅戶外。選一段用目標功率剛好騎 {climb_min} 分鐘的坡（系統會用坡道指紋跨週比較）。排程器設定 pct = min(目標 FTP / 現在 FTP × 100, 120)：FTP 250、目標 300 時今天是 120 %，隨 FTP 上升逐漸收斂到 100 %。下坡自由騎。騎乘報告會比較每趟的 VAM 與 W/kg。"
+  widen_pct: 0
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Edge 530 無功率時以 95–103 % LTHR 爬坡，前 2 分鐘以 RPE 8–9/10 控制；下坡自由騎。事後用坡道時間（分段 PR）當作功率的替代指標。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 78}
+    - {kind: steady, duration: 3m, lo: 88, hi: 94}
+    - {kind: freeride, duration: 5m, tss_assume: 55}
+    - repeat: "{reps}"
+      cue: Climb Repeats
+      steps:
+        - {kind: work, duration: "{climb_min}m", lo: 95, hi: 103, cadence: "75-90rpm"}
+        - {kind: freeride, duration: "{descent_min}m", tss_assume: 40}
+    - {cue: Cooldown, kind: steady, duration: 15m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "爬坡重複用「目標 FTP 的功率」而不是「現在 FTP 的百分比」來訂強度，讓身體提前熟悉 300 W 在真實坡道上的感覺與配速，並以同一段坡的時間、VAM、W/kg 作為跨週進步的直接證據。它屬於建構期後段與閾值期，因為此時 300 W 已從 120 % 降到 110 % 左右、可重複 5–12 分鐘。"

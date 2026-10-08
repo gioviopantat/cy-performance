@@ -1,0 +1,46 @@
+id: microbursts_15_15
+version: 1
+name: "Microbursts 15/15 3x{reps}"
+name_zh: "微間歇 15/15 秒 3 組 x{reps}"
+purpose_zh: "15 秒用力、15 秒輕踩，在不深度疲勞的情況下刺激 VO2 與神經肌肉。"
+intent: vo2
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  reps: {min: 8, max: 12, default: 10, step: 1}
+  pct: {min: 125, max: 150, default: 135}
+  set_rest_min: 4
+progression: [reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - repeat: "{reps}"
+    cue: Set 1
+    steps:
+      - {kind: work, duration: 15s, lo: "{pct}", hi: "{pct}+10", cadence: "100-115rpm"}
+      - {kind: rest, duration: 15s, lo: 50, hi: 50}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 2
+    steps:
+      - {kind: work, duration: 15s, lo: "{pct}", hi: "{pct}+10", cadence: "100-115rpm"}
+      - {kind: rest, duration: 15s, lo: 50, hi: 50}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 3
+    steps:
+      - {kind: work, duration: 15s, lo: "{pct}", hi: "{pct}+10", cadence: "100-115rpm"}
+      - {kind: rest, duration: 15s, lo: 50, hi: 50}
+  - {cue: Cooldown, kind: steady, duration: 12m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Flat, safe road; surge out of the saddle is fine. Keep the 15 s off rolling."
+  note_zh: "選安全的平路；衝刺可以站起來踩。15 秒 Off 保持滾動。"
+  widen_pct: 5
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "15/15 太短，心率無法反映，不提供 HR 版本。"
+tss_model: closed_form
+explain_zh: "微間歇讓每次用力都短到不累積乳酸，總共 7–9 分鐘的 125–150 % 工作就能撐高攝氧量。適合狀態普通、不想做長 VO2 間歇的日子，是 30/15 的輕量替代。"
