@@ -167,3 +167,30 @@ def test_power_fix_uses_our_tss_up_to_the_date(factory: sessionmaker[Session]) -
     )  # memoised
     early = cache.get(factory, data_quality=DataQuality(load_fix_until=dt.date(2026, 9, 1)))
     assert early is not None and early.loads[dt.date(2026, 9, 3)] == 70.0
+
+
+def test_icu_ctl_load_of_an_unfinished_day_is_ignored(factory: sessionmaker[Session]) -> None:
+    """Regression 2026-10-09: icu's ctlLoad for today includes the workouts still on the
+    calendar, so a skipped day read as done (66 TSS planned, nothing ridden)."""
+    _seed(factory)
+    day = dt.date(2026, 9, 3)
+    with factory() as s:
+        s.add(
+            WellnessDaily(
+                athlete_id=1,
+                date_local=day,
+                ctl=41.0,
+                ctl_load=170.0,
+                fetched_at="2026-09-02T21:30:00Z",  # 05:30 on the day itself (Asia/Taipei)
+            )
+        )
+        s.commit()
+        early = load_dataset(s)
+        row = s.get(WellnessDaily, (1, day))
+        assert row is not None
+        row.fetched_at = "2026-09-03T21:30:00Z"  # the next morning
+        s.commit()
+        later = load_dataset(s)
+    assert early is not None and later is not None
+    assert early.loads[day] == 80.0  # the activity sum (ride 80 + yoga)
+    assert later.loads[day] == 170.0  # icu's ledger once the day is over

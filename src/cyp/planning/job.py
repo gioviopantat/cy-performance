@@ -157,6 +157,14 @@ def _dayplan_from_row(row: PlannedRow, library: Mapping[str, Template]) -> DayPl
     )
 
 
+def _calendar_showed(ds: Dataset, row: PlannedRow, plan: DayPlan) -> bool:
+    """Whether the calendar event of ``row`` (if synced) shows the workout of ``plan``."""
+    ev = next((e for e in ds.events if e.external_id == row.external_id), None)
+    if ev is None or ev.name is None or plan.workout is None:
+        return True
+    return ev.name.strip() == plan.workout.name_zh.strip()
+
+
 def _progress(week: SeasonWeek) -> tuple[str, float, float]:
     n_load = 6 if week.phase in ("base", "build", "threshold") else 2
     step = 1 / max(n_load - 1, 1)
@@ -234,6 +242,10 @@ def plan_horizon(
         hard_y = any(a.classification in HARD_CLASSES for a in ds.on(y) if a.is_ride)
         planned_rows = ds.planned.get(y, ())
         planned_y = _dayplan_from_row(planned_rows[0], lib) if planned_rows else None
+        if planned_y is not None and not _calendar_showed(ds, planned_rows[0], planned_y):
+            # A later proposal for a frozen day: the athlete saw another workout, so judging
+            # yesterday against our proposal is wrong (readiness compares with the calendar).
+            planned_y = None
         run.adaptations += adapt.apply_yesterday(
             horizon,
             adapt.Yesterday(planned_y, ds.loads.get(y), hard_y),

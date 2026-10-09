@@ -128,6 +128,10 @@ merges a Strava row onto its icu twin.
 sleep_s, sleep_score, sleep_quality, avg_sleeping_hr, soreness, fatigue, stress, mood,
 motivation, injury, readiness_icu, weight_kg, vo2max, steps, comments, raw_json, fetched_at`
 
+`ctl_load` is the day's load ledger (ADR-0003) only when the row was fetched after the day
+ended: for today icu's `ctlLoad` also counts the WORKOUT events still on the calendar, so a
+row fetched on its own day falls back to the activity sum (`dataset._day_was_over`).
+
 ### fitness_daily
 | col | notes |
 |-----|-------|

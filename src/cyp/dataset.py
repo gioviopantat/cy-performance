@@ -45,6 +45,23 @@ from cyp.store.models import (
 DEFAULT_TZ = "Asia/Taipei"
 
 
+def _day_was_over(day: dt.date, fetched_at: str | None) -> bool:
+    """Whether ``day`` had ended (local time) when its wellness row was fetched.
+
+    For today and later icu's ``ctlLoad`` includes the load of the WORKOUT events still on the
+    calendar (its fitness projection), so a day fetched before it ended is not a ledger value.
+    Rows without ``fetched_at`` (tests, old imports) are trusted.
+    """
+    if not fetched_at:
+        return True
+    from cyp.core.timeutil import local_date, parse_iso
+
+    try:
+        return local_date(parse_iso(fetched_at), DEFAULT_TZ) > day
+    except ValueError:
+        return True
+
+
 def local_day(start_local: str | None, start_utc: str, tz: str | None) -> dt.date:
     """Local calendar day of an activity (``start_local`` first, else ``start_utc`` in ``tz``)."""
     if start_local:
@@ -568,6 +585,7 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
             WellnessDaily.weight_kg,
             WellnessDaily.raw_json,
             WellnessDaily.ctl_load,
+            WellnessDaily.fetched_at,
         ).where(WellnessDaily.athlete_id == athlete_id)
     ):
         eftp = None
@@ -590,7 +608,7 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
             _f(w.injury),
             w.weight_kg,
             eftp,
-            w.ctl_load,
+            w.ctl_load if _day_was_over(w.date_local, w.fetched_at) else None,
         )
 
     # icu is the load ledger (ADR-0003): where wellness carries icu's own daily ctlLoad, the

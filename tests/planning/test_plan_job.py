@@ -184,3 +184,50 @@ def test_moving_season_start_supersedes_old_proposals(
     dates = [w.date_local for w in active]
     assert len(dates) == len(set(dates)), "one active proposal per day"
     assert all(w.external_id.startswith(f"cyp:{run.season_key}:") for w in active)
+
+
+def test_yesterday_is_judged_against_the_calendar_workout(
+    factory: sessionmaker[Session], cfg: AthleteConfig
+) -> None:
+    """Regression 2026-10-09: a later proposal for a frozen day (恢復騎 45, 19 TSS) was taken as
+    yesterday's plan, so riding the calendar's Z2 90 (66 TSS) turned today into recovery."""
+    from cyp.store.models import WellnessDaily
+
+    _seed(factory)
+    y = TODAY - dt.timedelta(days=1)
+    ext = f"cyp:s20261005:{y}:1"
+    with factory() as s:
+        s.add(
+            PlannedWorkout(
+                athlete_id=1,
+                date_local=y,
+                slot=1,
+                external_id=ext,
+                template_id="recovery_spin",
+                template_version=1,
+                intent="recovery",
+                name="恢復騎 45 分",
+                target_tss=18.8,
+                status="proposed",
+            )
+        )
+        s.add(WellnessDaily(athlete_id=1, date_local=y, ctl=50.0, ctl_load=66.0))
+        s.commit()
+    overdone = f"plan.adapt.overdone.{TODAY}"
+    run = build_plan(factory, cfg, today=TODAY, now_local=NOW, persist=False)
+    assert overdone in {e.key for e in run.adaptations}  # nothing synced: our proposal counts
+
+    with factory() as s:
+        s.add(
+            IcuEvent(
+                id=79,
+                category="WORKOUT",
+                start_date_local=f"{y}T00:00:00",
+                name="Z2 有氧耐力 90 分",
+                external_id=ext,
+                icu_training_load=66.0,
+            )
+        )
+        s.commit()
+    run = build_plan(factory, cfg, today=TODAY, now_local=NOW, persist=False)
+    assert overdone not in {e.key for e in run.adaptations}
