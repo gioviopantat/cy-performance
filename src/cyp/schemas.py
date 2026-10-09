@@ -76,7 +76,9 @@ class FitnessPoint(Model):
     ctl_sim: float | None = None
     acwr: float | None = None
     monotony: float | None = None
-    planned_load: float | None = Field(None, description="Our proposed load for that day")
+    planned_load: float | None = Field(
+        None, description="Planned load: the calendar's WORKOUT events, else our live proposals"
+    )
 
 
 class FitnessSeries(Model):

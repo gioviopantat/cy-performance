@@ -959,7 +959,7 @@ export interface components {
             monotony?: number | null;
             /**
              * Planned Load
-             * @description Our proposed load for that day
+             * @description Planned load: the calendar's WORKOUT events, else our live proposals
              */
             planned_load?: number | null;
         };

@@ -2,7 +2,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 import { api, type S } from "../api/client";
-import { ErrorNote, Explain, Panel, Tile, ZoneBar, fmt, minutes, mmdd } from "../ui";
+import { Icon } from "../bike";
+import { ErrorNote, Explain, Panel, Tile, ZoneBar, fmt, minutes, mmdd, scrollToTop, usePhone } from "../ui";
 
 const PAGE = 25;
 
@@ -14,25 +15,43 @@ export function Rides({ profile, info }: { profile: string; info: S["ProfileOut"
   });
   const [selected, setSelected] = useState<number | null>(null);
   const items = list.data?.items ?? [];
+  const phone = usePhone();
+  // Desktop: list and detail side by side, the newest ride open. Phone: an accordion, one ride
+  // open at a time under its own row, nothing open until tapped.
   useEffect(() => {
-    if (selected === null && items[0]) setSelected(items[0].id);
-  }, [items, selected]);
+    if (!phone && selected === null && items[0]) setSelected(items[0].id);
+  }, [items, selected, phone]);
   useEffect(() => setSelected(null), [profile]);
+  const pick = (id: number) => {
+    if (phone && selected === id) return setSelected(null);
+    setSelected(id);
+    if (phone) scrollToTop(`ride-${id}`);
+  };
 
   return (
     <div className="grid rides">
       <Panel kicker={`共 ${list.data?.total ?? "—"} 趟`} title="騎乘紀錄">
         <ul className="ride-list">
           {items.map((r) => (
-            <li key={r.id}>
-              <button className={selected === r.id ? "on" : ""} onClick={() => setSelected(r.id)}>
+            <li key={r.id} id={`ride-${r.id}`}>
+              <button
+                className={selected === r.id ? "on" : ""}
+                onClick={() => pick(r.id)}
+                aria-expanded={phone ? selected === r.id : undefined}
+              >
                 <span className="ride-date">{mmdd(r.date)}</span>
                 <span className="ride-name">{r.name}</span>
                 <span className="ride-meta">
                   {minutes(r.moving_s)} · {fmt(r.tss)} TSS · IF {fmt(r.intensity_factor, 2)}
+                  {r.climbs ? (
+                    <span className="climb-count" title={`${r.climbs} 段爬坡`}>
+                      <Icon name="climb" /> {r.climbs}
+                    </span>
+                  ) : null}
                 </span>
                 {r.classification_zh ? <em className="chip">{r.classification_zh}</em> : null}
               </button>
+              {phone && selected === r.id ? <RideDetail profile={profile} id={r.id} info={info} inline /> : null}
             </li>
           ))}
         </ul>
@@ -49,18 +68,28 @@ export function Rides({ profile, info }: { profile: string; info: S["ProfileOut"
         </div>
         <ErrorNote error={list.error} />
       </Panel>
-      {selected !== null ? <RideDetail profile={profile} id={selected} info={info} /> : null}
+      {!phone && selected !== null ? <RideDetail profile={profile} id={selected} info={info} /> : null}
     </div>
   );
 }
 
-function RideDetail({ profile, id, info }: { profile: string; id: number; info: S["ProfileOut"] | undefined }) {
+function RideDetail({
+  profile,
+  id,
+  info,
+  inline = false,
+}: {
+  profile: string;
+  id: number;
+  info: S["ProfileOut"] | undefined;
+  inline?: boolean;
+}) {
   const d = useQuery({ queryKey: ["activity", profile, id], queryFn: () => api.activity(profile, id) });
   const log = useQuery({ queryKey: ["ride-log", profile, id], queryFn: () => api.rideLog(profile, id), retry: false });
   const a = d.data;
   const s = a?.summary;
   return (
-    <Panel className="ride" kicker={s ? `${s.date} · ${s.classification_zh ?? ""}` : ""} title={s?.name ?? "…"}>
+    <Panel className={inline ? "ride inline" : "ride"} kicker={s ? `${s.date} · ${s.classification_zh ?? ""}` : ""} title={s?.name ?? "…"}>
       {a && s ? (
         <>
           <div className="tiles six">
@@ -303,10 +332,15 @@ function Feedback({ profile, id }: { profile: string; id: number }) {
               : "還沒填：點一下就好，明天的課表會參考"}
         </span>
       </div>
-      <div className="scale" role="group" aria-label="RPE 自覺強度 1–10">
+      <div className="scale cassette" role="group" aria-label="RPE 自覺強度 1–10">
         <span className="scale-label">RPE</span>
         {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-          <button key={n} className={rpe === n ? "on" : ""} onClick={() => void save(n, feel)} title={`RPE ${n}`}>
+          <button
+            key={n}
+            className={`cog c${n} ${rpe === n ? "on" : ""}`}
+            onClick={() => void save(n, feel)}
+            title={`RPE ${n}`}
+          >
             {n}
           </button>
         ))}

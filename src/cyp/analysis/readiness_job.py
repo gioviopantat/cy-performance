@@ -63,14 +63,8 @@ def _point(w: WellnessRow) -> WellnessPoint:
 
 
 def _planned_load(ds: Dataset, day: dt.date) -> float | None:
-    if day in ds.planned_load:
-        return ds.planned_load[day]
-    vals = [
-        e.load
-        for e in ds.events_between(day, day)
-        if e.category == "WORKOUT" and not e.ours and e.load is not None
-    ]
-    return float(sum(vals)) if vals else None  # type: ignore[arg-type]
+    """The calendar's WORKOUT load for ``day``, else our live proposals (``planned_load``)."""
+    return ds.planned_load.get(day)
 
 
 #: ``activity_id -> (rpe, feel)`` answered outside intervals.icu (web 騎完感受); wins over icu.

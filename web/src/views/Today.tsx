@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { api, type S } from "../api/client";
 import { daysAgoIso, todayIso, useJob } from "../api/hooks";
-import { ErrorNote, Explain, FitnessChart, Panel, Tile, WorkoutProfile, fmt, mmdd, weekdayZh } from "../ui";
+import { ErrorNote, Explain, useCountUp, FitnessChart, Panel, Tile, WorkoutProfile, fmt, mmdd, weekdayZh } from "../ui";
 import { JobStatus } from "./Runs";
 
 const PHASE_ZH: Record<string, string> = { base: "基礎期", build: "建構期", threshold: "閾值期", test: "測驗週" };
@@ -32,6 +32,7 @@ export function Today({ profile, info }: { profile: string; info: S["ProfileOut"
   const last = fit.data?.points.filter((p) => p.ctl !== null).at(-1);
   const a = meta.data?.athlete;
   const s = meta.data?.season;
+  const score = useCountUp(fmt(ready.data?.score), 1200);
 
   return (
     <div className="grid today">
@@ -42,6 +43,12 @@ export function Today({ profile, info }: { profile: string; info: S["ProfileOut"
       >
         {doneToday ? (
           <p className="done">
+            <span className="finish" aria-hidden>
+              🏁
+              {Array.from({ length: 8 }, (_, i) => (
+                <i key={i} style={{ ["--k" as string]: i }} />
+              ))}
+            </span>
             ✓ 今天已騎：{doneToday.name} · {Math.round((doneToday.moving_s ?? 0) / 60)} 分 ·{" "}
             {fmt(doneToday.tss)} TSS
           </p>
@@ -65,8 +72,12 @@ export function Today({ profile, info }: { profile: string; info: S["ProfileOut"
       </Panel>
 
       <Panel className="ready" kicker={`準備度 · ${today}`} title={ready.data?.recommendation_zh ?? "—"}>
-        <div className="gauge" style={{ ["--score" as string]: ready.data?.score ?? 0 }}>
-          <span>{fmt(ready.data?.score)}</span>
+        <div
+          className={`gauge ${(ready.data?.score ?? 0) >= 70 ? "go" : (ready.data?.score ?? 0) >= 40 ? "easy" : "stop"}`}
+          style={{ ["--score" as string]: ready.data?.score ?? 0 }}
+        >
+          <i className="gauge-rider" aria-hidden />
+          <span>{score}</span>
           <small>{ready.data?.status ?? ""}</small>
         </div>
         {ready.data?.missing?.length ? (

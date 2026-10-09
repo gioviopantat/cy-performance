@@ -436,6 +436,8 @@ button {
 
 .gauge {
   --score: 0;
+  position: relative;
+  animation: fill-up 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   width: 170px;
   aspect-ratio: 1;
   border-radius: 50%;
@@ -621,11 +623,13 @@ button:disabled {
   gap: 12px;
   align-items: center;
   padding: 10px 4px;
+  transition: transform 0.2s ease, background 0.15s;
   text-align: left;
 }
 
 .day-row:hover {
   background: var(--panel-2);
+  transform: translateX(6px);
 }
 
 .day-date {
@@ -747,7 +751,7 @@ button:disabled {
   overflow-y: auto;
 }
 
-.ride-list button {
+.ride-list > li > button {
   width: 100%;
   background: none;
   border: 0;
@@ -760,7 +764,7 @@ button:disabled {
   text-align: left;
 }
 
-.ride-list button.on {
+.ride-list > li > button.on {
   background: color-mix(in srgb, var(--signal) 12%, transparent);
 }
 
@@ -776,7 +780,7 @@ button:disabled {
   grid-column: 2;
 }
 
-.ride-list .chip {
+.ride-list > li > button .chip {
   grid-row: 1 / span 2;
   grid-column: 3;
   align-self: center;
@@ -1004,4 +1008,1331 @@ button:disabled {
   background: var(--signal);
   border-color: var(--signal);
   color: #1a0d03;
+}
+
+/* ------------------------------------------------------------------ cycling details */
+.icon {
+  width: 1.05em;
+  height: 1.05em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+  vertical-align: -0.15em;
+}
+
+.tabs button .icon {
+  color: var(--ink-3);
+  transition: transform 0.4s ease, color 0.15s;
+}
+.tabs button.on .icon,
+.tabs button:hover .icon {
+  color: var(--signal);
+}
+.tabs button:hover .icon {
+  transform: rotate(45deg);
+}
+
+/* A road under the header: asphalt, km posts, and a two-rider group ride. */
+.road {
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  height: 84px;
+  margin: 6px 0 10px;
+  overflow: hidden;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, transparent 0 54px, color-mix(in srgb, var(--panel-2) 90%, transparent) 54px 82px, var(--line) 82px);
+}
+.road-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 13px;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--warn) 70%, transparent) 0 26px, transparent 26px 48px);
+}
+.road-posts {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  display: flex;
+  width: 200%;
+}
+.road-posts span {
+  flex: 1;
+  font: 10px var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+  border-left: 2px solid color-mix(in srgb, var(--ink-3) 50%, transparent);
+  padding-left: 6px;
+  height: 30px;
+}
+.group {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  will-change: transform;
+}
+.rider {
+  position: relative;
+  width: 64px;
+  transition: transform 0.25s ease;
+}
+.rider.chase {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+.bib {
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  transform: translateX(-30%);
+  font: 700 10px var(--mono);
+  color: var(--signal);
+  white-space: nowrap;
+}
+.bike {
+  width: 100%;
+  height: auto;
+  display: block;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bike .wheel circle {
+  stroke: var(--ink-2);
+  stroke-width: 2.4;
+}
+.bike .spokes {
+  stroke: var(--ink-3);
+  stroke-width: 0.8;
+}
+.bike .frame {
+  stroke: var(--signal);
+  stroke-width: 2.6;
+}
+.bike .chainring {
+  stroke: var(--signal-2);
+  stroke-width: 1.6;
+}
+.bike .body,
+.bike .leg.near {
+  stroke: var(--ink);
+  stroke-width: 3.2;
+}
+.bike .leg {
+  stroke: var(--ink-3);
+  stroke-width: 3;
+}
+.bike .helmet {
+  fill: var(--signal);
+  stroke: none;
+}
+.rolling .wheel {
+  animation: spin 0.5s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading: a spinning wheel. */
+.spinner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.spinner svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.2;
+  animation: spin 1s linear infinite;
+}
+.spinner svg circle:first-child {
+  stroke: var(--signal);
+  stroke-width: 2.4;
+  stroke-dasharray: 4 2;
+}
+.spinner .hub {
+  fill: var(--signal);
+  stroke: none;
+}
+
+/* Panels: the accent stripe becomes a chain. */
+.panel::before {
+  width: 4px;
+  background: repeating-linear-gradient(
+    180deg,
+    var(--signal) 0 7px,
+    transparent 7px 9px,
+    color-mix(in srgb, var(--signal) 55%, transparent) 9px 14px,
+    transparent 14px 16px
+  );
+  -webkit-mask: linear-gradient(180deg, #000 0%, transparent 75%);
+  mask: linear-gradient(180deg, #000 0%, transparent 75%);
+}
+/* …and a faint chainring in the corner of the big panels. */
+.hero::after,
+.ready::after {
+  content: "";
+  position: absolute;
+  right: -62px;
+  top: -62px;
+  width: 140px;
+  height: 140px;
+  z-index: 0;
+  border-radius: 50%;
+  border: 10px dotted color-mix(in srgb, var(--signal) 22%, transparent);
+  box-shadow: inset 0 0 0 26px transparent, inset 0 0 0 28px color-mix(in srgb, var(--line) 70%, transparent);
+  pointer-events: none;
+  animation: spin 40s linear infinite;
+}
+
+/* Plan: a role icon per day; rest days are café stops. */
+.day-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.icon.role {
+  color: var(--ink-3);
+}
+.icon.role.hit,
+.icon.role.test {
+  color: var(--z5);
+}
+.icon.role.long_ride {
+  color: var(--signal);
+}
+.icon.role.endurance,
+.icon.role.recovery {
+  color: var(--z2);
+}
+.icon.role.rest {
+  color: var(--warn);
+}
+
+/* Rides: climbs as a little mountain. */
+.climb-count {
+  margin-left: 8px;
+  color: var(--signal-2);
+  white-space: nowrap;
+}
+
+/* RPE as a cassette: the harder it felt, the bigger the cog. */
+.scale.cassette {
+  align-items: flex-end;
+}
+.scale.cassette .cog {
+  --size: 26px;
+  width: var(--size);
+  height: var(--size);
+  padding: 0;
+  border-radius: 50%;
+  border: 2px dashed color-mix(in srgb, var(--ink-3) 70%, transparent);
+  background: radial-gradient(circle, var(--panel-2) 52%, transparent 54%);
+  display: inline-grid;
+  place-items: center;
+  font-size: 12px;
+  transition: transform 0.25s ease;
+}
+.scale.cassette .cog:hover {
+  transform: rotate(30deg);
+}
+.scale.cassette .cog.on {
+  border-color: var(--signal);
+  background: radial-gradient(circle, var(--signal) 52%, transparent 54%);
+  color: #1a0d03;
+}
+.cog.c2 { --size: 27px; }
+.cog.c3 { --size: 28px; }
+.cog.c4 { --size: 29px; }
+.cog.c5 { --size: 30px; }
+.cog.c6 { --size: 31px; }
+.cog.c7 { --size: 32px; }
+.cog.c8 { --size: 34px; }
+.cog.c9 { --size: 36px; }
+.cog.c10 { --size: 38px; }
+
+/* Bottom of the page: a climb silhouette. */
+.elevation {
+  position: relative;
+  margin-top: 48px;
+  height: 90px;
+  color: var(--ink-3);
+}
+.elevation svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.elevation path {
+  fill: color-mix(in srgb, var(--signal) 8%, transparent);
+}
+.elevation path.ridge {
+  fill: none;
+  stroke: color-mix(in srgb, var(--signal) 45%, transparent);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+}
+.elevation span {
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font: 11px var(--mono);
+  letter-spacing: 0.1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rolling .wheel,
+  .spinner svg,
+  .hero::after,
+  .ready::after {
+    animation: none;
+  }
+}
+
+/* ------------------------------------------------------------------ motion & interaction */
+/* Road: a head-unit HUD, sprint speed lines, and a shout bubble. */
+.road-hud {
+  position: absolute;
+  right: 10px;
+  top: 6px;
+  display: flex;
+  gap: 14px;
+  font: 10px var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 2;
+}
+.road-hud b {
+  font: 700 15px var(--display);
+  color: var(--ink);
+  min-width: 3ch;
+  display: inline-block;
+  text-align: right;
+}
+.road-hud .hint {
+  color: var(--signal);
+  animation: blink 2.4s ease-in-out infinite;
+}
+.road.sprinting .road-hud b {
+  color: var(--signal);
+}
+.road:focus-visible {
+  outline: 2px solid var(--signal);
+}
+.road:hover .rider.lead {
+  transform: translateY(-3px);
+}
+.group.sprint .rider.lead {
+  transform: translateY(-2px) rotate(-4deg);
+}
+.group.sprint::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  bottom: 14px;
+  width: 90px;
+  height: 22px;
+  background: repeating-linear-gradient(180deg, color-mix(in srgb, var(--signal) 70%, transparent) 0 2px, transparent 2px 6px);
+  -webkit-mask: linear-gradient(90deg, transparent, #000);
+  mask: linear-gradient(90deg, transparent, #000);
+  animation: whoosh 0.3s linear infinite;
+}
+.rolling.sprint .wheel {
+  animation-duration: 0.22s;
+}
+.shout {
+  position: absolute;
+  left: 60%;
+  top: -18px;
+  padding: 2px 8px;
+  border-radius: 10px 10px 10px 2px;
+  background: var(--signal);
+  color: #1a0d03;
+  font: 700 11px var(--body);
+  white-space: nowrap;
+  animation: pop 2.6s ease forwards;
+  pointer-events: none;
+}
+.rider.chase .bib {
+  color: var(--ink-3);
+}
+.road-posts span {
+  opacity: 0.55;
+}
+.bib {
+  background: var(--bg);
+  padding: 0 4px;
+  border-radius: 3px;
+  z-index: 1;
+}
+@keyframes whoosh {
+  from { transform: translateX(8px); opacity: 0.6; }
+  to { transform: translateX(-8px); opacity: 1; }
+}
+@keyframes pop {
+  0% { transform: scale(0.3) translateY(10px); opacity: 0; }
+  12% { transform: scale(1.1); opacity: 1; }
+  20%, 80% { transform: scale(1); opacity: 1; }
+  100% { transform: translateY(-10px); opacity: 0; }
+}
+@keyframes blink {
+  50% { opacity: 0.35; }
+}
+
+/* Tabs ride in: each page arrives from the right, panels one after another. */
+main > .grid > * {
+  animation: ride-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+main > .grid > :nth-child(2) { animation-delay: 70ms; }
+main > .grid > :nth-child(3) { animation-delay: 140ms; }
+main > .grid > :nth-child(4) { animation-delay: 210ms; }
+@keyframes ride-in {
+  from { transform: translateX(48px) skewX(-4deg); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Panels and tiles react to the pointer. */
+.panel {
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.panel:hover {
+  border-color: color-mix(in srgb, var(--signal) 35%, var(--line));
+  box-shadow: 0 10px 30px -18px color-mix(in srgb, var(--signal) 60%, transparent);
+}
+.tile {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.tile:hover {
+  transform: translateY(-3px);
+  border-color: var(--signal);
+}
+
+/* Workout profile: bars grow in; hovering scrubs a rider along the session. */
+.profile-wrap {
+  position: relative;
+  cursor: crosshair;
+}
+.profile rect.zone {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: grow 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.profile-wrap:hover rect.zone {
+  opacity: 0.75;
+}
+@keyframes grow {
+  from { transform: scaleY(0); }
+}
+.scrub {
+  position: absolute;
+  top: 0;
+  width: 0;
+  border-left: 1.5px dashed var(--ink);
+  pointer-events: none;
+}
+.scrub-dot {
+  position: absolute;
+  left: -7px;
+  top: -7px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--signal);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--signal) 30%, transparent);
+}
+.scrub-tip {
+  position: absolute;
+  left: 10px;
+  top: -30px;
+  white-space: nowrap;
+  font: 11px var(--mono);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 3px 7px;
+  border-radius: 4px;
+}
+.scrub-hint {
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  font: 10px var(--mono);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+/* Fitness chart crosshair. */
+.fitness-wrap {
+  position: relative;
+  cursor: crosshair;
+}
+.xhair {
+  position: absolute;
+  top: 0;
+  bottom: 9%;
+  border-left: 1px dashed var(--ink-3);
+  pointer-events: none;
+}
+.xhair-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--z2);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--z2) 30%, transparent);
+  pointer-events: none;
+}
+.xhair-tip {
+  position: absolute;
+  top: 0;
+  margin-left: 8px;
+  white-space: nowrap;
+  font: 11px var(--mono);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  padding: 3px 7px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.xhair-tip.left {
+  transform: translateX(calc(-100% - 16px));
+}
+.xhair-tip b {
+  color: var(--signal);
+  margin-right: 6px;
+}
+
+/* Readiness: the ring fills up, a rider laps it, the colour is a traffic light. */
+@property --score {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.gauge.go { --ring: var(--z2); }
+.gauge.easy { --ring: var(--signal); }
+.gauge.stop { --ring: var(--z5); }
+.gauge.go,
+.gauge.easy,
+.gauge.stop {
+  background:
+    radial-gradient(closest-side, var(--panel) 78%, transparent 79%),
+    conic-gradient(var(--ring) calc(var(--score) * 1%), var(--panel-2) 0);
+}
+.gauge span {
+  font-variant-numeric: tabular-nums;
+}
+.gauge-rider {
+  position: absolute;
+  inset: 0;
+  transform: rotate(calc(var(--score) * 3.6deg));
+  pointer-events: none;
+}
+.gauge-rider::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 2px;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 3px solid var(--ring, var(--signal));
+  box-shadow: 0 0 12px var(--ring, var(--signal));
+}
+@keyframes fill-up {
+  from { --score: 0; }
+}
+
+/* Done today: a finish flag with confetti. */
+.finish {
+  position: relative;
+  display: inline-block;
+  margin-right: 6px;
+  animation: wave 1.4s ease-in-out infinite;
+  transform-origin: bottom left;
+}
+.finish i {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 5px;
+  height: 8px;
+  border-radius: 1px;
+  background: hsl(calc(var(--k) * 45deg) 85% 60%);
+  animation: confetti 1.6s ease-out both;
+  animation-delay: calc(var(--k) * 40ms);
+  --a: calc(var(--k) * 45deg);
+}
+@keyframes wave {
+  50% { transform: rotate(-12deg); }
+}
+@keyframes confetti {
+  from { transform: rotate(var(--a)) translateY(0) scale(1); opacity: 1; }
+  to { transform: rotate(var(--a)) translateY(-46px) rotate(220deg) scale(0.6); opacity: 0; }
+}
+
+/* Plan: the fortnight as a stage profile. */
+.routemap {
+  position: relative;
+  height: 170px;
+  margin: 6px 0 22px;
+}
+.routemap > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.routemap .stop-a { stop-color: color-mix(in srgb, var(--signal) 35%, transparent); }
+.routemap .stop-b { stop-color: transparent; }
+.route-area {
+  fill: url(#route-fill);
+  animation: fade-in 1s ease both 0.4s;
+}
+.route-line {
+  fill: none;
+  stroke: var(--signal);
+  stroke-width: 3;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 1.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+}
+.stop {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--panel);
+  border: 2px solid var(--ink-3);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s, background 0.2s;
+  animation: fade-in 0.4s ease both 0.9s;
+}
+.stop .icon {
+  width: 15px;
+  height: 15px;
+}
+.stop small {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  font: 10px var(--mono);
+  color: var(--ink-3);
+  white-space: nowrap;
+  text-align: center;
+  line-height: 1.2;
+}
+.stop small i {
+  display: block;
+  font-style: normal;
+  opacity: 0.7;
+}
+.stop:hover,
+.stop.on {
+  transform: translate(-50%, -50%) scale(1.25);
+  border-color: var(--signal);
+  background: color-mix(in srgb, var(--signal) 18%, var(--panel));
+  z-index: 2;
+}
+.stop.rest { border-color: var(--warn); color: var(--warn); }
+.stop.hit, .stop.test { border-color: var(--z5); color: var(--z5); }
+.stop.long_ride { border-color: var(--signal); color: var(--signal); width: 36px; height: 36px; }
+.stop.endurance, .stop.recovery { border-color: var(--z2); color: var(--z2); }
+.stop.is-today {
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--signal) 25%, transparent);
+}
+.stop .here {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  width: 44px;
+  margin-left: -22px;
+  animation: bob 1.2s ease-in-out infinite;
+}
+.stop .here .wheel {
+  animation: spin 0.6s linear infinite;
+}
+@keyframes bob {
+  50% { transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main > .grid > *,
+  .profile rect.zone,
+  .route-line,
+  .route-area,
+  .stop,
+  .stop .here,
+  .gauge,
+  .finish,
+  .finish i,
+  .shout,
+  .road-hud .hint,
+  .group.sprint::before,
+  .day-detail,
+  .panel.ride.inline,
+  .tabs button.on .icon {
+    animation: none;
+  }
+  .route-line {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ phone layout */
+.routemap-scroll {
+  position: relative;
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 12px 14px calc(88px + env(safe-area-inset-bottom));
+  }
+
+  /* Header: logo and riders on one line; the tabs become a bottom bar within thumb reach. */
+  .top {
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    padding: 4px 0 10px;
+  }
+  .brand-text {
+    font-size: 20px;
+  }
+  .profiles {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .profiles button {
+    padding: 5px 10px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .profiles .mode {
+    display: none;
+  }
+  .tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--line);
+  }
+  .tabs button {
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 0 6px;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .tabs button .icon {
+    width: 22px;
+    height: 22px;
+  }
+  .tabs button.on {
+    background: color-mix(in srgb, var(--signal) 16%, transparent);
+    color: var(--signal);
+  }
+  .tabs button.on .icon {
+    animation: spin 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  /* Road: lower, smaller riders, compact HUD. */
+  .road {
+    height: 66px;
+    margin: 8px 0 6px;
+    background: linear-gradient(
+      180deg,
+      transparent 0 40px,
+      color-mix(in srgb, var(--panel-2) 90%, transparent) 40px 64px,
+      var(--line) 64px
+    );
+  }
+  .road-line {
+    bottom: 11px;
+  }
+  .group {
+    bottom: 12px;
+  }
+  .rider {
+    width: 48px;
+  }
+  .road-posts {
+    top: 22px;
+  }
+  .road-posts span {
+    height: 18px;
+    font-size: 9px;
+  }
+  .road-hud {
+    top: 4px;
+    right: 4px;
+    gap: 8px;
+    padding: 2px 6px;
+  }
+  .road-hud b {
+    font-size: 13px;
+  }
+  .status-line {
+    gap: 4px 12px;
+    font-size: 11px;
+    margin: 6px 0 12px;
+  }
+
+  /* Panels and numbers. */
+  .grid {
+    gap: 12px;
+  }
+  .panel {
+    padding: 14px 14px;
+  }
+  .hero h2 {
+    font-size: 30px;
+  }
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tiles.six {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tiles.six .tile-value {
+    font-size: 26px;
+  }
+  .gauge {
+    width: 150px;
+  }
+  .gauge span {
+    font-size: 48px;
+  }
+  .hero::after,
+  .ready::after {
+    width: 110px;
+    height: 110px;
+    right: -55px;
+    top: -55px;
+  }
+
+  /* Plan: the stage profile scrolls sideways; rows put time/TSS on a second line. */
+  .routemap-scroll {
+    overflow-x: auto;
+    margin: 0 -14px;
+    padding: 0 14px;
+    scrollbar-width: none;
+    -webkit-mask: linear-gradient(90deg, #000 85%, transparent);
+    mask: linear-gradient(90deg, #000 85%, transparent);
+  }
+  .routemap {
+    min-width: 640px;
+    height: 160px;
+  }
+  .day-row {
+    grid-template-columns: 52px 1fr;
+    gap: 2px 10px;
+    padding: 10px 2px;
+  }
+  .day-meta {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  /* Charts take touch drags without scrolling the page sideways. */
+  .profile-wrap,
+  .fitness-wrap {
+    touch-action: pan-y;
+  }
+  .xhair-tip,
+  .scrub-tip {
+    font-size: 10px;
+  }
+  .elevation {
+    margin-top: 28px;
+    height: 60px;
+  }
+
+  .road-posts span {
+    color: transparent;
+  }
+  .panel.ride {
+    scroll-margin-top: 12px;
+  }
+  .scale.cassette {
+    gap: 4px;
+  }
+  .scale.cassette .cog {
+    --size: 24px;
+  }
+  .cog.c8 { --size: 26px; }
+  .cog.c9 { --size: 28px; }
+  .cog.c10 { --size: 30px; }
+  .cog.c2, .cog.c3, .cog.c4, .cog.c5, .cog.c6, .cog.c7 { --size: 24px; }
+
+  /* Run log: stage name + status on one line, the detail full width below. */
+  .stages li {
+    grid-template-columns: 1fr auto;
+    gap: 0 10px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .stage-detail {
+    grid-column: 1 / -1;
+    color: var(--ink-3);
+  }
+}
+
+/* Touch screens: no sticky hover effects. */
+@media (hover: none) {
+  .tile:hover,
+  .day-row:hover,
+  .road:hover .rider.lead {
+    transform: none;
+  }
+  .panel:hover {
+    box-shadow: none;
+    border-color: var(--line);
+  }
+}
+
+/* ------------------------------------------------------------------ what stays put while scrolling */
+:root {
+  --head: 76px; /* height of the sticky header; offsets for sticky panels and scroll targets */
+}
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin: 0 -20px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+/* The blur lives on a pseudo-element: a backdrop-filter on .top itself would become the
+   containing block of the phone's fixed bottom tab bar and pin it to the header instead. */
+.top::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.day,
+.ride-list li {
+  scroll-margin-top: calc(var(--head) + 8px);
+}
+
+/* Desktop: the list on the left stays in view while the detail on the right scrolls. */
+@media (min-width: 901px) {
+  .rides > .panel:first-child,
+  .plan > .panel:last-child {
+    position: sticky;
+    top: calc(var(--head) + 12px);
+  }
+  .ride-list {
+    max-height: calc(100vh - var(--head) - 210px);
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --head: 56px;
+  }
+  .top {
+    margin: 0 -14px;
+    padding: 8px 14px;
+  }
+  /* One page scroll only: no list scrolling inside the page. */
+  .ride-list {
+    max-height: none;
+    overflow: visible;
+  }
+  .ride-list li {
+    scroll-margin-top: calc(var(--head) + 4px);
+  }
+  .panel.ride.inline {
+    margin: 0 -6px 10px;
+    padding: 12px 10px;
+    border-color: color-mix(in srgb, var(--signal) 45%, var(--line));
+    animation: unfold 0.3s ease both;
+  }
+  .panel.ride.inline h2 {
+    font-size: 22px;
+  }
+  .ride-list > li > button.on {
+    position: sticky;
+    top: var(--head);
+    z-index: 5;
+    background: color-mix(in srgb, var(--signal) 18%, var(--bg));
+  }
+  .day-detail {
+    animation: unfold 0.3s ease both;
+  }
+  /* The open row stays under the header while you read its detail; tap it again to fold. */
+  .day-row[aria-expanded="true"] {
+    position: sticky;
+    top: var(--head);
+    z-index: 5;
+    background: color-mix(in srgb, var(--signal) 14%, var(--bg));
+  }
+  .ridelog-head button {
+    white-space: nowrap;
+  }
+}
+@keyframes unfold {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* ------------------------------------------------------------------ skin toggle */
+.brand {
+  min-width: 0;
+}
+.skin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  padding: 4px 9px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-3);
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.skin-toggle svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.skin-toggle:hover,
+.skin-toggle.on {
+  color: var(--signal);
+  border-color: var(--signal);
+}
+@media (max-width: 640px) {
+  .skin-toggle span {
+    display: none;
+  }
+  .skin-toggle {
+    padding: 5px 6px;
+  }
+}
+
+/* The swap between skins: the new look is revealed in chunky steps from the toggle. */
+::view-transition-old(root) {
+  animation: none;
+}
+::view-transition-new(root) {
+  animation: px-reveal 0.6s steps(8, end) both;
+}
+@keyframes px-reveal {
+  from {
+    clip-path: circle(0 at 12% 2%);
+  }
+  to {
+    clip-path: circle(150% at 12% 2%);
+  }
+}
+
+/* ------------------------------------------------------------------ pixel skin (8-bit) */
+/* Sweetie-16 palette, square corners, hard drop shadows, bitmap fonts, stepped motion. */
+:root[data-skin="pixel"] {
+  --bg: #1a1c2c;
+  --bg-2: #212338;
+  --panel: #262b44;
+  --panel-2: #333c57;
+  --line: #566c86;
+  --ink: #f4f4f4;
+  --ink-2: #b4c6d6;
+  --ink-3: #8b9bb4;
+  --signal: #ef7d57;
+  --signal-2: #ffcd75;
+  --cool: #73eff7;
+  --warn: #ffcd75;
+  --bad: #e04a63;
+  --good: #a7f070;
+  --z1: #566c86;
+  --z2: #38b764;
+  --z3: #ffcd75;
+  --z4: #ef7d57;
+  --z5: #e04a63;
+  --z6: #b55088;
+  --radius: 0;
+  --shadow: #0b0c16;
+  --display: "Silkscreen", "DotGothic16", monospace;
+  --body: "DotGothic16", "Noto Sans TC", monospace;
+  --mono: "DotGothic16", "Silkscreen", monospace;
+  --pixel: "Press Start 2P", "DotGothic16", monospace;
+  color-scheme: dark;
+}
+:root[data-skin="pixel"] *,
+:root[data-skin="pixel"] *::before,
+:root[data-skin="pixel"] *::after {
+  border-radius: 0 !important;
+  animation-timing-function: steps(6, end) !important;
+  transition-timing-function: steps(3, end) !important;
+}
+:root[data-skin="pixel"] svg {
+  shape-rendering: crispEdges;
+}
+:root[data-skin="pixel"] body {
+  background:
+    repeating-conic-gradient(#1a1c2c 0 25%, #1e2134 0 50%) 0 0 / 8px 8px,
+    var(--bg);
+  image-rendering: pixelated;
+}
+/* CRT scanlines over everything. */
+:root[data-skin="pixel"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background: repeating-linear-gradient(180deg, transparent 0 2px, rgb(0 0 0 / 0.16) 2px 3px);
+}
+:root[data-skin="pixel"] .brand-text {
+  font: 400 15px/1.2 var(--pixel);
+  letter-spacing: 0;
+}
+:root[data-skin="pixel"] .kicker {
+  font: 400 9px/1.4 var(--pixel);
+  letter-spacing: 0.02em;
+}
+:root[data-skin="pixel"] h2,
+:root[data-skin="pixel"] .hero h2 {
+  font-family: var(--body);
+  font-weight: 400;
+  text-shadow: 3px 3px 0 var(--shadow);
+}
+:root[data-skin="pixel"] .tile-value,
+:root[data-skin="pixel"] .gauge span,
+:root[data-skin="pixel"] .road-hud b {
+  font-family: var(--pixel);
+  font-weight: 400;
+}
+:root[data-skin="pixel"] .tile-value {
+  font-size: 20px;
+  line-height: 1.5;
+}
+:root[data-skin="pixel"] .tiles.six .tile-value {
+  font-size: 17px;
+}
+:root[data-skin="pixel"] .gauge span {
+  font-size: 34px;
+  text-shadow: 4px 4px 0 var(--shadow);
+}
+:root[data-skin="pixel"] .road-hud b {
+  font-size: 11px;
+}
+
+/* Boxes: thick borders, hard shadows, a little bevel. */
+:root[data-skin="pixel"] .panel {
+  background: var(--panel);
+  border: 3px solid var(--line);
+  box-shadow: 6px 6px 0 var(--shadow);
+}
+:root[data-skin="pixel"] .panel:hover {
+  border-color: var(--signal);
+  box-shadow: 6px 6px 0 var(--shadow);
+}
+:root[data-skin="pixel"] .tile {
+  background: var(--bg-2);
+  border: 2px solid var(--line);
+  box-shadow:
+    inset -3px -3px 0 rgb(0 0 0 / 0.35),
+    inset 3px 3px 0 rgb(255 255 255 / 0.07);
+}
+:root[data-skin="pixel"] button {
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+:root[data-skin="pixel"] button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+:root[data-skin="pixel"] .profiles button,
+:root[data-skin="pixel"] .tabs button,
+:root[data-skin="pixel"] .skin-toggle {
+  border: 2px solid var(--line);
+}
+:root[data-skin="pixel"] .profiles button.on,
+:root[data-skin="pixel"] .tabs button.on,
+:root[data-skin="pixel"] .skin-toggle.on {
+  border-color: var(--signal);
+  background: var(--signal);
+  color: var(--bg);
+}
+:root[data-skin="pixel"] .tabs button.on .icon {
+  color: var(--bg);
+}
+:root[data-skin="pixel"] .ride-list > li > button,
+:root[data-skin="pixel"] .day-row,
+:root[data-skin="pixel"] .stop {
+  box-shadow: none;
+}
+:root[data-skin="pixel"] .stop {
+  border-width: 3px;
+}
+:root[data-skin="pixel"] .chip,
+:root[data-skin="pixel"] .badge {
+  border-width: 2px;
+}
+
+/* Readiness ring as LCD segments. */
+:root[data-skin="pixel"] .gauge,
+:root[data-skin="pixel"] .gauge.go,
+:root[data-skin="pixel"] .gauge.easy,
+:root[data-skin="pixel"] .gauge.stop {
+  background:
+    radial-gradient(closest-side, var(--panel) 74%, transparent 75%),
+    repeating-conic-gradient(var(--panel) 0 3deg, transparent 3deg 12deg),
+    conic-gradient(var(--ring, var(--signal)) calc(var(--score) * 1%), var(--panel-2) 0);
+}
+:root[data-skin="pixel"] .gauge-rider::after {
+  width: 12px;
+  height: 12px;
+  border-width: 3px;
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+
+/* Road: flat asphalt, chunky dashes, speech bubbles with a pixel outline. */
+:root[data-skin="pixel"] .road {
+  background: linear-gradient(180deg, transparent 0 54px, #333c57 54px 82px, #566c86 82px);
+  border-radius: 0;
+}
+:root[data-skin="pixel"] .road-line {
+  height: 4px;
+  background: repeating-linear-gradient(90deg, var(--warn) 0 24px, transparent 24px 48px);
+}
+:root[data-skin="pixel"] .road-hud {
+  border: 2px solid var(--line);
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+:root[data-skin="pixel"] .shout {
+  font: 400 9px/1.4 var(--pixel);
+  border: 2px solid var(--shadow);
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+:root[data-skin="pixel"] .bike .body,
+:root[data-skin="pixel"] .bike .leg,
+:root[data-skin="pixel"] .bike .frame {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+:root[data-skin="pixel"] .hero::after,
+:root[data-skin="pixel"] .ready::after {
+  border-style: dashed;
+  border-width: 8px;
+}
+
+/* Charts: flat fills, square line joins. */
+:root[data-skin="pixel"] .fitness path,
+:root[data-skin="pixel"] .route-line {
+  stroke-linejoin: miter;
+  stroke-linecap: square;
+}
+:root[data-skin="pixel"] .scrub-tip,
+:root[data-skin="pixel"] .xhair-tip {
+  border: 2px solid var(--shadow);
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+:root[data-skin="pixel"] .elevation path {
+  fill: color-mix(in srgb, var(--signal) 14%, transparent);
+}
+:root[data-skin="pixel"] .elevation span {
+  font: 400 8px/1 var(--pixel);
+}
+:root[data-skin="pixel"] textarea,
+:root[data-skin="pixel"] pre,
+:root[data-skin="pixel"] .code {
+  font-family: var(--mono);
+  border: 2px solid var(--line);
+}
+@media (max-width: 640px) {
+  :root[data-skin="pixel"] .road {
+    background: linear-gradient(180deg, transparent 0 40px, #333c57 40px 64px, #566c86 64px);
+  }
+  :root[data-skin="pixel"] .brand-text {
+    font-size: 11px;
+  }
+  :root[data-skin="pixel"] .tabs {
+    border-top: 3px solid var(--line);
+  }
+}
+/* Round things stay round even in 8-bit. */
+:root[data-skin="pixel"] .gauge,
+:root[data-skin="pixel"] .gauge-rider,
+:root[data-skin="pixel"] .hero::after,
+:root[data-skin="pixel"] .ready::after,
+:root[data-skin="pixel"] .scale.cassette .cog {
+  border-radius: 50% !important;
+}
+:root[data-skin="pixel"] .ride-date,
+:root[data-skin="pixel"] .day-date {
+  font: 400 12px/1.4 var(--pixel);
+}
+:root[data-skin="pixel"] .day-date small {
+  font-family: var(--body);
+}
+@media (max-width: 640px) {
+  :root[data-skin="pixel"] .brand-text {
+    font-size: 9px;
+  }
+  :root[data-skin="pixel"] .tile-value {
+    font-size: 15px;
+  }
+  :root[data-skin="pixel"] .tiles.six .tile-value {
+    font-size: 13px;
+  }
+  :root[data-skin="pixel"] .ride-date,
+  :root[data-skin="pixel"] .day-date {
+    font-size: 10px;
+  }
 }

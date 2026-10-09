@@ -316,6 +316,9 @@ class Availability(_StrictModel):
     fri: NonNegInt = 0
     sat: NonNegInt = 0
     sun: NonNegInt = 0
+    #: One-off minutes for single dates (e.g. a swapped weekend); replaces the weekday's minutes.
+    #: When the long-ride day gets too little, the long ride moves to the week's longest day.
+    dates: dict[dt.date, NonNegInt] = Field(default_factory=dict)
 
     def minutes_for(self, day: Weekday) -> int:
         """Available minutes for a weekday key (``mon``..``sun``)."""

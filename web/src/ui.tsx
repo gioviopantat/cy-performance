@@ -1,5 +1,5 @@
 // Small shared pieces: data tiles, SVG charts, workout profile, explanations.
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type PointerEvent, type ReactNode } from "react";
 
 import type { S } from "./api/client";
 
@@ -16,6 +16,55 @@ export const fmt = (v: number | null | undefined, digits = 0, unit = ""): string
 export const minutes = (seconds: number | null | undefined): string =>
   seconds ? `${Math.round(seconds / 60)}′` : "—";
 
+const PHONE = "(max-width: 640px)";
+
+/** True on a phone-width screen; follows rotation and window resizes. */
+export function usePhone(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(PHONE);
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(PHONE).matches,
+  );
+}
+
+/** Scrolls an element to the top of the screen after the next paint (once the layout settled). */
+export const scrollToTop = (id: string): void => {
+  requestAnimationFrame(() =>
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+  );
+};
+
+const reducedMotion = () =>
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/** Rolls a numeric string up from zero (like a head unit waking up); other strings pass through. */
+export function useCountUp(value: string, ms = 800): string {
+  const m = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+  const [shown, setShown] = useState(m && !reducedMotion() ? value.replace(/\d/g, "0") : value);
+  useEffect(() => {
+    if (!m || reducedMotion()) {
+      setShown(value);
+      return;
+    }
+    const target = Number(value);
+    const digits = m[3]?.length ?? 0;
+    const t0 = performance.now();
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min((t - t0) / ms, 1);
+      const eased = 1 - (1 - k) ** 3;
+      setShown((target * eased).toFixed(digits));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, ms]);
+  return shown;
+}
+
 /** A head-unit style data field: tiny label, big condensed number. */
 export function Tile({
   label,
@@ -28,11 +77,12 @@ export function Tile({
   unit?: string;
   tone?: "hot" | "cool" | "warn";
 }) {
+  const shown = useCountUp(value);
   return (
     <div className={`tile ${tone ?? ""}`}>
       <span className="tile-label">{label}</span>
       <span className="tile-value">
-        {value}
+        {shown}
         {unit ? <small>{unit}</small> : null}
       </span>
     </div>
@@ -82,8 +132,13 @@ export function Explain({ e }: { e: S["Explanation"] | null | undefined }) {
   );
 }
 
-/** Intensity profile of a workout: bar height = % FTP, width = duration. */
+/**
+ * Intensity profile of a workout: bar height = % FTP, width = duration. Hovering scrubs a little
+ * rider along the workout and reads out minute, % FTP and zone.
+ */
 export function WorkoutProfile({ steps }: { steps?: S["PlanStep"][] | undefined }) {
+  const [at, setAt] = useState<number | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   const flat: { s: number; pct: number; kind: string }[] = [];
   for (const st of steps ?? []) {
     for (let r = 0; r < Math.max(st.repeat ?? 1, 1); r++) {
@@ -93,30 +148,61 @@ export function WorkoutProfile({ steps }: { steps?: S["PlanStep"][] | undefined 
   }
   const total = flat.reduce((a, b) => a + b.s, 0);
   if (!total) return null;
+  const move = (e: PointerEvent) => {
+    const r = box.current?.getBoundingClientRect();
+    if (r) setAt(Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1));
+  };
+  let hover: { pct: number; min: number } | null = null;
+  if (at !== null) {
+    let acc = 0;
+    for (const b of flat) {
+      acc += b.s;
+      if (acc / total >= at) {
+        hover = { pct: b.pct, min: Math.round((at * total) / 60) };
+        break;
+      }
+    }
+  }
   let x = 0;
   return (
-    <svg className="profile" viewBox="0 0 1000 120" preserveAspectRatio="none" role="img">
-      <title>強度輪廓</title>
-      {[55, 75, 90, 105].map((y) => (
-        <line key={y} x1={0} x2={1000} y1={120 - y} y2={120 - y} className="grid" />
-      ))}
-      {flat.map((b, i) => {
-        const w = (b.s / total) * 1000;
-        const h = Math.min(Math.max(b.pct, 30), 120);
-        const rect = (
-          <rect
-            key={i}
-            x={x}
-            y={120 - h}
-            width={Math.max(w - 1, 1)}
-            height={h}
-            className={`zone z${zoneOf(b.pct)}`}
-          />
-        );
-        x += w;
-        return rect;
-      })}
-    </svg>
+    <div className="profile-wrap" ref={box} onPointerMove={move} onPointerDown={move} onPointerLeave={() => setAt(null)}>
+      <svg className="profile" viewBox="0 0 1000 120" preserveAspectRatio="none" role="img">
+        <title>強度輪廓</title>
+        {[55, 75, 90, 105].map((y) => (
+          <line key={y} x1={0} x2={1000} y1={120 - y} y2={120 - y} className="grid" />
+        ))}
+        {flat.map((b, i) => {
+          const w = (b.s / total) * 1000;
+          const h = Math.min(Math.max(b.pct, 30), 120);
+          const rect = (
+            <rect
+              key={i}
+              x={x}
+              y={120 - h}
+              width={Math.max(w - 1, 1)}
+              height={h}
+              className={`zone z${zoneOf(b.pct)}`}
+              style={{ animationDelay: `${Math.min(i * 25, 600)}ms` }}
+            />
+          );
+          x += w;
+          return rect;
+        })}
+      </svg>
+      {at !== null && hover ? (
+        <div
+          className="scrub"
+          style={{ left: `${at * 100}%`, bottom: `${(Math.min(Math.max(hover.pct, 30), 120) / 120) * 100}%` }}
+        >
+          <span className="scrub-dot" />
+          <span className="scrub-tip">
+            第 {hover.min} 分 · {Math.round(hover.pct)}% FTP · Z{zoneOf(hover.pct)}
+          </span>
+        </div>
+      ) : (
+        <span className="scrub-hint">滑過或按住拖曳看每一段 →</span>
+      )}
+    </div>
   );
 }
 
@@ -137,27 +223,74 @@ export function FitnessChart({ points }: { points: S["FitnessPoint"][] }) {
     pts.map((p, i) => `${i ? "L" : "M"}${sx(i).toFixed(1)},${sy(p[key] ?? 0).toFixed(1)}`).join("");
   const last = pts[pts.length - 1]!;
   return (
-    <svg className="fitness" viewBox={`0 0 ${W} ${H}`} role="img">
-      <title>體能（CTL）與疲勞（ATL）</title>
-      {pts.map((p, i) => {
-        const v = p.tsb ?? 0;
-        const h = (Math.abs(v) / tsbMax) * 30;
-        return (
-          <rect
-            key={p.date}
-            x={sx(i) - 1}
-            width={2.4}
-            y={v >= 0 ? H - 20 - h : H - 20}
-            height={h}
-            className={v >= 0 ? "tsb pos" : "tsb neg"}
-          />
-        );
-      })}
-      <line x1={0} x2={W} y1={H - 20} y2={H - 20} className="axis" />
-      <path d={line("atl")} className="atl" />
-      <path d={line("ctl")} className="ctl" />
-      <circle cx={sx(pts.length - 1)} cy={sy(last.ctl ?? 0)} r={5} className="ctl-dot" />
-    </svg>
+    <FitnessHover pts={pts} sx={sx} sy={sy} W={W} H={H}>
+      <svg className="fitness" viewBox={`0 0 ${W} ${H}`} role="img">
+        <title>體能（CTL）與疲勞（ATL）</title>
+        {pts.map((p, i) => {
+          const v = p.tsb ?? 0;
+          const h = (Math.abs(v) / tsbMax) * 30;
+          return (
+            <rect
+              key={p.date}
+              x={sx(i) - 1}
+              width={2.4}
+              y={v >= 0 ? H - 20 - h : H - 20}
+              height={h}
+              className={v >= 0 ? "tsb pos" : "tsb neg"}
+            />
+          );
+        })}
+        <line x1={0} x2={W} y1={H - 20} y2={H - 20} className="axis" />
+        <path d={line("atl")} className="atl" />
+        <path d={line("ctl")} className="ctl" />
+        <circle cx={sx(pts.length - 1)} cy={sy(last.ctl ?? 0)} r={5} className="ctl-dot" />
+      </svg>
+    </FitnessHover>
+  );
+}
+
+/** Crosshair over the fitness chart: date, CTL, ATL, TSB of the day under the pointer. */
+function FitnessHover({
+  pts,
+  sx,
+  sy,
+  W,
+  H,
+  children,
+}: {
+  pts: S["FitnessPoint"][];
+  sx: (i: number) => number;
+  sy: (v: number) => number;
+  W: number;
+  H: number;
+  children: ReactNode;
+}) {
+  const [i, setI] = useState<number | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const p = i === null ? null : pts[i];
+  const pick = (e: PointerEvent) => {
+    const r = box.current?.getBoundingClientRect();
+    if (r) setI(Math.round(Math.min(Math.max((e.clientX - r.left) / r.width, 0), 1) * (pts.length - 1)));
+  };
+  return (
+    <div
+      className="fitness-wrap"
+      ref={box}
+      onPointerMove={pick}
+      onPointerDown={pick}
+      onPointerLeave={() => setI(null)}
+    >
+      {children}
+      {p && i !== null ? (
+        <>
+          <span className="xhair" style={{ left: `${(sx(i) / W) * 100}%` }} />
+          <span className="xhair-dot" style={{ left: `${(sx(i) / W) * 100}%`, top: `${(sy(p.ctl ?? 0) / H) * 100}%` }} />
+          <span className={`xhair-tip ${sx(i) > W * 0.7 ? "left" : ""}`} style={{ left: `${(sx(i) / W) * 100}%` }}>
+            <b>{mmdd(p.date)}</b> CTL {fmt(p.ctl, 1)} · ATL {fmt(p.atl, 1)} · TSB {fmt(p.tsb, 1)}
+          </span>
+        </>
+      ) : null}
+    </div>
   );
 }
 

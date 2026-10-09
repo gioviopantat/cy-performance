@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { api } from "./api/client";
+import { todayIso } from "./api/hooks";
+import { ElevationFooter, Icon, RoadStrip, WheelSpinner } from "./bike";
 import { ErrorNote } from "./ui";
 import { Plan } from "./views/Plan";
 import { Rides } from "./views/Rides";
@@ -31,6 +34,37 @@ const remember = (key: string, value: string): void => {
   }
 };
 
+type Skin = "default" | "pixel";
+
+/** One-click 8-bit skin: sets `data-skin` on <html>; the swap dissolves in steps where supported. */
+function SkinToggle() {
+  const [skin, setSkin] = useState<Skin>(() => (remembered("cyp.skin", "default") === "pixel" ? "pixel" : "default"));
+  const apply = (next: Skin) => {
+    document.documentElement.dataset.skin = next;
+    remember("cyp.skin", next);
+    setSkin(next);
+  };
+  const toggle = () => {
+    const next: Skin = skin === "pixel" ? "default" : "pixel";
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    if (doc.startViewTransition) doc.startViewTransition(() => flushSync(() => apply(next)));
+    else apply(next);
+  };
+  return (
+    <button
+      className={`skin-toggle ${skin === "pixel" ? "on" : ""}`}
+      onClick={toggle}
+      title={skin === "pixel" ? "切回一般風格" : "切換成像素風格"}
+      aria-pressed={skin === "pixel"}
+    >
+      <svg viewBox="0 0 8 8" aria-hidden shapeRendering="crispEdges">
+        <path d="M2 0h4v1H2zM1 1h6v1H1zM0 2h2v1H0zm3 0h2v1H3zm3 0h2v1H6zM0 3h8v2H0zM1 5h2v1H1zm4 0h2v1H5zM0 6h2v1H0zm6 0h2v1H6z" />
+      </svg>
+      <span>{skin === "pixel" ? "8-BIT" : "像素"}</span>
+    </button>
+  );
+}
+
 export function App() {
   const profiles = useQuery({ queryKey: ["profiles", "*"], queryFn: api.profiles, refetchInterval: 60_000 });
   const [slug, setSlug] = useState(() => remembered("cyp.profile", ""));
@@ -46,6 +80,13 @@ export function App() {
   }, [list, known]);
 
   const info = list.find((p) => p.slug === slug);
+  const chase = list.find((p) => p.slug !== slug)?.display_name;
+  const today = todayIso();
+  const ready = useQuery({
+    queryKey: ["readiness", slug, today],
+    queryFn: () => api.readiness(slug, today),
+    enabled: known,
+  });
 
   return (
     <div className="app">
@@ -59,6 +100,7 @@ export function App() {
           <span className="brand-text">
             cy<b>·</b>performance
           </span>
+          <SkinToggle />
         </div>
         <nav className="profiles" aria-label="選手">
           {list.map((p) => (
@@ -87,11 +129,13 @@ export function App() {
                 window.history.replaceState(null, "", `#${id}`);
               }}
             >
+              <Icon name={id} />
               {label}
             </button>
           ))}
         </nav>
       </header>
+      <RoadStrip lead={info?.display_name} chase={chase} readiness={ready.data?.score} />
       {info ? (
         <p className="status-line">
           <span>{info.icu_athlete_id ?? "?"}</span>
@@ -100,7 +144,7 @@ export function App() {
         </p>
       ) : null}
       <ErrorNote error={profiles.error} />
-      <main key={slug}>
+      <main key={`${slug}:${tab}`}>
         {slug ? (
           tab === "today" ? (
             <Today profile={slug} info={info} />
@@ -112,9 +156,10 @@ export function App() {
             <Runs profile={slug} />
           )
         ) : (
-          <p className="muted">載入中…</p>
+          <WheelSpinner />
         )}
       </main>
+      <ElevationFooter />
     </div>
   );
 }

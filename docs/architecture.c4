@@ -2,7 +2,8 @@
 // Backed by: README.md, CLAUDE.md, pyproject.toml, .env.example, src/cyp/cli/*, src/cyp/api/*,
 // src/cyp/services/{autopilot,publish,ride_log,ride_feedback,strava_write}.py, src/cyp/jobs/{runner,launchd,notify}.py,
 // src/cyp/profiles.py, src/cyp/settings.py, src/cyp/store/{db,streams}.py,
-// src/cyp/ingest/{intervals,strava}/client.py, docs/adr/0003, 0005, 0006, 0008.
+// src/cyp/ingest/{intervals,strava}/client.py, web/index.html, web/src/{App,main,bike}.tsx,
+// docs/adr/0003, 0005, 0006, 0008, 0009, docs/runbooks/network.md.
 // Not drawn: Strava webhooks (src/cyp/ingest/strava/webhook.py, not wired until M6) and the
 // LLM narrator (src/cyp/llm/ is empty; ANTHROPIC_API_KEY is configured but never called).
 
@@ -48,7 +49,7 @@ model {
     }
     runner = container 'Autopilot run' {
       technology 'Python subprocess per profile + flock'
-      description 'lock -> migrate -> sync -> analyze -> reports -> plan -> publish -> notify on failure; each stage behind a feature flag (jobs/runner.py, services/autopilot.py)'
+      description 'run --all first waits up to 15 min for DNS to resolve intervals.icu (after wake from sleep); then per profile: lock -> migrate -> sync -> analyze -> reports -> plan -> publish -> notify on failure; each stage behind a feature flag (jobs/runner.py, services/autopilot.py)'
     }
     api = container 'HTTP API' {
       technology 'FastAPI + uvicorn (cyp serve)'
@@ -56,7 +57,7 @@ model {
     }
     web = container 'Web dashboard' {
       technology 'Vite + React + TypeScript (web/), served by cyp serve'
-      description 'Today / plan / rides / runs per profile; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write (docs/specs/web-ui.md)'
+      description 'Today / plan / rides / runs per profile, phone layout and an 8-bit skin; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write. Viewer preferences (profile, tab, skin) stay in the browser localStorage (docs/specs/web-ui.md)'
     }
     profileFiles = store 'Profile workspace' {
       technology 'profiles/<slug>/: .env, athlete.yaml, profile.yaml'
@@ -92,6 +93,10 @@ model {
   garmin = extsys 'Garmin Connect / head unit' {
     description 'Receives planned workouts pushed by intervals.icu; uploads rides to intervals.icu'
   }
+  googleFonts = extsys 'Google Fonts' {
+    technology 'fonts.googleapis.com / fonts.gstatic.com'
+    description 'Web fonts for the dashboard, including the pixel skin bitmap fonts (web/index.html)'
+  }
   macNotify = extsys 'macOS Notification Center' {
     #optional
     technology 'osascript'
@@ -102,6 +107,7 @@ model {
   owner -> cyp.cli 'runs commands, onboards and promotes profiles'
   owner -> cyp.web 'views today, plan, rides; runs the autopilot with buttons'
   cyp.web -> cyp.api 'GET/POST /v1 with X-CYP-Profile'
+  cyp.web -> googleFonts 'loads web fonts (browser)'
   cyp.api -> cyp.runner 'POST /v1/autopilot (dry run, or confirmed write)'
   cyp.api -> cyp.profileFiles 'lists profiles, reads flags'
   cyp.launchd -> cyp.cli 'starts run --all daily'
@@ -112,7 +118,7 @@ model {
   cyp.runner -> cyp.db 'stores synced data, plans, publish_log, job_runs'
   cyp.runner -> cyp.streams 'writes and reads ride streams'
   cyp.runner -> cyp.reports 'writes daily/weekly reports and logs'
-  cyp.runner -> icu 'checks key owner, syncs activities/wellness; diffs and upserts our events (write guard, apply mode only)'
+  cyp.runner -> icu 'waits for DNS after wake, checks key owner, syncs activities/wellness; diffs and upserts our events (write guard, apply mode only)'
   cyp.runner -> strava 'syncs efforts and fallback streams'
   cyp.runner -> macNotify 'failure notice'
   cyp.api -> cyp.db 'reads and commits plans'
@@ -140,6 +146,6 @@ views {
     title 'cy-performance: containers'
     include *
     include cyp.*
-    include owner, athlete, icu, strava, garmin, macNotify
+    include owner, athlete, icu, strava, garmin, macNotify, googleFonts
   }
 }

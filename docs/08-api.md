@@ -65,7 +65,7 @@ to bind beyond loopback without a token; on loopback without one it answers only
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/meta` | athlete, FTP, W/kg, season week/phase, data version, last job runs |
-| GET | `/fitness?start&end` | daily load + CTL/ATL/TSB (icu ledger, else our replay) + planned load |
+| GET | `/fitness?start&end` | daily load + CTL/ATL/TSB (icu ledger, else our replay) + planned load (calendar WORKOUT events, else our proposals) |
 | GET | `/season` | 26-week skeleton with targets, tests, checkpoints |
 | GET | `/activities?start&end&sport&rides_only&classification&offset&limit` | list (newest first) |
 | GET | `/activities/{id}` | stored per-ride analysis + Explanation |

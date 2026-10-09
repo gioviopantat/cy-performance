@@ -2,9 +2,11 @@
 
 Deterministic (ADR-0004): same inputs, same plan. Rules (docs/05 §2.2–2.4):
 
-1. **Availability** per weekday from ``config/athlete.yaml``, lowered by calendar overrides
+1. **Availability** per weekday from ``config/athlete.yaml`` (one-off ``availability.dates``
+   replace a date's minutes), lowered by calendar overrides
    (athlete NOTE ``max_training_time``, HOLIDAY/SICK/INJURED -> 0). 0 minutes = rest day.
-2. **Long ride** on ``planner.long_ride_day`` (fallback: the weekend day with most minutes).
+2. **Long ride** on ``planner.long_ride_day`` (fallback: the weekend day with most minutes; in a
+   week with one-off ``availability.dates``, the day with most minutes).
 3. **Test** (season test weeks) on Thursday, or the goal date in the final week, with openers the
    day before in the test phase. Tests count as hard days for spacing.
 4. **HIT days**: ``week.hit_sessions`` (minus one if a test is scheduled), chosen in the order
@@ -209,6 +211,8 @@ def availability(week: SeasonWeek, ctx: PlanContext) -> dict[dt.date, int]:
         minutes = ctx.cfg.availability.minutes_for(weekday_key(day))  # type: ignore[arg-type]
         if week.long_ride_minutes is not None and weekday_key(day) == ctx.cfg.planner.long_ride_day:
             minutes = week.long_ride_minutes
+        if day in ctx.cfg.availability.dates:  # a one-off date replaces the weekday's minutes
+            minutes = ctx.cfg.availability.dates[day]
         if day in ctx.overrides:
             minutes = min(minutes, ctx.overrides[day])
         out[day] = max(minutes, 0)
@@ -228,8 +232,10 @@ def assign_roles(
 
     long_day = by_key.get(ctx.cfg.planner.long_ride_day)
     if long_day is None or avail[long_day] < MIN_LONG_MINUTES:
-        weekend = [d for d in days if d.weekday() >= 5 and avail[d] >= MIN_LONG_MINUTES]
-        long_day = max(weekend, key=lambda d: (avail[d], -d.toordinal()), default=None)
+        # A week with one-off ``availability.dates`` (e.g. a swapped weekend): the longest day.
+        swapped = any(d in ctx.cfg.availability.dates for d in days)
+        usable = [d for d in days if (swapped or d.weekday() >= 5) and avail[d] >= MIN_LONG_MINUTES]
+        long_day = max(usable, key=lambda d: (avail[d], -d.toordinal()), default=None)
     if long_day is not None:
         roles[long_day] = "long_ride"
     after_long = long_day + dt.timedelta(days=1) if long_day else None

@@ -52,7 +52,7 @@ The sibling project already implements and tests most per-ride metrics. Port (no
 Inputs (each z-scored against the athlete's trailing 30/60-day baseline, missing → ignored, weights
 renormalised):
 - HRV (rMSSD, ln-transformed) z, resting HR z, sleep duration + score z (from icu wellness)
-- TSB (icu), ramp rate, yesterday's TSS vs plan
+- TSB (icu), ramp rate, yesterday's TSS vs plan (the plan = the WORKOUT events the calendar showed, else our live proposal)
 - Yesterday's ride durability: decoupling, HR lag, HR blunting (low HR for power → `BLUNTED`)
 - Subjective: soreness, fatigue, stress, mood, injury, `SICK`/`INJURED` calendar events
 

@@ -46,6 +46,20 @@ The owner can do everyday things with buttons instead of commands, for any profi
   - Plain CSS with light/dark tokens; zh-TW labels. No chart library: small SVG charts.
   - Screens: 今天 · 課表 · 紀錄 · 執行; a profile switcher and the planner-mode badge in the
     header.
+  - Cycling look and motion (`web/src/bike.tsx`, presentation only, no new data):
+    - a road strip under the header with both athletes riding. Cruise speed follows today's
+      readiness score; a click starts a sprint;
+    - 課表 shows the next 14 days as a stage profile (height = TSS); a click opens that day;
+    - the workout profile and fitness chart read out values under the pointer or a finger;
+      numbers count up; the readiness ring fills in.
+    - `prefers-reduced-motion` turns all of it off.
+  - Phone (≤ 640 px): the tabs move to a fixed bottom bar and the header stays on top
+    (sticky). The page has one scroll. Opening a day or a ride folds the one that was open,
+    shows the detail under its own row and scrolls it to the top. On desktop the list column
+    stays in view while the detail scrolls.
+  - Skins: a header button switches to an 8-bit "pixel" skin (`data-skin="pixel"` on `<html>`,
+    CSS only). It is a per-viewer preference in `localStorage` (`cyp.skin`), not a feature
+    flag: it changes nothing the server does.
 - **Flags** (ADR-0008): `api.calendar_write` (default on) lets the UI's write button work for
   that profile; off = the button is hidden and the endpoint refuses. `strava.write_description`
   (default off) does the same for the Strava write; `readiness.ride_feel` decides whether the

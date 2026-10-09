@@ -11,7 +11,7 @@ simulatable, and bounded by guardrails ([ADR-0004](adr/0004-deterministic-planne
 | `FitnessState`: CTL/ATL/TSB, ramp rate, ACWR, monotony | icu wellness + `fitness_daily` |
 | `Readiness` for today | `readiness_daily` |
 | Goals: `RACE_A/B/C`, targets (e.g. FTP 280, 4.4 W/kg, climb X under Y min) | icu calendar + `goals` |
-| Availability: per-weekday max minutes, indoor/outdoor, hard "no" days; overrides from icu NOTE events with `training_availability` / `max_training_time` | `config/athlete.yaml` + icu events |
+| Availability: per-weekday max minutes, one-off `availability.dates` (`{2026-10-09: 210}` replaces that date's minutes, e.g. a swapped weekend), indoor/outdoor, hard "no" days; overrides from icu NOTE events with `training_availability` / `max_training_time` | `config/athlete.yaml` + icu events |
 | Limiters: from `longitudinal/limiters.py` (e.g. "fades after 40 min at threshold", "VO2 ceiling", "poor durability > 1 500 kJ") | analysis |
 | Compliance history (what actually got done) | `planned_workouts.compliance` |
 | Other-sport load (yoga, strength, hiking, trail run) | icu activities with `icu_training_load` |
@@ -62,7 +62,7 @@ Rules specific to this season type:
 
 ### 2.2 Week template (`WeekTemplate`)
 Deterministic allocation of `target_tss` across available days:
-- Fixed long ride on the day with most availability (weekend); never adjacent to the other HIT day
+- Fixed long ride on the day with most availability (weekend; in a week with one-off `availability.dates`, any day); never adjacent to the other HIT day
   unless block = specialty and readiness ≥ NORMAL.
 - HIT days separated by ≥ 48 h; rest/recovery day after the long ride.
 - Strength/yoga are **not planned**. Their actual load still enters the PMC via icu, and a heavy

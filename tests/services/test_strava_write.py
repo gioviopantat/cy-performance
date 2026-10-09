@@ -219,3 +219,57 @@ def test_overwriting_a_saved_ride_log_keeps_the_previous_one(ctx: AppContext) ->
     assert prev.read_text(encoding="utf-8").strip() == "📋 WORKOUT\n> 好詩"
     save(ctx, aid, "")
     assert prev.read_text(encoding="utf-8").strip() == "📋 WORKOUT\n自動版"
+
+
+def test_ride_log_names_the_workout_the_calendar_showed(ctx: AppContext) -> None:
+    """Regression 2026-10-08: a later proposal for a frozen day (never published) named the
+    workout; the athlete rode what the intervals.icu calendar showed."""
+    import datetime as dt
+
+    from cyp.dataset import CACHE
+    from cyp.services.ride_log import build
+    from cyp.store.models import Athlete, IcuEvent, PlannedWorkout
+
+    aid = _ride(ctx)
+    with ctx.factory() as s:
+        a = s.get(Activity, aid)
+        assert a is not None
+        day = dt.date.fromisoformat(str(a.start_local)[:10])
+        athlete = s.query(Athlete).first()
+        assert athlete is not None
+        s.query(IcuEvent).filter(IcuEvent.start_date_local.like(f"{day}%")).delete()
+        s.query(PlannedWorkout).filter(PlannedWorkout.date_local == day).delete()
+        s.add(
+            PlannedWorkout(
+                athlete_id=athlete.id,
+                date_local=day,
+                slot=1,
+                external_id=f"cyp:s20261005:{day}:1",
+                template_id="recovery_spin",
+                template_version=1,
+                intent="recovery",
+                name="恢復騎 45 分",
+                target_tss=18.8,
+                status="proposed",
+            )
+        )
+        s.commit()
+    assert "恢復騎 45 分" in build(ctx, aid).generated  # nothing on the calendar: our proposal
+
+    with ctx.factory() as s:
+        s.add(
+            IcuEvent(
+                id=990001,
+                category="WORKOUT",
+                start_date_local=f"{day}T00:00:00",
+                name="Z2 有氧耐力 120 分",
+                external_id=f"cyp:s20261005:{day}:1",
+                icu_training_load=88.0,
+            )
+        )
+        s.commit()
+    text = build(ctx, aid).generated
+    assert "課表：Z2 有氧耐力 120 分" in text and "計畫 88" in text
+    CACHE.clear()
+    ds = CACHE.get(ctx.factory)
+    assert ds is not None and ds.planned_load[day] == 88.0

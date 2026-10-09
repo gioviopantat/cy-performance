@@ -2508,7 +2508,7 @@
               }
             ],
             "title": "Planned Load",
-            "description": "Our proposed load for that day"
+            "description": "Planned load: the calendar's WORKOUT events, else our live proposals"
           }
         },
         "additionalProperties": false,

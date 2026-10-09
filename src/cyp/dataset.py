@@ -291,12 +291,27 @@ class Dataset:
 
     @property
     def planned_load(self) -> dict[dt.date, float]:
-        """Σ target TSS of our live planned workouts per day."""
-        return {
+        """Σ planned load per day: what the athlete's calendar showed, else our live proposals.
+
+        The calendar wins because a proposal for a frozen day (past the cut-off) is never
+        published: the athlete rode the workout on the calendar, not our later proposal.
+        """
+        out = {
             d: sum(p.target_tss or 0.0 for p in rows)
             for d, rows in self.planned.items()
             if any(p.target_tss is not None for p in rows)
         }
+        out.update(self.calendar_load)
+        return out
+
+    @property
+    def calendar_load(self) -> dict[dt.date, float]:
+        """Σ intervals.icu load of the WORKOUT events on the calendar per day (ours and theirs)."""
+        out: dict[dt.date, float] = {}
+        for e in self.events:
+            if e.category == "WORKOUT" and e.date is not None and e.load is not None:
+                out[e.date] = out.get(e.date, 0.0) + float(e.load)
+        return out
 
     # ------------------------------------------------------------------ helpers
 

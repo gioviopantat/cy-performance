@@ -1,9 +1,10 @@
 """RIDE.LOG text for one ride: the WORKOUT line and the metrics block (docs/specs/web-ui.md).
 
-Deterministic only (ADR-0004): numbers come from ``activity_metrics``, the planned workout of
-that day and the athlete's form the day before. The closing acrostic poem is written by a person
-(or, later, a flagged LLM narrator) and **saved** per ride under ``data/ride_logs/<id>.txt``:
-a saved text wins over the generated one everywhere (UI, ``cyp ride-log show``, Strava push).
+Deterministic only (ADR-0004): numbers come from ``activity_metrics``, the workout the athlete's
+calendar showed that day (intervals.icu ``WORKOUT`` event; else our live proposal) and the
+athlete's form the day before. The closing acrostic poem is written by a person (or, later, a
+flagged LLM narrator) and **saved** per ride under ``data/ride_logs/<id>.txt``: a saved text wins
+over the generated one everywhere (UI, ``cyp ride-log show``, Strava push).
 """
 
 from __future__ import annotations
@@ -18,10 +19,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from cyp.core.errors import NotFoundError
 from cyp.services.context import AppContext
-from cyp.store.models import Activity, ActivityMetrics, PlannedWorkout, WellnessDaily
+from cyp.store.models import Activity, ActivityMetrics, IcuEvent, PlannedWorkout, WellnessDaily
 
 
 @dataclass(frozen=True)
@@ -100,6 +102,31 @@ def _zone_share(zones: dict[str, float] | None, keys: tuple[str, ...]) -> float 
     return sum(zones.get(k, 0.0) for k in keys) / total if total else None
 
 
+def _planned(s: Session, day: dt.date) -> tuple[str, float | None] | None:
+    """(name, load) of the day's workout as the calendar showed it, else our live proposal.
+
+    A proposal made after the day froze is never published, so the calendar is what was ridden.
+    """
+    events = s.scalars(
+        select(IcuEvent)
+        .where(IcuEvent.category == "WORKOUT", IcuEvent.start_date_local.like(f"{day}%"))
+        .order_by(IcuEvent.external_id.is_(None), IcuEvent.external_id, IcuEvent.id)
+    ).all()
+    if events:
+        e = events[0]
+        return (e.name or "", e.icu_training_load)
+    p = s.scalars(
+        select(PlannedWorkout)
+        .where(
+            PlannedWorkout.date_local == day,
+            PlannedWorkout.status.not_in(("cancelled", "superseded")),
+        )
+        .order_by(PlannedWorkout.slot)
+        .limit(1)
+    ).first()
+    return (p.name, p.target_tss) if p is not None else None
+
+
 def build(ctx: AppContext, activity_id: int) -> RideLog:
     """RIDE.LOG for a stored, analysed ride.
 
@@ -112,12 +139,7 @@ def build(ctx: AppContext, activity_id: int) -> RideLog:
         if a is None or m is None:
             raise NotFoundError(f"no analysed activity {activity_id}")
         day = dt.date.fromisoformat(str(a.start_local)[:10])
-        planned = s.scalars(
-            select(PlannedWorkout)
-            .where(PlannedWorkout.date_local == day)
-            .order_by(PlannedWorkout.slot)
-            .limit(1)
-        ).first()
+        planned = _planned(s, day)
         prev = s.scalars(
             select(WellnessDaily)
             .where(WellnessDaily.date_local == day - dt.timedelta(days=1))
@@ -128,14 +150,14 @@ def build(ctx: AppContext, activity_id: int) -> RideLog:
         tss = m.tss or a.icu_training_load
         lines = ["📋 WORKOUT"]
         if planned is not None:
-            lines.append(f"課表：{planned.name}")
+            lines.append(f"課表：{planned[0]}")
         done = f"完成：{minutes} 分"
         if hr_easy is not None:
             done += f"／心率 Z1 佔 {hr_easy:.0%}"
         if m.vi is not None and m.vi >= 1.2:
             done += f"、功率 VI {m.vi:.2f} ⚠️"
         if tss is not None:
-            target = f"，計畫 {planned.target_tss:.0f}" if planned and planned.target_tss else ""
+            target = f"，計畫 {planned[1]:.0f}" if planned and planned[1] else ""
             done += f"（TSS {tss:.0f}{target}）"
         lines.append(done)
         form = None
