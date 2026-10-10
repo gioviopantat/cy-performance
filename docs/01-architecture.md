@@ -179,6 +179,7 @@ A package may import only from its own layer or lower ones:
   (reads, what-ifs, explicit writes, jobs, profiles, autopilot) with ETag caching and optional
   bearer token. `api/registry.py` serves every profile (`X-CYP-Profile`). Contract and budgets:
   [08-api.md](08-api.md).
+- `services/calendar.py` — the calendar view: planned (calendar first) vs done per day, compliance status and week summaries (`GET /v1/calendar`, read-only);
 - `services/ride_feedback.py` — post-ride RPE / feel answered on the web, fed into readiness (`data/ride_feedback/<id>.json`);
 - `services/ride_log.py` — the deterministic WORKOUT + RIDE.LOG text of a ride, plus the athlete-edited version saved in `data/ride_logs/<id>.txt` (previous version kept as `.prev.txt`);
   `services/strava_write.py` — the only Strava write (the ride's description), flag-gated, with

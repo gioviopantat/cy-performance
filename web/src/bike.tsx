@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+import { play } from "./sfx";
+
 // Cycling decoration: small inline SVGs (no assets, theme colours via currentColor / CSS vars).
 
 // Pedal stroke keyframes (hip -> knee -> pedal, 8 crank angles), computed once by hand.
@@ -113,8 +115,8 @@ export function RoadStrip({ lead, chase, readiness }: { lead?: string; chase?: s
       x += kmh * 3.2 * dt;
       if (x > r.clientWidth + 20) x = -150;
       flow += kmh * 2.2 * dt;
-      // The pixel skin moves in whole 4 px steps, like an old console sprite.
-      const px = document.documentElement.dataset.skin === "pixel" ? Math.round(x / 4) * 4 : x;
+      // Whole 4 px steps, like an old console sprite.
+      const px = Math.round(x / 4) * 4;
       g.style.transform = `translateX(${px.toFixed(1)}px)`;
       if (line.current) line.current.style.backgroundPositionX = `${(-flow).toFixed(1)}px`;
       if (posts.current) posts.current.style.transform = `translateX(${(-(flow * 0.35) % (r.clientWidth * 1)).toFixed(1)}px)`;
@@ -140,8 +142,14 @@ export function RoadStrip({ lead, chase, readiness }: { lead?: string; chase?: s
       ref={road}
       onClick={go}
       role="button"
+      data-sfx="sprint"
       tabIndex={0}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), go())}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        play("sprint");
+        go();
+      }}
       aria-label="點路面讓騎士衝刺"
     >
       <div className="road-posts" ref={posts}>
@@ -194,11 +202,13 @@ export function ElevationFooter() {
   );
 }
 
-type IconName = "today" | "plan" | "rides" | "runs" | "rest" | "long_ride" | "hit" | "endurance" | "test" | "climb";
+type IconName = "today" | "calendar" | "plan" | "rides" | "runs" | "rest" | "long_ride" | "hit" | "endurance" | "test" | "climb";
 
 const PATHS: Record<IconName, string> = {
   // head unit
   today: "M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm1 4h8v5H8Zm0 8h3m2 0h3",
+  // calendar page with a ride day ticked
+  calendar: "M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm-1 5h16M8 3v4m8-4v4m-7.5 7 2 2 4-4",
   // chainring
   plan: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0-2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z",
   // route

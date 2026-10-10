@@ -46,7 +46,10 @@ export const api = {
   meta: (p: string) => call<S["Meta"]>(p, "GET", "/meta"),
   fitness: (p: string, start: string) => call<S["FitnessSeries"]>(p, "GET", `/fitness${q({ start })}`),
   readiness: (p: string, day: string) => call<S["ReadinessOut"]>(p, "GET", `/readiness/${day}`),
-  plan: (p: string, days = 14) => call<S["PlannedDayOut"][]>(p, "GET", `/plan${q({ days })}`),
+  plan: (p: string, days = 14, start?: string) =>
+    call<S["PlannedDayOut"][]>(p, "GET", `/plan${q({ start, days })}`),
+  calendar: (p: string, start: string, end: string) =>
+    call<S["CalendarOut"]>(p, "GET", `/calendar${q({ start, end })}`),
   season: (p: string) => call<S["SeasonOut"]>(p, "GET", "/season"),
   activities: (p: string, offset: number, limit: number) =>
     call<S["ActivityPage"]>(p, "GET", `/activities${q({ rides_only: true, offset, limit })}`),

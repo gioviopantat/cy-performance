@@ -99,9 +99,9 @@ New athlete? The questions to ask are in [docs/onboarding-questions.md](docs/onb
 RIDE.LOG to Strava (flag `strava.write_description`, off by default): add `activity:write` to
 `STRAVA_SCOPE` in the profile's `.env`, run `uv run cyp --profile me auth strava` once, set
 `strava.write_description: true` under `features:`. Then `uv run cyp ride-log push latest`
-previews and `--confirm-write` writes (or use the 紀錄 page). Your own text on Strava is kept.
+previews and `--confirm-write` writes (or use the 行事曆 page: open the ride's day). Your own text on Strava is kept.
 An edited RIDE.LOG (e.g. with the acrostic poem) is saved per ride (`cyp ride-log save`, or 儲存 on
-the 紀錄 page, `data/ride_logs/<id>.txt`) and shown and pushed from then on.
+the 行事曆 page, `data/ride_logs/<id>.txt`) and shown and pushed from then on.
 
 Per-source commands (each also runs the matcher afterwards):
 

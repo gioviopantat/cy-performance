@@ -1,20 +1,19 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { flushSync } from "react-dom";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { api } from "./api/client";
 import { todayIso } from "./api/hooks";
 import { ElevationFooter, Icon, RoadStrip, WheelSpinner } from "./bike";
+import { musicOn, setMusic, subscribeMusic } from "./music";
+import { setSound, soundOn, subscribeSound } from "./sfx";
 import { ErrorNote } from "./ui";
-import { Plan } from "./views/Plan";
-import { Rides } from "./views/Rides";
+import { Calendar } from "./views/Calendar";
 import { Runs } from "./views/Runs";
 import { Today } from "./views/Today";
 
 const TABS = [
   ["today", "今天"],
-  ["plan", "課表"],
-  ["rides", "紀錄"],
+  ["calendar", "行事曆"],
   ["runs", "執行"],
 ] as const;
 type Tab = (typeof TABS)[number][0];
@@ -34,33 +33,39 @@ const remember = (key: string, value: string): void => {
   }
 };
 
-type Skin = "default" | "pixel";
-
-/** One-click 8-bit skin: sets `data-skin` on <html>; the swap dissolves in steps where supported. */
-function SkinToggle() {
-  const [skin, setSkin] = useState<Skin>(() => (remembered("cyp.skin", "default") === "pixel" ? "pixel" : "default"));
-  const apply = (next: Skin) => {
-    document.documentElement.dataset.skin = next;
-    remember("cyp.skin", next);
-    setSkin(next);
-  };
-  const toggle = () => {
-    const next: Skin = skin === "pixel" ? "default" : "pixel";
-    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
-    if (doc.startViewTransition) doc.startViewTransition(() => flushSync(() => apply(next)));
-    else apply(next);
-  };
+/** Mute switch for the 8-bit sound effects (a per-viewer preference). */
+function SoundToggle() {
+  const on = useSyncExternalStore(subscribeSound, soundOn);
   return (
     <button
-      className={`skin-toggle ${skin === "pixel" ? "on" : ""}`}
-      onClick={toggle}
-      title={skin === "pixel" ? "切回一般風格" : "切換成像素風格"}
-      aria-pressed={skin === "pixel"}
+      className={`sound-toggle ${on ? "on" : ""}`}
+      data-sfx="none"
+      onClick={() => setSound(!on)}
+      title={on ? "關閉音效" : "開啟音效"}
+      aria-pressed={on}
     >
       <svg viewBox="0 0 8 8" aria-hidden shapeRendering="crispEdges">
-        <path d="M2 0h4v1H2zM1 1h6v1H1zM0 2h2v1H0zm3 0h2v1H3zm3 0h2v1H6zM0 3h8v2H0zM1 5h2v1H1zm4 0h2v1H5zM0 6h2v1H0zm6 0h2v1H6z" />
+        <path d={on ? "M0 3h2v2H0zM2 2h1v4H2zM3 1h1v6H3zM5 2h1v1H5zm0 3h1v1H5zm1-2h1v2H6z" : "M0 3h2v2H0zM2 2h1v4H2zM3 1h1v6H3zM5 2h1v1H5zm2 0h1v1H7zM6 3h1v2H6zM5 5h1v1H5zm2 0h1v1H7z"} />
       </svg>
-      <span>{skin === "pixel" ? "8-BIT" : "像素"}</span>
+      <span>{on ? "音效" : "靜音"}</span>
+    </button>
+  );
+}
+
+/** Background music switch (the lo-fi chiptune loop in music.ts). */
+function MusicToggle() {
+  const on = useSyncExternalStore(subscribeMusic, musicOn);
+  return (
+    <button
+      className={`sound-toggle ${on ? "on" : ""}`}
+      onClick={() => setMusic(!on)}
+      title={on ? "關閉背景音樂" : "開啟背景音樂"}
+      aria-pressed={on}
+    >
+      <svg viewBox="0 0 8 8" aria-hidden shapeRendering="crispEdges">
+        <path d={on ? "M3 0h4v1H3zM3 1h1v4H3zM6 1h1v4H6zM1 5h3v2H1zM4 5h3v2H4z" : "M3 0h4v1H3zM3 1h1v4H3zM6 1h1v4H6zM1 5h3v2H1zM4 5h3v2H4zM0 0h1v1H0zm7 7h1v1H7zM1 1h1v1H1zm5 5h1v1H6z"} />
+      </svg>
+      <span>{on ? "音樂" : "無音樂"}</span>
     </button>
   );
 }
@@ -69,8 +74,11 @@ export function App() {
   const profiles = useQuery({ queryKey: ["profiles", "*"], queryFn: api.profiles, refetchInterval: 60_000 });
   const [slug, setSlug] = useState(() => remembered("cyp.profile", ""));
   const [tab, setTab] = useState<Tab>(() => {
-    const fromHash = window.location.hash.slice(1);
-    return (TABS.some(([id]) => id === fromHash) ? fromHash : remembered("cyp.tab", "today")) as Tab;
+    // 課表 / 紀錄 were merged into 行事曆: old links and remembered tabs land there.
+    const legacy = (id: string) => (id === "plan" || id === "rides" ? "calendar" : id);
+    const fromHash = legacy(window.location.hash.slice(1));
+    const wanted = TABS.some(([id]) => id === fromHash) ? fromHash : legacy(remembered("cyp.tab", "today"));
+    return (TABS.some(([id]) => id === wanted) ? wanted : "today") as Tab;
   });
   const list = profiles.data ?? [];
   const known = list.some((p) => p.slug === slug);
@@ -100,7 +108,8 @@ export function App() {
           <span className="brand-text">
             cy<b>·</b>performance
           </span>
-          <SkinToggle />
+          <SoundToggle />
+          <MusicToggle />
         </div>
         <nav className="profiles" aria-label="選手">
           {list.map((p) => (
@@ -122,6 +131,7 @@ export function App() {
           {TABS.map(([id, label]) => (
             <button
               key={id}
+              data-sfx="tab"
               className={tab === id ? "on" : ""}
               onClick={() => {
                 setTab(id);
@@ -148,10 +158,8 @@ export function App() {
         {slug ? (
           tab === "today" ? (
             <Today profile={slug} info={info} />
-          ) : tab === "plan" ? (
-            <Plan profile={slug} />
-          ) : tab === "rides" ? (
-            <Rides profile={slug} info={info} />
+          ) : tab === "calendar" ? (
+            <Calendar profile={slug} info={info} />
           ) : (
             <Runs profile={slug} />
           )

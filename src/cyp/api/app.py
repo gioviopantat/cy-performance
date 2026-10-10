@@ -39,6 +39,7 @@ from cyp.api.registry import PROFILE_HEADER, ProfileRegistry
 from cyp.api.routes import (
     activities,
     autopilot,
+    calendar,
     ftp,
     jobs,
     meta,
@@ -183,7 +184,18 @@ def create_app(
         """Liveness probe (no DB access)."""
         return {"status": "ok", "version": __version__}
 
-    for module in (meta, activities, ftp, readiness, plan, reports, jobs, profiles, autopilot):
+    for module in (
+        meta,
+        activities,
+        calendar,
+        ftp,
+        readiness,
+        plan,
+        reports,
+        jobs,
+        profiles,
+        autopilot,
+    ):
         app.include_router(module.router, prefix=API_PREFIX)
     if web_dir is not None and (web_dir / "index.html").is_file():
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

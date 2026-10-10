@@ -811,6 +811,74 @@
         }
       }
     },
+    "/v1/calendar": {
+      "get": {
+        "tags": [
+          "calendar"
+        ],
+        "summary": "Get Calendar",
+        "description": "Whole weeks covering ``[start, end]`` (default: 4 weeks back, 2 ahead; max 63 days).",
+        "operationId": "get_calendar_v1_calendar_get",
+        "parameters": [
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/ftp": {
       "get": {
         "tags": [
@@ -2308,6 +2376,362 @@
         ],
         "title": "CPFitOut",
         "description": "One CP model fit."
+      },
+      "CalendarActivity": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "sport": {
+            "type": "string",
+            "title": "Sport"
+          },
+          "is_ride": {
+            "type": "boolean",
+            "title": "Is Ride"
+          },
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes"
+          },
+          "load": {
+            "type": "number",
+            "title": "Load"
+          },
+          "classification_zh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification Zh"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "sport",
+          "is_ride",
+          "minutes",
+          "load"
+        ],
+        "title": "CalendarActivity",
+        "description": "One activity of a day, reduced to what a calendar cell needs."
+      },
+      "CalendarDay": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "over",
+              "under",
+              "skipped",
+              "extra",
+              "pending",
+              "planned",
+              "rest"
+            ],
+            "title": "Status"
+          },
+          "planned": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CalendarPlanned"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarActivity"
+            },
+            "type": "array",
+            "title": "Activities"
+          },
+          "load": {
+            "type": "number",
+            "title": "Load"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "readiness_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Readiness Score"
+          },
+          "readiness_zh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Readiness Zh"
+          },
+          "ctl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctl"
+          },
+          "tsb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tsb"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "date",
+          "status",
+          "activities",
+          "load",
+          "notes"
+        ],
+        "title": "CalendarDay",
+        "description": "One cell of the calendar."
+      },
+      "CalendarOut": {
+        "properties": {
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "end": {
+            "type": "string",
+            "format": "date",
+            "title": "End"
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarDay"
+            },
+            "type": "array",
+            "title": "Days"
+          },
+          "weeks": {
+            "items": {
+              "$ref": "#/components/schemas/CalendarWeek"
+            },
+            "type": "array",
+            "title": "Weeks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "today",
+          "start",
+          "end",
+          "days",
+          "weeks"
+        ],
+        "title": "CalendarOut",
+        "description": "``GET /v1/calendar``: whole weeks covering ``[start, end]``."
+      },
+      "CalendarPlanned": {
+        "properties": {
+          "name_zh": {
+            "type": "string",
+            "title": "Name Zh"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "calendar",
+              "proposal"
+            ],
+            "title": "Source"
+          },
+          "tss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tss"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "outdoor": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outdoor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name_zh",
+          "source"
+        ],
+        "title": "CalendarPlanned",
+        "description": "The workout planned for a day: what the intervals.icu calendar shows, else our proposal."
+      },
+      "CalendarWeek": {
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "load_done": {
+            "type": "number",
+            "title": "Load Done"
+          },
+          "load_planned": {
+            "type": "number",
+            "title": "Load Planned"
+          },
+          "target_tss": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Tss"
+          },
+          "hours_done": {
+            "type": "number",
+            "title": "Hours Done"
+          },
+          "ctl_end": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctl End"
+          },
+          "phase_zh": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase Zh"
+          },
+          "recovery": {
+            "type": "boolean",
+            "title": "Recovery",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start",
+          "load_done",
+          "load_planned",
+          "hours_done"
+        ],
+        "title": "CalendarWeek",
+        "description": "Summary of one Monday–Sunday week."
       },
       "EstimatePoint": {
         "properties": {

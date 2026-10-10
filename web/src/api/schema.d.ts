@@ -312,6 +312,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Calendar
+         * @description Whole weeks covering ``[start, end]`` (default: 4 weeks back, 2 ahead; max 63 days).
+         */
+        get: operations["get_calendar_v1_calendar_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/ftp": {
         parameters: {
             query?: never;
@@ -876,6 +896,133 @@ export interface components {
             points: number[][];
             /** Cp Diff Vs Icu Pct */
             cp_diff_vs_icu_pct?: number | null;
+        };
+        /**
+         * CalendarActivity
+         * @description One activity of a day, reduced to what a calendar cell needs.
+         */
+        CalendarActivity: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string | null;
+            /** Sport */
+            sport: string;
+            /** Is Ride */
+            is_ride: boolean;
+            /** Minutes */
+            minutes: number;
+            /** Load */
+            load: number;
+            /** Classification Zh */
+            classification_zh?: string | null;
+            /** Status */
+            status?: string | null;
+        };
+        /**
+         * CalendarDay
+         * @description One cell of the calendar.
+         */
+        CalendarDay: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "done" | "over" | "under" | "skipped" | "extra" | "pending" | "planned" | "rest";
+            planned?: components["schemas"]["CalendarPlanned"] | null;
+            /** Activities */
+            activities: components["schemas"]["CalendarActivity"][];
+            /** Load */
+            load: number;
+            /** Notes */
+            notes: string[];
+            /** Readiness Score */
+            readiness_score?: number | null;
+            /** Readiness Zh */
+            readiness_zh?: string | null;
+            /** Ctl */
+            ctl?: number | null;
+            /** Tsb */
+            tsb?: number | null;
+        };
+        /**
+         * CalendarOut
+         * @description ``GET /v1/calendar``: whole weeks covering ``[start, end]``.
+         */
+        CalendarOut: {
+            /**
+             * Today
+             * Format: date
+             */
+            today: string;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             */
+            end: string;
+            /** Days */
+            days: components["schemas"]["CalendarDay"][];
+            /** Weeks */
+            weeks: components["schemas"]["CalendarWeek"][];
+        };
+        /**
+         * CalendarPlanned
+         * @description The workout planned for a day: what the intervals.icu calendar shows, else our proposal.
+         */
+        CalendarPlanned: {
+            /** Name Zh */
+            name_zh: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "calendar" | "proposal";
+            /** Tss */
+            tss?: number | null;
+            /** Minutes */
+            minutes?: number | null;
+            /** Role */
+            role?: string | null;
+            /** Outdoor */
+            outdoor?: boolean | null;
+        };
+        /**
+         * CalendarWeek
+         * @description Summary of one Monday–Sunday week.
+         */
+        CalendarWeek: {
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Load Done */
+            load_done: number;
+            /** Load Planned */
+            load_planned: number;
+            /** Target Tss */
+            target_tss?: number | null;
+            /** Hours Done */
+            hours_done: number;
+            /** Ctl End */
+            ctl_end?: number | null;
+            /** Phase Zh */
+            phase_zh?: string | null;
+            /**
+             * Recovery
+             * @default false
+             */
+            recovery: boolean;
         };
         /**
          * EstimatePoint
@@ -2157,6 +2304,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RideFeedbackOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_calendar_v1_calendar_get: {
+        parameters: {
+            query?: {
+                start?: string | null;
+                end?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalendarOut"];
                 };
             };
             /** @description Validation Error */

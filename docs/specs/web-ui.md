@@ -43,23 +43,32 @@ The owner can do everyday things with buttons instead of commands, for any profi
   - Vite + React + TypeScript (strict), TanStack Query for server state. Types come from
     `docs/api/openapi.json` via `openapi-typescript`, so the UI cannot drift from the API
     silently.
-  - Plain CSS with light/dark tokens; zh-TW labels. No chart library: small SVG charts.
-  - Screens: 今天 · 課表 · 紀錄 · 執行; a profile switcher and the planner-mode badge in the
+  - Plain CSS, one 8-bit look (Sweetie-16 palette, bitmap fonts, square corners, hard shadows,
+    stepped motion); zh-TW labels. No chart library: small SVG charts.
+  - Screens: 今天 · 行事曆 · 執行 (課表 and 紀錄 merged into 行事曆 on 2026-10-10,
+    [calendar-view](calendar-view.md); old `#plan` / `#rides` links open it); a profile switcher and the planner-mode badge in the
     header.
   - Cycling look and motion (`web/src/bike.tsx`, presentation only, no new data):
     - a road strip under the header with both athletes riding. Cruise speed follows today's
       readiness score; a click starts a sprint;
-    - 課表 shows the next 14 days as a stage profile (height = TSS); a click opens that day;
     - the workout profile and fitness chart read out values under the pointer or a finger;
       numbers count up; the readiness ring fills in.
     - `prefers-reduced-motion` turns all of it off.
   - Phone (≤ 640 px): the tabs move to a fixed bottom bar and the header stays on top
-    (sticky). The page has one scroll. Opening a day or a ride folds the one that was open,
-    shows the detail under its own row and scrolls it to the top. On desktop the list column
-    stays in view while the detail scrolls.
-  - Skins: a header button switches to an 8-bit "pixel" skin (`data-skin="pixel"` on `<html>`,
-    CSS only). It is a per-viewer preference in `localStorage` (`cyp.skin`), not a feature
-    flag: it changes nothing the server does.
+    (sticky). The page has one scroll; a calendar day opens as a bottom sheet.
+  - The earlier warm "head unit" look and the skin switch were removed on 2026-10-10: the 8-bit
+    look is the only one.
+  - 8-bit sound effects (`web/src/sfx.ts`, Web Audio, no files): a blip on every button (a
+    button can name its own with `data-sfx`), tabs, a sprint sweep on the road, an arpeggio when
+    a calendar day opens and a falling one when it closes, a tick for previous / next day, a
+    coin when a RIDE.LOG is saved or written to Strava, a buzz on an error. The header switch
+    mutes them; a per-viewer preference in `localStorage` (`cyp.sound`), on by default.
+  - Background music (`web/src/music.ts`): an original 8-bar lo-fi chiptune loop at 78 BPM
+    (pulse-wave lead with delayed vibrato, pulse arpeggio, triangle bass, swung noise drums,
+    a warm low-pass and vinyl crackle; every other pass the lead drops an octave onto the
+    triangle), synthesised live on the same AudioContext. Starts on the first tap or click
+    (browser autoplay rule), fades in and out, pauses in a hidden tab. Its own header switch;
+    `localStorage` `cyp.music`, on by default.
 - **Flags** (ADR-0008): `api.calendar_write` (default on) lets the UI's write button work for
   that profile; off = the button is hidden and the endpoint refuses. `strava.write_description`
   (default off) does the same for the Strava write; `readiness.ride_feel` decides whether the

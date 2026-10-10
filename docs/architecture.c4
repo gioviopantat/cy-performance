@@ -57,7 +57,7 @@ model {
     }
     web = container 'Web dashboard' {
       technology 'Vite + React + TypeScript (web/), served by cyp serve'
-      description 'Today / plan / rides / runs per profile, phone layout and an 8-bit skin; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write. Viewer preferences (profile, tab, skin) stay in the browser localStorage (docs/specs/web-ui.md)'
+      description 'Today / calendar (plan and rides in one grid, a day opens in a modal) / runs per profile, phone layout, 8-bit look, sound effects and lo-fi chiptune music; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write. Viewer preferences (profile, tab, sound, music) stay in the browser localStorage (docs/specs/web-ui.md)'
     }
     profileFiles = store 'Profile workspace' {
       technology 'profiles/<slug>/: .env, athlete.yaml, profile.yaml'
@@ -95,7 +95,7 @@ model {
   }
   googleFonts = extsys 'Google Fonts' {
     technology 'fonts.googleapis.com / fonts.gstatic.com'
-    description 'Web fonts for the dashboard, including the pixel skin bitmap fonts (web/index.html)'
+    description 'Web fonts for the dashboard, bitmap fonts of the 8-bit look (web/index.html)'
   }
   macNotify = extsys 'macOS Notification Center' {
     #optional
@@ -105,7 +105,7 @@ model {
 
   // who calls what
   owner -> cyp.cli 'runs commands, onboards and promotes profiles'
-  owner -> cyp.web 'views today, plan, rides; runs the autopilot with buttons'
+  owner -> cyp.web 'views today and the calendar (plan + rides); runs the autopilot with buttons'
   cyp.web -> cyp.api 'GET/POST /v1 with X-CYP-Profile'
   cyp.web -> googleFonts 'loads web fonts (browser)'
   cyp.api -> cyp.runner 'POST /v1/autopilot (dry run, or confirmed write)'

@@ -75,6 +75,7 @@ to bind beyond loopback without a token; on loopback without one it answers only
 | POST | `/ftp/accept` | the athlete's explicit decision (manual settings row; icu untouched) |
 | GET | `/readiness?start&end`, `/readiness/{date}` | verdicts with components, weights, rules |
 | POST | `/readiness/recompute` | `{"dates": [...]}` |
+| GET | `/calendar?start&end` | whole weeks (≤ 63 days, default 4 weeks back to 2 ahead): per day the planned workout (calendar first, else our proposal), activities, compliance status, readiness, CTL/TSB; per week load done / planned / season target ([calendar-view](specs/calendar-view.md)) |
 | GET | `/plan?start&days` | stored proposals, rendered (steps + icu workout text) |
 | POST | `/plan/preview` | what-if horizon: weekday minutes, days off, indoor days, readiness, bias, CTL |
 | POST | `/plan/commit` | store proposals (never writes intervals.icu); 409 while this profile's autopilot runs |

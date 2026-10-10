@@ -382,6 +382,73 @@ class SeasonOut(Model):
     weeks: list[SeasonWeekOut]
 
 
+# -------------------------------------------------------------------------------- calendar
+
+DayStatus = Literal["done", "over", "under", "skipped", "extra", "pending", "planned", "rest"]
+
+
+class CalendarPlanned(Model):
+    """The workout planned for a day: what the intervals.icu calendar shows, else our proposal."""
+
+    name_zh: str
+    source: Literal["calendar", "proposal"]
+    tss: float | None = None
+    minutes: int | None = None
+    role: str | None = None  # known when the workout is one of ours
+    outdoor: bool | None = None
+
+
+class CalendarActivity(Model):
+    """One activity of a day, reduced to what a calendar cell needs."""
+
+    id: int
+    name: str | None
+    sport: str
+    is_ride: bool
+    minutes: int
+    load: float
+    classification_zh: str | None = None
+    status: str | None = None
+
+
+class CalendarDay(Model):
+    """One cell of the calendar."""
+
+    date: dt.date
+    status: DayStatus
+    planned: CalendarPlanned | None = None
+    activities: list[CalendarActivity]
+    load: float  # Σ load of the day's rides
+    notes: list[str]  # the athlete's own events (sick, race, …)
+    readiness_score: float | None = None
+    readiness_zh: str | None = None
+    ctl: float | None = None
+    tsb: float | None = None
+
+
+class CalendarWeek(Model):
+    """Summary of one Monday–Sunday week."""
+
+    start: dt.date
+    load_done: float
+    load_planned: float  # Σ planned over the week (past days as the calendar showed them)
+    target_tss: float | None = None  # season target of the week
+    hours_done: float
+    ctl_end: float | None = None
+    phase_zh: str | None = None
+    recovery: bool = False
+
+
+class CalendarOut(Model):
+    """``GET /v1/calendar``: whole weeks covering ``[start, end]``."""
+
+    today: dt.date
+    start: dt.date
+    end: dt.date
+    days: list[CalendarDay]
+    weeks: list[CalendarWeek]
+
+
 # ----------------------------------------------------------------------------- trends/misc
 
 
