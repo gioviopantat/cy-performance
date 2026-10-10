@@ -216,3 +216,21 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# cyp runtime data (sqlite, parquet, tokens, logs, reports)
+data/
+.env
+
+# agent worktrees
+.claude/worktrees/
+
+# personal data: never in the public repo (ADR-0006 §8)
+profiles/
+config/athlete.yaml
+
+# per-machine Claude Code settings
+.claude/settings.local.json
+
+# web UI build artefacts
+web/node_modules/
+web/dist/

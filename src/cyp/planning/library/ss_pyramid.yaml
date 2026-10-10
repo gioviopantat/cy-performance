@@ -1,0 +1,49 @@
+id: ss_pyramid
+version: 1
+name: "Sweet Spot Pyramid 5-10-15-10-5"
+name_zh: "甜蜜點金字塔 5-10-15-10-5 分"
+purpose_zh: "長度由短到長再到短的甜蜜點，總共 45 分鐘、心理上比 3×15 好撐。"
+intent: sweetspot
+phases: [base, build]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 86, max: 94, default: 89}
+  rest_min: 3
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: work, duration: 5m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+  - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {kind: work, duration: 10m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+  - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {kind: work, duration: 15m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+  - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {kind: work, duration: 10m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+  - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {kind: work, duration: 5m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "The 15 min block on the longest steady climb; shorter blocks fit flats or shorter climbs."
+  note_zh: "15 分鐘那段放在最長的穩定坡，短段落放平路或短坡。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "甜蜜點心率 92–98 % LTHR；短段落心率可能還沒到，以 RPE 6–7/10 為準。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 80}
+    - {kind: work, duration: 5m, lo: 92, hi: 98}
+    - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {kind: work, duration: 10m, lo: 92, hi: 98}
+    - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {kind: work, duration: 15m, lo: 92, hi: 98}
+    - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {kind: work, duration: 10m, lo: 92, hi: 98}
+    - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {kind: work, duration: 5m, lo: 92, hi: 98}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "金字塔把 45 分鐘甜蜜點拆成不同長度，同樣的訓練量但節奏有變化，是甜蜜點 3×N 的替代，避免每週同一種課。"

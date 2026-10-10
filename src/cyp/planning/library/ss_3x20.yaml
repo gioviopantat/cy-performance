@@ -1,0 +1,41 @@
+id: ss_3x20
+version: 1
+name: "Sweet Spot 3x20"
+name_zh: "甜蜜點 3x20 分"
+purpose_zh: "一小時甜蜜點累積，建構期最大量的 FTP 以下刺激。"
+intent: sweetspot
+phases: [build]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 88, max: 92, default: 88}
+  rest_min: 5
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 70}
+  - repeat: 3
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 20m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Three 20 min efforts need a long climb ridden 3 times or a long flat out-and-back. Hold the lower end (88 %) on the third rep if the first two were on the high end."
+  note_zh: "三趟 20 分鐘需要同一段坡做三次或長平路折返。若前兩趟偏高，第三趟守下限 88 %。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "甜蜜點心率 90–97 % LTHR；第三趟若心率超過 100 % LTHR 代表實際已到閾值，降一格。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 78}
+    - repeat: 3
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 20m, lo: 90, hi: 97, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "3×20 甜蜜點累積 60 分鐘接近 FTP 的工作量，是建構期用「量」拉 FTP 的最後一步；TSS 約 100，所以只排在週中 150 分的時段並且隔天必為 Z2 或休息。完成它代表可以轉向強度更高、量更少的閾值 2×20。"

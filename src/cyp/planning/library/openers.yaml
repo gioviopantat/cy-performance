@@ -1,0 +1,54 @@
+id: openers
+version: 1
+name: "Openers"
+name_zh: "開腿（測驗前日）"
+purpose_zh: "測驗前一天的短刺激：喚醒神經肌肉、不累積疲勞。"
+intent: opener
+phases: [test]
+slot_roles: [opener]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  effort_pct: {min: 105, max: 110, default: 108}
+progression: []
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 68}
+  - repeat: 3
+    cue: Fast Pedal
+    steps:
+      - {kind: steady, duration: 1m, lo: 68, hi: 72, cadence: "100-110rpm"}
+      - {kind: steady, duration: 1m, lo: 55, hi: 60}
+  - repeat: 3
+    cue: Openers
+    steps:
+      - {kind: work, duration: 1m, lo: "{effort_pct}", hi: "{effort_pct}+4", cadence: "95-105rpm"}
+      - {kind: rest, duration: 3m, lo: 55, hi: 60}
+  - {cue: Sprint, kind: work, duration: 30s, lo: 130, hi: 150, cadence: "100-120rpm"}
+  - {kind: steady, duration: 10m, lo: 55, hi: 65}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Flat road; the 1 min efforts and the sprint are the only hard moments. Total ride stays ~60 min, no climbs."
+  note_zh: "平路；只有 1 分鐘努力段與衝刺是硬的，整趟維持約 60 分，不爬坡。"
+  widen_pct: 4
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "沒有功率時 1 分鐘段用 RPE 8/10、衝刺用全力，其餘維持 Z2 心率以下（≤ 80 % LTHR）。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 75}
+    - repeat: 3
+      cue: Fast Pedal
+      steps:
+        - {kind: steady, duration: 1m, lo: 72, hi: 80, cadence: "100-110rpm"}
+        - {kind: steady, duration: 1m, lo: 65, hi: 72}
+    - repeat: 3
+      cue: Openers
+      steps:
+        - {kind: work, duration: 1m, lo: 90, hi: 100, cadence: "95-105rpm"}
+        - {kind: rest, duration: 3m, lo: 65, hi: 72}
+    - {cue: Sprint, kind: work, duration: 30s, lo: 95, hi: 105, cadence: "100-120rpm"}
+    - {kind: steady, duration: 10m, lo: 65, hi: 75}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "開腿是測驗（或減量末段）前一天的標準做法：幾段 1 分鐘的閾值以上刺激加一次短衝刺，讓神經肌肉系統「醒著」，又因總 TSS 約 40 而不增加疲勞。它只出現在測驗週，排在 20 分鐘測驗或 Ramp 測驗前 24 小時。"

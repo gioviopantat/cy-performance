@@ -1,0 +1,45 @@
+id: threshold_3x12
+version: 1
+name: "Threshold 3x12"
+name_zh: "閾值 3x12 分"
+purpose_zh: "建構期第一個閾值強度課，36 分鐘在 FTP 附近。"
+intent: threshold
+phases: [build]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 95, max: 100, default: 95}
+  rest_min: {min: 4, max: 6, default: 5, step: 1}
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: 3
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 12m, lo: "{pct}", hi: "{pct}+5", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "12 min reps fit a 4-6 km climb; ride the same climb three times or use a flat loop. Rest = descent."
+  note_zh: "12 分鐘一趟剛好是 4–6 km 的坡；同一段坡做三次或用平路圈。休息用下坡。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "閾值心率 97–103 % LTHR；第一趟前 3 分鐘心率尚未到位，以 RPE 8/10 控制。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 80}
+    - {kind: steady, duration: 3m, lo: 88, hi: 94}
+    - {kind: steady, duration: 3m, lo: 60, hi: 70}
+    - repeat: 3
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 12m, lo: 97, hi: 103, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "3×12 @ 95–100 % 是從甜蜜點轉到閾值的第一步：總時間 36 分鐘比 3×20 甜蜜點短，但強度正好落在 FTP，直接刺激閾值功率。它開啟建構期的進程 3×12 → 2×20 → 3×20。"

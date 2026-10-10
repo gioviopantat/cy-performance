@@ -1,0 +1,16 @@
+{% macro explain(e, indent="") -%}
+{% if e %}
+
+{{ indent }}**為什麼**：{{ e.headline_zh }}
+
+{% for r in e.because %}
+{{ indent }}- {{ r.text_zh }}{% if r.weight is not none %}（權重 {{ (r.weight * 100) | num }} %）{% endif %}
+
+{% endfor %}
+{% if e.method %}
+
+{{ indent }}<sub>模型 `{{ e.method.model_id }}`{% if e.method.version != e.method.model_id %} {{ e.method.version }}{% endif %} · 信心{{ e.confidence | confidence_zh }}{% if e.glossary_terms %} · 名詞：{% for t in e.glossary_terms %}{{ t | glossary }}{% if not loop.last %}、{% endif %}{% endfor %}{% endif %} · `cyp explain {{ e.key }}`</sub>
+
+{% endif %}
+{% endif %}
+{%- endmacro %}

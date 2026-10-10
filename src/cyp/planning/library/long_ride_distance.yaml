@@ -1,0 +1,32 @@
+id: long_ride_distance
+version: 1
+name: "Distance Ride {total_min} min"
+name_zh: "長距離耐力騎 {total_min} 分"
+purpose_zh: "為距離目標逐步拉長的長距離 Z2，練的是「騎很久還不累」。"
+intent: endurance
+phases: [base, build, threshold]
+slot_roles: [long_ride]
+requires_power: false
+indoor_ok: false
+outdoor_ok: true
+params:
+  total_min: {min: 150, max: 420, default: 300, step: 15}
+progression: [total_min]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 62}
+  - {cue: Endurance, kind: steady, duration: "{total_min}-30m", lo: 58, hi: 70, cadence: "80-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 15m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Outdoor only. Hold the low half of Z2 the whole way: the duration is the stimulus, not the watts. Eat 60-90 g carbs/h from the first hour, drink to thirst, plan a cafe stop at the midpoint. Climbs: spin, do not push."
+  note_zh: "僅戶外。全程維持 Z2 的下半段：刺激來自時間，不是瓦數。第一個小時就開始每小時補 60–90 g 碳水、口渴就喝，中途安排一次補給休息。上坡用轉的，不要用踩的。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 下半段 65–78 % LTHR。後半段心率因漂移變高時降速度、不要追心率；能邊騎邊說完整句子就對了。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 70}
+    - {cue: Endurance, kind: steady, duration: "{total_min}-30m", lo: 65, hi: 78, cadence: "80-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 15m, lo: 60, hi: 66}
+tss_model: closed_form
+explain_zh: "距離目標需要身體習慣「連續騎很久」：脂肪代謝、補給、坐墊與上半身的耐受度都只能靠時間累積。一般週每週加長 15 分，每個訓練區塊最後一個負荷週再拉一次超長騎，逐步接近目標距離所需的時間；守衛仍會限制它不超過最近六週最長騎乘的 1.6 倍，且隔天不排高強度。"

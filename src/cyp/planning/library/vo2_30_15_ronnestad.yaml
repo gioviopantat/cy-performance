@@ -1,0 +1,48 @@
+id: vo2_30_15_ronnestad
+version: 1
+name: "Rønnestad 30/15 3x{reps}"
+name_zh: "Rønnestad 30/15 間歇 3 組 x{reps}"
+purpose_zh: "30 秒用力、15 秒輕踩的短間歇，累積最多的高攝氧時間，自覺卻比長間歇輕鬆。"
+intent: vo2
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  reps: {min: 9, max: 13, default: 13, step: 1}
+  pct: {min: 112, max: 125, default: 118}
+  set_rest_min: 3
+progression: [reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 1
+    steps:
+      - {kind: work, duration: 30s, lo: "{pct}", hi: "{pct}+5", cadence: "95-110rpm"}
+      - {kind: rest, duration: 15s, lo: 50, hi: 50}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 2
+    steps:
+      - {kind: work, duration: 30s, lo: "{pct}", hi: "{pct}+5", cadence: "95-110rpm"}
+      - {kind: rest, duration: 15s, lo: 50, hi: 50}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 3
+    steps:
+      - {kind: work, duration: 30s, lo: "{pct}", hi: "{pct}+5", cadence: "95-110rpm"}
+      - {kind: rest, duration: 15s, lo: 50, hi: 50}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Each set is about 10 min continuous on a gentle climb or a flat road without junctions; the 15 s off is a soft-pedal, keep rolling. Indoors is easier to execute the first time."
+  note_zh: "每組約 10 分鐘連續，放在緩坡或沒有路口的平路；15 秒 Off 保持滾動輕踩。第一次在室內做比較容易。"
+  widen_pct: 5
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "30/15 切換太快，心率無法反映，不提供 HR 版本。"
+tss_model: closed_form
+explain_zh: "Rønnestad 等人 2015 年比較 3×(13×30/15 秒) 與 4×5 分鐘：短間歇累積更多 >90 % VO2max 的時間，VO2max 進步約 8.7 %（長間歇 3.6 %），自覺強度反而較低。這堂課是建構期與閾值期的 VO2 主力。"

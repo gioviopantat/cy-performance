@@ -1,0 +1,41 @@
+id: tempo_3x15
+version: 1
+name: "Tempo 3x15"
+name_zh: "Tempo 3x15 分"
+purpose_zh: "三段 15 分鐘的中等強度，練持續輸出又不會太累。"
+intent: tempo
+phases: [base, build]
+slot_roles: [hit]
+requires_power: false
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 76, max: 88, default: 80}
+  rest_min: 4
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 70}
+  - repeat: 3
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 15m, lo: "{pct}", hi: "{pct}+6", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Each 15 min block on a long steady climb or flat; the rest is a soft-pedal."
+  note_zh: "每段 15 分鐘放在長而穩定的坡或平路；休息輕踩。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Tempo 心率 84–92 % LTHR：能講短句但不想多講。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 78}
+    - repeat: 3
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 15m, lo: 84, hi: 92, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "Tempo 是耐力型目標（長距離、爬坡）的核心強度：45 分鐘累積在 76–88 % FTP，提升「長時間維持輸出」的能力，疲勞遠低於閾值課，適合一週多次或年紀較長的選手。"

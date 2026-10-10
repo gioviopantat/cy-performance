@@ -1,0 +1,43 @@
+id: over_unders_light
+version: 1
+name: "Light Over-Unders 3x9 (95/105)"
+name_zh: "輕量 Over-Under 3x9 分（95／105 %）"
+purpose_zh: "在閾值上下來回，練習「略超過後還能回到穩定」的能力，強度比標準版溫和。"
+intent: threshold
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  rest_min: 4
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 75}
+  - repeat: 3
+    cue: Set 1
+    steps:
+      - {kind: work, duration: 2m, lo: 93, hi: 96, cadence: "85-95rpm"}
+      - {kind: work, duration: 1m, lo: 103, hi: 106, cadence: "90-100rpm"}
+  - {cue: Recover, kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - repeat: 3
+    cue: Set 2
+    steps:
+      - {kind: work, duration: 2m, lo: 93, hi: 96, cadence: "85-95rpm"}
+      - {kind: work, duration: 1m, lo: 103, hi: 106, cadence: "90-100rpm"}
+  - {cue: Recover, kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - repeat: 3
+    cue: Set 3
+    steps:
+      - {kind: work, duration: 2m, lo: 93, hi: 96, cadence: "85-95rpm"}
+      - {kind: work, duration: 1m, lo: 103, hi: 106, cadence: "90-100rpm"}
+  - {cue: Cooldown, kind: steady, duration: 12m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "A steady 9-10 min climb per set; the 'over' is a slight lift in pace, not a sprint."
+  note_zh: "每組放在 9–10 分鐘的穩定坡；Over 是稍微加快，不是衝刺。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "1–2 分鐘的切換心率反應太慢，不提供 HR 版本。"
+tss_model: closed_form
+explain_zh: "Over-Under 讓身體在閾值附近反覆產生又清除乳酸，是爬坡與長距離中「被拉一下還能回來」的能力；95／105 % 的輕量版本適合年紀較長或剛進入建構期的選手。"

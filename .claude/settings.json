@@ -1,0 +1,54 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run poe check)",
+      "Bash(uv run poe fmt)",
+      "Bash(uv run poe lint)",
+      "Bash(uv run poe typecheck)",
+      "Bash(uv run poe test)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run cyp profile list:*)",
+      "Bash(uv run cyp profile show:*)",
+      "Bash(uv run cyp schedule status)",
+      "Bash(uv run cyp features:*)",
+      "Bash(uv run cyp doctor:*)",
+      "Bash(uv run cyp explain:*)",
+      "Bash(uv run cyp --profile * features*)",
+      "Bash(uv run cyp --profile * doctor*)",
+      "Bash(uv run cyp --profile * plan --dry-run*)",
+      "Bash(uv run cyp --profile * run --no-write*)",
+      "Bash(uv run cyp run --all --no-write*)"
+    ],
+    "ask": [
+      "Bash(uv run cyp plan --apply:*)",
+      "Bash(uv run cyp profile promote:*)",
+      "Bash(uv run cyp publish spike:*)",
+      "Bash(uv run cyp schedule install:*)",
+      "Bash(uv run cyp schedule uninstall:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.py) uv run ruff format -q \"$f\" >/dev/null 2>&1 || true;; esac"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/ask_before_writes.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

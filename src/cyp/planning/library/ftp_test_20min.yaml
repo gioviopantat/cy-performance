@@ -1,0 +1,38 @@
+id: ftp_test_20min
+version: 1
+name: "20-min FTP Test (5-min opener)"
+name_zh: "20 分鐘 FTP 測驗（含 5 分鐘開場）"
+purpose_zh: "Coggan/Allen 標準 FTP 測驗：5 分鐘全力開場後，20 分鐘最大平均功率 × 0.95。"
+intent: test
+phases: [base, build, threshold, test]
+slot_roles: [test]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 70}
+  - repeat: 3
+    cue: Fast Pedal
+    steps:
+      - {kind: steady, duration: 1m, lo: 70, hi: 75, cadence: "100-110rpm"}
+      - {kind: steady, duration: 1m, lo: 55, hi: 60}
+  - {cue: Easy, kind: steady, duration: 5m, lo: 55, hi: 60}
+  - {cue: 5-min Opener, kind: freeride, duration: 5m, tss_assume: 115}
+  - {cue: Recover, kind: steady, duration: 10m, lo: 50, hi: 55}
+  - {cue: 20-min Test, kind: freeride, duration: 20m, tss_assume: 105}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 45, hi: 50}
+outdoor_rendering:
+  note: "Season checkpoints are indoors on Rouvy (test_venue: indoor). An outdoor version is allowed for the final week-26 test on a known climb of ≥ 20 min with no junctions, same climb every time; the 5-min opener goes on the approach. Both efforts are freeride (no ERG)."
+  note_zh: "季中檢查點在 Rouvy 室內進行（test_venue: indoor）。第 26 週的最終測驗可在戶外一段 ≥ 20 分鐘、無路口、每次相同的坡上做；5 分鐘開場放在接近坡底的路段。兩段都是自由騎（無 ERG）。"
+  widen_pct: 0
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "測驗需要功率，無 HR 版本。"
+test:
+  protocol: "Allen & Coggan 20-min protocol: 5-min all-out to deplete anaerobic contribution, 10 min easy, then 20 min maximal steady effort. FTP = 0.95 × 20-min average power. Pace the first 5 min of the 20 at the planned target (last 2x20 power + 2 %), not above."
+  ftp_estimate: "FTP ≈ 0.95 × 20-min average. Season expectations (docs/05 §2.4): wk 8 ≈ 260-265 (20-min ≈ 275-280), wk 16 ≈ 275-285, wk 24 ≈ 290-300 (20-min ≈ 305-315)."
+  notes_zh: "測驗前 5 天迷你減量（量 −40 %，只保留一次短 opener）。測驗結果與 icu eFTP 一併進報告；差 > 3 % 時下個區塊重複前兩週（docs/05 §2.4）。"
+tss_model: closed_form
+explain_zh: "20 分鐘測驗是本季 FTP 的主要證據來源（第 8、16、24、26 週），5 分鐘開場先消耗無氧能力，讓 20 分鐘的平均 × 0.95 更接近真正的一小時功率。它出現在每個區塊的最後一週，決定下一個區塊是進階還是重複前兩週。"
