@@ -49,8 +49,10 @@ The owner can do everyday things with buttons instead of commands, for any profi
     [calendar-view](calendar-view.md); old `#plan` / `#rides` links open it); a profile switcher and the planner-mode badge in the
     header.
   - Cycling look and motion (`web/src/bike.tsx`, presentation only, no new data):
-    - a road strip under the header with both athletes riding. Cruise speed follows today's
-      readiness score; a click starts a sprint;
+    - a pixel route strip under the header ([route-strip](route-strip.md)): the athlete bikes
+      past original pixel critters that say hello; a tap catches one and it follows (party of
+      10, first in first out, per profile in `localStorage`). Cruise speed follows today's
+      readiness score; a tap on the road sprints;
     - the workout profile and fitness chart read out values under the pointer or a finger;
       numbers count up; the readiness ring fills in.
     - `prefers-reduced-motion` turns all of it off.

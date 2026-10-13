@@ -57,7 +57,7 @@ model {
     }
     web = container 'Web dashboard' {
       technology 'Vite + React + TypeScript (web/), served by cyp serve'
-      description 'Today / calendar (plan and rides in one grid, a day opens in a modal) / runs per profile, phone layout, 8-bit look, sound effects and lo-fi chiptune music; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write. Viewer preferences (profile, tab, sound, music) stay in the browser localStorage (docs/specs/web-ui.md)'
+      description 'Today / calendar (plan and rides in one grid, a day opens in a modal) / runs per profile, phone layout, 8-bit look, a pixel route strip with catchable critters, sound effects and lo-fi chiptune music; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write. Viewer preferences (profile, tab, sound, music, critter party) stay in the browser localStorage (docs/specs/web-ui.md)'
     }
     profileFiles = store 'Profile workspace' {
       technology 'profiles/<slug>/: .env, athlete.yaml, profile.yaml'

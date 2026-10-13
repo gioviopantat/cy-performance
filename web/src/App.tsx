@@ -3,7 +3,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 
 import { api } from "./api/client";
 import { todayIso } from "./api/hooks";
-import { ElevationFooter, Icon, RoadStrip, WheelSpinner } from "./bike";
+import { ElevationFooter, Icon, WheelSpinner } from "./bike";
+import { RouteStrip } from "./route";
 import { musicOn, setMusic, subscribeMusic } from "./music";
 import { setSound, soundOn, subscribeSound } from "./sfx";
 import { ErrorNote } from "./ui";
@@ -88,7 +89,6 @@ export function App() {
   }, [list, known]);
 
   const info = list.find((p) => p.slug === slug);
-  const chase = list.find((p) => p.slug !== slug)?.display_name;
   const today = todayIso();
   const ready = useQuery({
     queryKey: ["readiness", slug, today],
@@ -145,7 +145,7 @@ export function App() {
           ))}
         </nav>
       </header>
-      <RoadStrip lead={info?.display_name} chase={chase} readiness={ready.data?.score} />
+      <RouteStrip slug={slug} lead={info?.display_name} readiness={ready.data?.score} />
       {info ? (
         <p className="status-line">
           <span>{info.icu_athlete_id ?? "?"}</span>

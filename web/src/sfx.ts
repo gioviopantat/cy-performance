@@ -3,7 +3,19 @@
 
 type Note = { f: number; to?: number; ms: number; wave?: OscillatorType; gain?: number };
 
-export type Sfx = "blip" | "tab" | "open" | "close" | "step" | "sprint" | "coin" | "error";
+export type Sfx =
+  | "blip"
+  | "tab"
+  | "open"
+  | "close"
+  | "step"
+  | "sprint"
+  | "coin"
+  | "error"
+  | "greet"
+  | "throw"
+  | "catch"
+  | "release";
 
 const C5 = 523.25;
 const E5 = 659.25;
@@ -36,6 +48,24 @@ const SOUNDS: Record<Sfx, Note[]> = {
     { f: E6, ms: 220 },
   ],
   error: [{ f: 196, to: 110, ms: 200, wave: "sawtooth" }],
+  greet: [
+    { f: 1568, ms: 35, gain: 0.1 },
+    { f: 1976, ms: 45, gain: 0.1 },
+  ],
+  throw: [{ f: 400, to: 1200, ms: 220, wave: "triangle", gain: 0.14 }],
+  catch: [
+    { f: C5, ms: 70 },
+    { f: E5, ms: 70 },
+    { f: G5, ms: 70 },
+    { f: C6, ms: 70 },
+    { f: G5, ms: 70 },
+    { f: C6, ms: 260 },
+  ],
+  release: [
+    { f: E5, ms: 60 },
+    { f: C5, ms: 60 },
+    { f: 392, ms: 140 },
+  ],
 };
 
 const KEY = "cyp.sound";
