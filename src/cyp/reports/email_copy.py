@@ -241,7 +241,6 @@ def compose_weekly(
         "weekly",
         d.period,
         d.headline,
-        d.athlete_name,
         highlights,
         d.next_week,
         to_name=to_name,
@@ -276,7 +275,6 @@ def compose_monthly(
         "monthly",
         d.period,
         d.headline,
-        d.athlete_name,
         highlights,
         d.next_month,
         to_name=to_name,
@@ -297,7 +295,6 @@ def _digest(
     kind: str,
     period: Period,
     headline: DigestHeadline,
-    athlete_name: str,
     highlights: list[str],
     nxt: NextPlan | None,
     *,
@@ -307,11 +304,10 @@ def _digest(
 ) -> EmailContent:
     c = _copy()["digest"]
     verdict = headline.verdict
-    subject = c["subject"][kind][verdict].format(
-        label=period.label_zh, name=_first_name(athlete_name), **fmt
-    )
+    label = _short_label(kind, period)
+    subject = c["subject"][kind][verdict].format(label=label, name=to_name, **fmt)
     body = _Body(hello=_copy()["ride"]["hello"].format(to=to_name))
-    body.paragraphs.append(c["opener"][kind].format(label=period.label_zh))
+    body.paragraphs.append(c["opener"][kind].format(label=label))
     unit = c["unit"][kind]
     if period.is_break:
         reason = period.break_reason_zh or headline.text_zh
@@ -338,8 +334,12 @@ def _digest(
     return EmailContent(subject=subject, text=_text(body), html=_html(subject, body))
 
 
-def _first_name(name: str) -> str:
-    return name.split()[0] if name.strip() else ""
+def _short_label(kind: str, period: Period) -> str:
+    """``10/5–10/11`` for a week, ``2026 年 9 月`` for a month (the PDF keeps the long label)."""
+    st, en = period.start, period.end
+    if kind == "monthly":
+        return f"{st.year} 年 {st.month} 月"
+    return f"{st.month}/{st.day}–{en.month}/{en.day}"
 
 
 def _day_label(day: dt.date, c: dict[str, Any]) -> str:

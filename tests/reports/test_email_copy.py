@@ -121,7 +121,7 @@ def test_weekly_email() -> None:
     c = compose_weekly(
         _weekly(), to_name="William", cc_names=["Roger"], today=dt.date(2026, 10, 12)
     )
-    assert c.subject.startswith("【週報】10/5–10/11 Test") and "4 趟" in c.subject
+    assert c.subject.startswith("【週報】10/5–10/11 William") and "4 趟" in c.subject
     assert "William 你好" in c.text and "課表完成度：1/2 堂達成（其中 1 堂騎過頭）" in c.text
     assert "下週只改一件事：週六長騎前一天早點睡" in c.text
     assert "10/13（週二）：Z2 90 分" in c.text
