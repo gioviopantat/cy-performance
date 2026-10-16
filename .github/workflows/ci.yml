@@ -18,6 +18,8 @@ jobs:
           enable-cache: true
       - name: Install Python
         run: uv python install ${{ matrix.python-version }}
+      - name: PDF system libraries (WeasyPrint) and a zh-TW font
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-noto-cjk
       - name: Sync dependencies
         run: uv sync --all-groups --python ${{ matrix.python-version }}
       - uses: actions/setup-node@v4
