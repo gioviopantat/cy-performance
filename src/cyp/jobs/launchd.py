@@ -1,9 +1,10 @@
-"""macOS launchd agents: the daily autopilot (ADR-0006 L3) and the ride watcher.
+"""macOS launchd agents: the daily autopilot (ADR-0006 L3), the ride watcher and the digests.
 
 ``StartCalendarInterval`` jobs that were missed while the Mac slept run once on wake, so a
 closed lid at 05:30 delays the run instead of skipping it. The autopilot agent runs
 ``<venv python> -m cyp.cli run --all`` from the repo directory; the watch agent runs
-``cyp watch --all`` every ``StartInterval`` seconds (docs/specs/ride-report.md).
+``cyp watch --all`` every ``StartInterval`` seconds (docs/specs/ride-report.md); the digest
+agent runs ``cyp digest run --all`` daily at 07:00 (docs/specs/digest-reports.md).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from cyp.core.errors import CypError
 LABEL = "com.cy-performance.autopilot"
 WATCH_LABEL = "com.cy-performance.watch"
 WATCH_INTERVAL_S = 600
+DIGEST_LABEL = "com.cy-performance.digest"
 
 
 @dataclass(frozen=True)
@@ -53,6 +55,17 @@ def watch_spec(workdir: Path, interval_s: int = WATCH_INTERVAL_S) -> AgentSpec:
     """The ride watcher agent: ``cyp watch --all`` every ``interval_s`` seconds."""
     return AgentSpec(
         workdir=workdir, label=WATCH_LABEL, args=("watch", "--all"), interval_s=interval_s
+    )
+
+
+def digest_spec(workdir: Path, hour: int = 7, minute: int = 0) -> AgentSpec:
+    """The digest agent: ``cyp digest run --all`` daily (a missed 07:00 runs on wake)."""
+    return AgentSpec(
+        workdir=workdir,
+        label=DIGEST_LABEL,
+        args=("digest", "run", "--all"),
+        hour=hour,
+        minute=minute,
     )
 
 

@@ -55,6 +55,11 @@ def test_tests_cannot_open_sockets() -> None:
         ("uv run cyp run --no-write && uv run cyp run --all", True),
         ("uv run cyp --profile dad run --no-write | tail -5", False),
         ("uv run cyp ride-log push 1 --text-file x.txt --confirm-write", True),
+        # report emails
+        ("uv run cyp --profile dad digest weekly --period 2026-10-05 --send", True),
+        ("uv run cyp digest run --all", True),
+        ("uv run cyp --profile dad digest monthly --period 2026-09", False),
+        ("uv run cyp ride-report 1 --send", True),
         # the HTTP write endpoints
         ('curl -X POST localhost:8765/v1/autopilot -d \'{"write":true,"confirm":true}\'', True),
         (

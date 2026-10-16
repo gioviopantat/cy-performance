@@ -1,0 +1,5 @@
+{% if kind == "weekly" %}每週訓練摘要 {{ start.isoformat() }} – {{ end.isoformat() }}
+{{ start.isoformat() }} 到 {{ end.isoformat() }} 這一週的訓練摘要在附件 PDF。{% else %}每月訓練摘要 {{ start.year }} 年 {{ start.month }} 月
+{{ start.year }} 年 {{ start.month }} 月的訓練摘要在附件 PDF。{% endif %}
+
+數字都來自你的 intervals.icu 資料與訓練計畫；接下來的課表以早上 05:30 自動排課寫進行事曆的為準。

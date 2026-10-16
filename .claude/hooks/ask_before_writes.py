@@ -59,6 +59,8 @@ def _reason(seg: list[str], whole: str) -> str:
             return "cyp profile promote lets the autopilot write a real calendar"
         if "schedule" in args and ({"install", "uninstall"} & set(args)):
             return "this changes the daily schedule"
+        if "--send" in args or ("digest" in args and "run" in args):
+            return "this cyp command emails a report PDF to a real person"
         if "run" in args and "--no-write" not in args:
             return "cyp run writes calendars of profiles in apply mode (add --no-write)"
     http = bool(seg) and Path(seg[0]).name in ("curl", "http", "https", "xh", "wget")

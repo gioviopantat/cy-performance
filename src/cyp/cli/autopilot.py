@@ -70,18 +70,29 @@ def _echo_report(report: dict[str, Any]) -> None:
 
 @schedule_app.command("install")
 def schedule_install(
-    at: Annotated[str, typer.Option("--at", help="Local time HH:MM.")] = "05:30",
+    at: Annotated[
+        str | None, typer.Option("--at", help="Local time HH:MM (default 05:30; --digest 07:00).")
+    ] = None,
     watch: Annotated[
         bool,
         typer.Option("--watch", help="Install the ride watcher (`cyp watch --all` every 10 min)."),
     ] = False,
+    digest: Annotated[
+        bool,
+        typer.Option(
+            "--digest", help="Install the digest agent (`cyp digest run --all` daily, 07:00)."
+        ),
+    ] = False,
 ) -> None:
     """Install/refresh the launchd agent running ``cyp run --all`` daily (catches up on wake).
 
-    ``--watch`` installs the second agent instead; the autopilot agent is left as it is.
+    ``--watch`` or ``--digest`` installs that agent instead; the autopilot agent is left as it
+    is. ``--at`` sets the time of the autopilot (default 05:30) or the digest (default 07:00).
     """
-    from cyp.jobs.launchd import AgentSpec, install, watch_spec
+    from cyp.jobs.launchd import AgentSpec, digest_spec, install, watch_spec
 
+    if watch and digest:
+        fail("--watch and --digest: install one agent at a time", code=2)
     workdir = Path.cwd().resolve()
     if watch:
         spec = watch_spec(workdir)
@@ -93,8 +104,12 @@ def schedule_install(
         typer.echo(f"log: {spec.log_path}")
         return
     try:
-        hour, minute = (int(x) for x in at.split(":"))
-        spec = AgentSpec(workdir=workdir, hour=hour, minute=minute)
+        hour, minute = (int(x) for x in (at or ("07:00" if digest else "05:30")).split(":"))
+        spec = (
+            digest_spec(workdir, hour, minute)
+            if digest
+            else AgentSpec(workdir=workdir, hour=hour, minute=minute)
+        )
         path = install(spec)
     except ValueError:
         fail(f"--at {at!r}: expected HH:MM", code=2)
@@ -107,20 +122,24 @@ def schedule_install(
 @schedule_app.command("uninstall")
 def schedule_uninstall(
     watch: Annotated[bool, typer.Option("--watch", help="Remove the ride watcher agent.")] = False,
+    digest: Annotated[bool, typer.Option("--digest", help="Remove the digest agent.")] = False,
 ) -> None:
-    """Remove the launchd agent (``--watch``: the ride watcher's)."""
-    from cyp.jobs.launchd import LABEL, WATCH_LABEL, uninstall
+    """Remove the launchd agent (``--watch``: the ride watcher's, ``--digest``: the digests')."""
+    from cyp.jobs.launchd import DIGEST_LABEL, LABEL, WATCH_LABEL, uninstall
 
-    typer.echo("removed" if uninstall(WATCH_LABEL if watch else LABEL) else "no agent installed")
+    if watch and digest:
+        fail("--watch and --digest: remove one agent at a time", code=2)
+    label = WATCH_LABEL if watch else DIGEST_LABEL if digest else LABEL
+    typer.echo("removed" if uninstall(label) else "no agent installed")
 
 
 @schedule_app.command("status")
 def schedule_status() -> None:
-    """Whether each agent (autopilot, ride watcher) is loaded, its schedule and last exit status.
+    """Whether each agent (autopilot, ride watcher, digests) is loaded, its schedule, last exit.
 
-    Exit 1 when the autopilot agent is not loaded (the watcher is optional).
+    Exit 1 when the autopilot agent is not loaded (the other two are optional).
     """
-    from cyp.jobs.launchd import LABEL, WATCH_LABEL, status
+    from cyp.jobs.launchd import DIGEST_LABEL, LABEL, WATCH_LABEL, status
 
     keep = (
         "state =",
@@ -133,7 +152,12 @@ def schedule_status() -> None:
         "working directory",
     )
     autopilot_loaded = True
-    for label, hint in ((LABEL, "`cyp schedule install`"), (WATCH_LABEL, "`--watch`")):
+    agents = (
+        (LABEL, "`cyp schedule install`"),
+        (WATCH_LABEL, "`--watch`"),
+        (DIGEST_LABEL, "`--digest`"),
+    )
+    for label, hint in agents:
         out = status(label)
         if out is None:
             typer.echo(f"{label}: not loaded ({hint})")

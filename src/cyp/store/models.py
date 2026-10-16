@@ -603,6 +603,27 @@ class RideReport(Base):
     updated_at: Mapped[str | None] = mapped_column(String(32))
 
 
+class DigestReport(Base):
+    """One weekly / monthly digest PDF and its delivery (docs/specs/digest-reports.md).
+
+    The primary key ``(kind, period_start)`` is the dedupe: a period is sent once. ``kind`` is
+    ``weekly`` (``period_start`` a Monday) or ``monthly`` (day 1). ``status``: ``built`` (PDF
+    written, ``notify.email`` off), ``sent``, ``failed`` (retried by the next ``cyp digest``
+    run), ``gave_up`` (no more retries).
+    """
+
+    __tablename__ = "digest_reports"
+
+    kind: Mapped[str] = mapped_column(String(8), primary_key=True)
+    period_start: Mapped[dt.date] = mapped_column(Date, primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    pdf_path: Mapped[str | None] = mapped_column(String(500))
+    error: Mapped[str | None] = mapped_column(Text)
+    sent_at: Mapped[str | None] = mapped_column(String(32))
+    updated_at: Mapped[str | None] = mapped_column(String(32))
+
+
 class SyncCursor(Base):
     __tablename__ = "sync_cursors"
 
