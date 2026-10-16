@@ -4,9 +4,9 @@ Inputs per day *d* (morning-of semantics):
 
 - wellness of *d* and the :data:`~cyp.analysis.readiness.BASELINE_DAYS` days before;
 - TSB = form going into *d*: yesterday's ``tsb_icu``, else yesterday's ``tsb_sim``;
-- yesterday's rides: worst status, hardest class, the longest ride's decoupling
-  (+ reliability) and HR lag, the day's total load; the plan for yesterday is our
-  ``planned_workouts.target_tss``, else icu ``WORKOUT`` events' ``icu_training_load``;
+- yesterday's rides: hardest class, the day's total load, post-ride RPE / feel; the plan
+  for yesterday is our ``planned_workouts.target_tss``, else icu ``WORKOUT`` events'
+  ``icu_training_load``;
 - an icu ``SICK`` / ``INJURED`` event covering *d*.
 
 :func:`inputs_for` and :func:`readiness_for` are pure; :func:`run_readiness` loads the cached
@@ -34,7 +34,6 @@ from cyp.core.load import Readiness
 from cyp.dataset import CACHE, Dataset, WellnessRow
 from cyp.store.models import ReadinessDaily
 
-_STATUS_RANK = {"FRESH": 0, "NORMAL": 1, "BLUNTED": 2, "OVERREACHED": 3}
 _CLASS_RANK = {
     "recovery": 0,
     "endurance": 1,
@@ -80,7 +79,6 @@ def _yesterday(ds: Dataset, day: dt.date, feedback: Feedback | None = None) -> Y
         if planned is None:
             return None
         return YesterdayRide(load=ds.loads.get(y, 0.0), planned_load=planned)
-    longest = max(rides, key=lambda a: a.moving_s)
     # RPE / feel come from one ride (the longest one rated), and are judged against that ride's
     # own class and length. Per field, the web answer wins over intervals.icu's.
     rpe: float | None = None
@@ -94,14 +92,9 @@ def _yesterday(ds: Dataset, day: dt.date, feedback: Feedback | None = None) -> Y
             if r is not None or f is not None:
                 rpe, feel, rated = r, f, a
                 break
-    statuses = [a.status for a in rides if a.status]
     classes = [a.classification for a in rides if a.classification]
     return YesterdayRide(
-        status=max(statuses, key=lambda st: _STATUS_RANK.get(st, 1)) if statuses else None,
         classification=max(classes, key=lambda c: _CLASS_RANK.get(c, -1)) if classes else None,
-        decoupling_pct=longest.decoupling_pct,
-        decoupling_reliable=longest.decoupling_reliable,
-        hr_lag_s=longest.hr_lag_s,
         load=ds.loads.get(y),
         planned_load=planned,
         rpe=rpe,

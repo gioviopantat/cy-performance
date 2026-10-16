@@ -8,7 +8,7 @@ row. ``send`` builds, emails when ``notify.email`` is on, and records the outcom
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -17,12 +17,13 @@ from sqlalchemy.orm import Session
 from cyp.core.errors import ConfigError, NotFoundError
 from cyp.core.timeutil import iso_utc, now_utc, parse_iso
 from cyp.logging import get_logger
+from cyp.reports import email_copy
 from cyp.reports.ride_facts import build_ride_report
+from cyp.reports.ride_model import RideReport as RideReportFacts
 from cyp.reports.ride_pdf import render_ride_pdf
 from cyp.services import ride_feedback
 from cyp.services.context import AppContext
 from cyp.services.ride_preview import tomorrow_preview
-from cyp.settings import Settings
 from cyp.store.models import Activity, RideReport
 
 log = get_logger(__name__)
@@ -39,11 +40,9 @@ GAVE_UP = "gave_up"
 DONE = (BUILT, SENT, GAVE_UP)
 MAX_ATTEMPTS = 3
 ICU_ACTIVITY_URL = "https://intervals.icu/activities/{id}"
-#: zh-TW subject (first line) and body of the email (``reports/templates``).
-EMAIL_TEMPLATE = "ride_email.txt.j2"
 
-#: ``(settings, subject, body_text, attachments)``; :func:`cyp.jobs.notify.send_email`.
-Mailer = Callable[[Settings, str, str, Sequence[Path]], None]
+#: ``(settings, subject, body_text, attachments, *, html=...)``; :func:`cyp.jobs.notify.send_email`.
+Mailer = Callable[..., None]
 
 
 @dataclass(frozen=True)
@@ -188,12 +187,31 @@ def _deliver(ctx: AppContext, activity_id: int, pdf: Path, mailer: Mailer | None
         from cyp.jobs.notify import send_email
 
         mailer = send_email
-    from cyp.reports.render import environment
+    from cyp.jobs.notify import cc_recipients
 
-    day, _icu_id, name = _ride(ctx, activity_id)
-    text = environment().get_template(EMAIL_TEMPLATE).render(day=day.isoformat(), name=name)
-    subject, _, body = text.partition("\n")
-    mailer(ctx.settings, subject.strip(), body, [pdf])
+    report = load_report(pdf)
+    content = email_copy.compose_ride(
+        report,
+        to_name=recipient_name(ctx, report.athlete_name),
+        cc_names=[n or a for n, a in cc_recipients(ctx.settings)],
+        today=ctx.today(),
+    )
+    mailer(ctx.settings, content.subject, content.text, [pdf], html=content.html)
+
+
+def load_report(pdf: Path) -> RideReportFacts:
+    """The facts the PDF was rendered from (the ``.json`` written beside it)."""
+    return RideReportFacts.model_validate_json(pdf.with_suffix(".json").read_text(encoding="utf-8"))
+
+
+def recipient_name(ctx: AppContext, athlete_name: str) -> str:
+    """How report emails greet this profile's recipient.
+
+    ``CYP_REPORT_EMAIL_NAME``, else the athlete's first name as intervals.icu has it.
+    """
+    if ctx.settings.cyp_report_email_name:
+        return ctx.settings.cyp_report_email_name
+    return athlete_name.split()[0] if athlete_name.strip() else "你"
 
 
 def _ride(ctx: AppContext, activity_id: int) -> tuple[dt.date, str | None, str]:

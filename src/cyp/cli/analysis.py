@@ -166,9 +166,11 @@ def echo_trends(report: dict[str, Any]) -> None:
         )
     if report.get("tid_weeks"):
         w = report["tid_weeks"][-1]
+        n = w["sessions"]
         typer.echo(
-            f"  TID week {w['week_start']}: {w['low'] * 100:.0f}/{w['mid'] * 100:.0f}/"
-            f"{w['high'] * 100:.0f} %  {w['hours']} h  {w['model']}"
+            f"  TID week {w['week_start']}: sessions {n['low']}/{n['mid']}/{n['high']}, "
+            f"time {w['low'] * 100:.0f}/{w['mid'] * 100:.0f}/{w['high'] * 100:.0f} %  "
+            f"{w['hours']} h  {w['model']}"
         )
     climbs = report.get("climbs") or []
     if climbs:

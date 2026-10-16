@@ -12,6 +12,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from email.message import EmailMessage
+from email.utils import formataddr, getaddresses
 from pathlib import Path
 
 from cyp.core.errors import ConfigError, CypError
@@ -72,12 +73,18 @@ def _smtp(host: str, port: int, timeout: float) -> smtplib.SMTP:
     return client
 
 
+def cc_recipients(settings: Settings) -> list[tuple[str, str]]:
+    """``CYP_REPORT_EMAIL_CC`` as ``(name, address)`` pairs (``Name <addr>`` or ``addr``)."""
+    return [(n, a) for n, a in getaddresses([settings.cyp_report_email_cc]) if a]
+
+
 def send_email(
     settings: Settings,
     subject: str,
     body_text: str,
     attachments: Sequence[Path] = (),
     *,
+    html: str | None = None,
     smtp: SmtpFactory = _smtp,
 ) -> None:
     """Send one email to ``CYP_REPORT_EMAIL_TO`` (copies to ``CYP_REPORT_EMAIL_CC``) over TLS.
@@ -108,10 +115,12 @@ def send_email(
     msg["Subject"] = subject
     msg["From"] = user
     msg["To"] = to
-    cc = [a.strip() for a in settings.cyp_report_email_cc.split(",") if a.strip()]
+    cc = cc_recipients(settings)
     if cc:
-        msg["Cc"] = ", ".join(cc)
+        msg["Cc"] = ", ".join(formataddr(x) for x in cc)
     msg.set_content(body_text)
+    if html is not None:
+        msg.add_alternative(html, subtype="html")
     for path in attachments:
         ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         maintype, _, subtype = ctype.partition("/")

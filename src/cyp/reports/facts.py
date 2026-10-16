@@ -35,6 +35,7 @@ from cyp.store.models import (
     ReadinessDaily,
 )
 from cyp.store.repo.athlete_settings import AthleteSettingsRepo
+from cyp.store.repo.planned import PlannedWorkoutRepo
 
 #: Thresholds quoted in the report (docs/glossary/ramp_rate_acwr_monotony.md); their claims
 #: are grade C, so the report shows them as context (docs/07 §6).
@@ -55,6 +56,22 @@ def _rides_on(session: Session, day: dt.date) -> list[tuple[Activity, ActivityMe
         .order_by(Activity.start_utc)
     ).all()
     return [(a, m) for a, m in rows if activity_local_date(a) == day]
+
+
+def _planned_intent(
+    session: Session, activity_id: int, day: dt.date, longest: int | None
+) -> str | None:
+    """Intent of the planned workout a ride executed (as ``ride_intent.planned_for``)."""
+    repo = PlannedWorkoutRepo(session)
+    pw = repo.executed_by(activity_id)
+    if pw is None and activity_id == longest:
+        pw = repo.first_live_on(day)
+    return pw.intent if pw is not None else None
+
+
+def _z5_bouts(m: ActivityMetrics) -> int | None:
+    bouts = (m.pacing or {}).get("z5_bouts") if isinstance(m.pacing, dict) else None
+    return bouts if isinstance(bouts, int) else None
 
 
 def ride_fact(a: Activity, m: ActivityMetrics | None) -> dict[str, Any]:
@@ -354,6 +371,8 @@ def weekly_facts(
         n_rides += sum(1 for f in facts if f["is_ride"])
         plan = _plan(session, athlete_id, day)
         planned += sum(p["target_tss"] or 0 for p in plan)
+        rides = [a for a, _ in acts if a.is_ride]
+        longest = max(rides, key=lambda x: (x.moving_s or 0, -x.id)).id if rides else None
         for a, m in acts:
             if m is None:
                 continue
@@ -361,7 +380,15 @@ def weekly_facts(
                 m.time_in_zone_power, m.time_in_zone_hr, a.icu_zone_times
             )
             if picked:
-                tiz_rides.append(tid_mod.RideTiz(day, picked[0], picked[1]))
+                tiz_rides.append(
+                    tid_mod.RideTiz(
+                        day,
+                        picked[0],
+                        picked[1],
+                        _planned_intent(session, a.id, day, longest),
+                        _z5_bouts(m),
+                    )
+                )
         r = _readiness(session, athlete_id, day)
         days_out.append(
             {
@@ -380,7 +407,12 @@ def weekly_facts(
     tid_fact = None
     if week_tid is not None:
         low, mid, high = week_tid.fractions()
+        s_low, s_mid, s_high = week_tid.session_fractions()
         tid_fact = {
+            "sessions": {"low": week_tid.low_n, "mid": week_tid.mid_n, "high": week_tid.high_n},
+            "session_low": s_low,
+            "session_mid": s_mid,
+            "session_high": s_high,
             "low": low,
             "mid": mid,
             "high": high,

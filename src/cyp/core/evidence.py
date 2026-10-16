@@ -334,32 +334,51 @@ REGISTRY: tuple[Claim, ...] = (
     _proposed(
         "decoupling_hr_lag.ride_status_rules",
         "decoupling_hr_lag",
-        "Same-ride decoupling / TSS cut-offs set the post-ride status and the next day.",
+        "The ride's TSS alone sets the post-ride status and the next day (>= 150 easy, "
+        ">= 250 overreached, >= 300 rest); decoupling and HR lag never do (ADR-0012).",
         "C",
         "Roete AJ et al. 2021, Int J Sports Physiol Perform 16(8):1065-1073, PMID 34108275 "
-        "(overreaching lowers HR at a given power: the OVERREACHED direction is contested)",
+        "(overreaching lowers HR at a given power, so high decoupling cannot mean overreached)",
+        "Le Meur Y et al. 2013, Med Sci Sports Exerc 45(11):2061-2071, PMID 24136138",
+        "TSS cut-offs are ours (no study links one ride's TSS to the next day)",
     ),
     _proposed(
         "decoupling_hr_lag.hr_lag_blunted",
         "decoupling_hr_lag",
-        "An HR lag of 90 s or more means a blunted (fatigued) autonomic response.",
+        "HR lag is shown as context only; no lag cut-off marks a blunted response (ADR-0012).",
         "C",
         "Bellenger CR et al. 2016, Sports Med 46(10):1461-1486, PMID 26888648 (no lag cut-off)",
     ),
     _proposed(
         "readiness_v1.hrv_single_day",
         "readiness_v1",
-        "A single-day ln rMSSD z-score reflects readiness.",
+        "The 7-day rolling mean of ln rMSSD (>= 3 nights) against the baseline mean +/- 0.5 SD "
+        "reflects readiness; a single night does not (readiness_v2, ADR-0013).",
         "C",
         "Plews DJ et al. 2013, Int J Sports Physiol Perform 8(6):688-691, PMID 23479420 "
         "(7-day mean r=.72, single day r=-.06)",
+        "Plews DJ et al. 2014, Int J Sports Physiol Perform 9(5):783-790, PMID 24334285 "
+        "(three valid nights per week suffice)",
+        "Manresa-Rocamora A et al. 2021, Int J Environ Res Public Health 18(19):10299 "
+        "(HRV-guided trials use the 7-day mean vs baseline +/- 0.5 SD)",
     ),
     _proposed(
         "readiness_v1.overreached_rule",
         "readiness_v1",
-        "HRV z < -1.5 and RHR z > +1.5 together mean overreaching.",
+        "The 7-day HRV mean 1.25 SD or more below baseline and RHR z > +1.5 together mean "
+        "acute stress (rest).",
         "C",
         "Bellenger CR et al. 2016, Sports Med 46(10):1461-1486, PMID 26888648",
+    ),
+    Claim(
+        "readiness_v1.missing_shrinkage",
+        "readiness_v1",
+        "When the present inputs weigh less than 0.5, the missing weight counts as a neutral 0 "
+        "instead of renormalising onto the few inputs left (ADR-0016).",
+        "C",
+        ("Ours: a shrinkage choice so one grade-C input (e.g. TSB alone) cannot decide the day",),
+        reviewed=dt.date(2026, 10, 17),
+        status="proposed",
     ),
     _proposed(
         "readiness_v1.sleep",
@@ -431,10 +450,14 @@ REGISTRY: tuple[Claim, ...] = (
     _proposed(
         "time_in_zone_tid.phase_targets",
         "time_in_zone_tid",
-        "Phase TID targets 80/15/5, 75/15/10, 75/5/20 by time.",
+        "Phase TID targets 80/15/5, 75/15/10, 75/5/20 counted by sessions; time in zone is "
+        "reference only (ADR-0014).",
         "C",
+        "Seiler KS, Kjerland GO 2006, Scand J Med Sci Sports 16(1):49-56 (session-goal counting)",
         "Mateo-March M et al. 2026, Biol Sport 43(4):933-940, doi:10.5114/biolsport.2026.156234 "
         "(WorldTour time above CP 4-7 %)",
+        "Sylta O et al. 2014, Int J Sports Physiol Perform 9(1):100-107, PMID 24408353 "
+        "(time-based vs session-goal mid/high shares differ about threefold)",
     ),
     _proposed(
         "eftp.ramp_075",

@@ -109,6 +109,8 @@ class ActivityRow:
     hr_lag_s: float | None = None
     status: str | None = None
     classification: str | None = None
+    #: Sustained Z5+ bouts (>= 60 s of 30 s power over the Z5 floor); ``None`` before ride-1.3.
+    z5_bouts: int | None = None
     durability: Mapping[str, Any] | None = None
     # --- data quality (docs/04 §7)
     power_meter_serial: str | None = None
@@ -223,6 +225,8 @@ class PlannedRow:
     indoor: bool
     target_tss: float | None
     status: str
+    intent: str | None = None
+    executed_activity_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -346,6 +350,22 @@ class Dataset:
     def on(self, day: dt.date) -> list[ActivityRow]:
         """Every activity of a local day."""
         return [a for a in self.activities if a.date == day]
+
+    def planned_intent(self, a: ActivityRow) -> str | None:
+        """Intent of our planned workout ``a`` executed (as ``reports/ride_intent.planned_for``).
+
+        The slot matched to the ride, else the day's first live slot when ``a`` is the day's
+        longest ride; ``None`` for every other ride.
+        """
+        rows = self.planned.get(a.date, ())
+        for p in rows:
+            if p.executed_activity_id == a.id:
+                return p.intent
+        same_day = [x for x in self.on(a.date) if x.is_ride]
+        if not rows or not same_day:
+            return None
+        longest = max(same_day, key=lambda x: (x.moving_s, -x.id))
+        return rows[0].intent if longest.id == a.id else None
 
     def settings_on(self, day: dt.date) -> SettingsRow | None:
         """Latest settings row effective on ``day`` (else the earliest)."""
@@ -561,6 +581,9 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
                 classification=pacing.get("classification")
                 if isinstance(pacing.get("classification"), str)
                 else None,
+                z5_bouts=pacing.get("z5_bouts")
+                if isinstance(pacing.get("z5_bouts"), int)
+                else None,
                 durability=r.durability if isinstance(r.durability, dict) else None,
                 power_meter_serial=normalise_serial(r.pm_serial),
                 gear_id=r.gear_id,
@@ -725,6 +748,8 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
             PlannedWorkout.indoor,
             PlannedWorkout.target_tss,
             PlannedWorkout.status,
+            PlannedWorkout.intent,
+            PlannedWorkout.executed_activity_id,
         )
         .where(
             PlannedWorkout.athlete_id == athlete_id,
@@ -743,6 +768,8 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
                 bool(p.indoor),
                 p.target_tss,
                 p.status,
+                p.intent,
+                p.executed_activity_id,
             )
         )
 

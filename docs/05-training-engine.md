@@ -23,13 +23,17 @@ Given the next `RACE_A` date (or a target date for an FTP/W/kg goal) and current
 1. Work backwards: **taper** (7–10 d) ← **peak/specialty** (3–4 wk) ← **build** (2 × 4 wk) ←
    **base** (remaining, min 4 wk). Shorter horizons compress from base first.
 2. Each block gets a load pattern (`3:1` default, `2:1` if the athlete's readiness history shows
-   frequent BLUNTED weeks) and a **CTL ramp target**: base +3–5/wk, build +4–6/wk, specialty
+   frequent low-readiness weeks) and a **CTL ramp target**: base +3–5/wk, build +4–6/wk, specialty
    0–+2, taper −10–15 % ATL with CTL held.
 3. Weekly `target_tss = f(ctl_now, ramp_target)` via the PMC equations (closed form); `target_hours`
    from the block's intensity factor profile.
 4. Block focus by phase and limiter:
 
-| Phase | Primary stimulus | HIT sessions/wk | TID model |
+TID targets are fractions of **sessions** (planned rides by their planned intent, unplanned
+rides by sustained Z5+ bouts / Z3+Z4 time, `analysis/longitudinal/tid.py`, ADR-0014), as in the session-goal literature they come from;
+time-in-zone fractions are shown as reference only and are never compared with them.
+
+| Phase | Primary stimulus | HIT sessions/wk | TID model (by sessions) |
 |-------|------------------|-----------------|-----------|
 | base | Z2 volume, cadence, strength-endurance, durability long rides | 1 (SS/tempo) | pyramidal 80/15/5 |
 | build | sweetspot → threshold progression, long rides with late-ride intervals (durability) | 2 | pyramidal 75/15/10 |
@@ -99,7 +103,8 @@ Spec: [specs/personalized-planning.md](specs/personalized-planning.md). Flags `p
   day's longest rated ride is part of readiness' "ride" component, judged against that ride's
   class plus +1 expected RPE per hour beyond 3 h (≤ +2). RPE ≥ 3 above that, or feel 5, caps
   the next day at EASY, and the daily re-plan turns hard work into Z2. Such verdicts carry
-  `readiness_v1.1`.
+  `readiness_v2.1` (`readiness_v2` without them). Yesterday's decoupling and HR lag are not
+  readiness inputs (ADR-0012); HRV enters as its 7-day mean (ADR-0013).
 
 ### 2.5 Athlete rules and distance goals (`athlete_rules.py`, `season.py`)
 Spec: [specs/age-health-and-distance-goals.md](specs/age-health-and-distance-goals.md).
@@ -150,11 +155,12 @@ sync (icu + strava) → analyze new rides → compliance of yesterday's slot →
 ```
 
 ## 4. Weekly review (`jobs/weekly.py`, Monday)
-- Compliance %, TSS/hours vs target, TID vs model, readiness distribution.
+- Compliance %, TSS/hours vs target, TID (sessions) vs model with time-in-zone as reference,
+  readiness distribution.
 - FTP/eFTP: if icu eFTP or our CP fit ≥ 3 % above FTP for 2 consecutive weeks and a recent
   ≥ 20 min effort supports it → propose `SET_EFTP` (never auto-set FTP in v1; write a NOTE +
   report line). Schedule a test (ramp or 20 min) at block boundaries when evidence is weak.
-- Block progression: advance week index; if 2 of last 3 weeks were `BLUNTED`/under-complied,
+- Block progression: advance week index; if 2 of last 3 weeks were low-readiness/under-complied,
   insert a recovery week early and lower next block ramp by 1/wk.
 - Re-render next week fully; horizon beyond 14 d stays as week-level targets only.
 

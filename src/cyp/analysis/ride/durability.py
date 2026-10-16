@@ -40,22 +40,22 @@ Basis = Literal["power", "estimated", "speed"]
 class Thresholds:
     """Every number behind decoupling reliability, HR lag and the status/next verdict.
 
-    Status rules (first match wins, evaluated in this order):
+    Status rules (ADR-0012: only the ride's load decides; decoupling and HR lag are reported
+    but never change the status or tomorrow's session):
 
-    - ``OVERREACHED``: reliable decoupling >= ``overreached_min_decoupling`` (10 %) **or**
-      ``tss >= overreached_min_tss`` (250).
-    - ``BLUNTED``: HR lag >= ``blunted_min_lag_s`` (90 s) — the autonomic response is slow.
-    - ``FRESH``: ride moved >= ``fresh_min_moving_s`` (45 min), lag <= ``fresh_max_lag_s``
-      (45 s) and reliable decoupling <= ``fresh_max_decoupling`` (2 %).
-    - ``NORMAL`` otherwise (including when lag/decoupling are unavailable).
+    - ``OVERREACHED``: ``tss >= overreached_min_tss`` (250).
+    - ``NORMAL`` otherwise.
 
     Next rules:
 
     - ``OVERREACHED`` -> ``REST`` when ``tss >= rest_min_tss`` (300) else ``EASY``.
-    - ``BLUNTED`` -> ``EASY``.
-    - ``FRESH`` -> ``UPGRADE`` when ``tss <= upgrade_max_tss`` (80) else ``AS_PLANNED``.
-    - ``NORMAL`` -> ``EASY`` when ``tss >= easy_min_tss`` (150) or reliable decoupling >=
-      ``easy_min_decoupling`` (5 %), else ``AS_PLANNED``.
+    - ``NORMAL`` -> ``EASY`` when ``tss >= easy_min_tss`` (150), else ``AS_PLANNED``.
+
+    ``decoupling_reference_pct`` (5 %, Friel's practitioner value) is only the line the ride
+    explanation compares decoupling with. Older rows may still carry ``FRESH`` / ``BLUNTED``
+    (ride-1.2 and earlier: decoupling >= 10 % -> OVERREACHED, HR lag >= 90 s -> BLUNTED);
+    those rules were removed because overreaching lowers HR at a given power and no study
+    supports the lag cut-off.
     """
 
     # decoupling
@@ -70,18 +70,13 @@ class Thresholds:
     lag_max_s: int = 120
     lag_min_samples: int = 600
     lag_min_corr: float = 0.3
+    # display only
+    decoupling_reference_pct: float = 5.0
     # status
-    fresh_max_decoupling: float = 2.0
-    fresh_max_lag_s: float = 45.0
-    fresh_min_moving_s: int = 2700
-    blunted_min_lag_s: float = 90.0
-    overreached_min_decoupling: float = 10.0
     overreached_min_tss: float = 250.0
     # next
     rest_min_tss: float = 300.0
     easy_min_tss: float = 150.0
-    easy_min_decoupling: float = 5.0
-    upgrade_max_tss: float = 80.0
 
     def as_dict(self) -> dict[str, Any]:
         """Plain dict (for persisting the thresholds used next to the result)."""
@@ -310,46 +305,12 @@ def hr_time_in_zones(frame: RideFrame, zones: ZoneModel | None) -> dict[str, flo
 
 def classify_status(
     *,
-    decoupling_result: Decoupling | None,
-    lag: HrLag | None,
     tss: float | None,
-    moving_s: int,
     thresholds: Thresholds = DEFAULT_THRESHOLDS,
 ) -> tuple[Status, Next]:
-    """RIDE.LOG ``STATUS`` / ``NEXT`` from decoupling, HR lag and TSS (see :class:`Thresholds`)."""
-    dec = (
-        decoupling_result.pct
-        if decoupling_result is not None and decoupling_result.reliable
-        else None
-    )
-    lag_s = float(lag.lag_s) if lag is not None else None
-    status: Status = "NORMAL"
-    if (dec is not None and dec >= thresholds.overreached_min_decoupling) or (
-        tss is not None and tss >= thresholds.overreached_min_tss
-    ):
-        status = "OVERREACHED"
-    elif lag_s is not None and lag_s >= thresholds.blunted_min_lag_s:
-        status = "BLUNTED"
-    elif (
-        moving_s >= thresholds.fresh_min_moving_s
-        and lag_s is not None
-        and lag_s <= thresholds.fresh_max_lag_s
-        and dec is not None
-        and dec <= thresholds.fresh_max_decoupling
-    ):
-        status = "FRESH"
-
-    nxt: Next
-    if status == "OVERREACHED":
-        nxt = "REST" if tss is not None and tss >= thresholds.rest_min_tss else "EASY"
-    elif status == "BLUNTED":
-        nxt = "EASY"
-    elif status == "FRESH":
-        nxt = "UPGRADE" if tss is not None and tss <= thresholds.upgrade_max_tss else "AS_PLANNED"
-    elif (tss is not None and tss >= thresholds.easy_min_tss) or (
-        dec is not None and dec >= thresholds.easy_min_decoupling
-    ):
-        nxt = "EASY"
-    else:
-        nxt = "AS_PLANNED"
-    return status, nxt
+    """RIDE.LOG ``STATUS`` / ``NEXT`` from the ride's TSS (see :class:`Thresholds`)."""
+    if tss is not None and tss >= thresholds.overreached_min_tss:
+        return "OVERREACHED", "REST" if tss >= thresholds.rest_min_tss else "EASY"
+    if tss is not None and tss >= thresholds.easy_min_tss:
+        return "NORMAL", "EASY"
+    return "NORMAL", "AS_PLANNED"

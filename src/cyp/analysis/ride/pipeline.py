@@ -16,7 +16,9 @@ from cyp.analysis.ride.explain import explain_ride
 from cyp.analysis.ride.frames import FloatArray, RideFrame, elevation_gain
 from cyp.analysis.ride.result import RideInputs, RideMetrics, TssSource
 
-ALGO_VERSION = "ride-1.2.0"  # 1.1 durability per ride; 1.2 NP from 60 s, trainer moving
+#: 1.1 durability per ride; 1.2 NP from 60 s, trainer moving; 1.3 status from TSS only
+#: (ADR-0012) and sustained Z5+ bouts in ``pacing`` (ADR-0014)
+ALGO_VERSION = "ride-1.3.0"
 
 
 def _pacing(frame: RideFrame, p_rec: FloatArray | None, pm: power.PowerMetrics) -> dict[str, Any]:
@@ -190,6 +192,13 @@ def compute_ride_metrics(frame: RideFrame, inputs: RideInputs) -> RideMetrics:
     m.pacing["surges"] = sum(1 for e in m.efforts if e["kind"] == "sprint")
     m.pacing["structure"] = efforts.effort_structure(m.efforts)
     m.pacing["elev_gain_m"] = round(m.elev_gain_m, 1) if m.elev_gain_m is not None else None
+    # Sustained Z5+ bouts (read by the TID session rule for unplanned rides, ADR-0014).
+    z5_floor = power.zone_floor(inputs.power_zones, 5) or (
+        power.zone_floor(power.coggan_zones(inputs.ftp), 5) if inputs.ftp else None
+    )
+    p30 = frame.power_30s(watts) if use_power else None
+    if p30 is not None and z5_floor:
+        m.pacing["z5_bouts"] = power.sustained_bouts(p30, z5_floor)
 
     # Classification + verdict
     if_for_class = pm.if_ if (use_power or tss_source == "estimated") else None
@@ -199,9 +208,7 @@ def compute_ride_metrics(frame: RideFrame, inputs: RideInputs) -> RideMetrics:
         pm.time_in_zone, if_for_class, moving_s=frame.moving_s, race=inputs.race
     )
     m.pacing["classification"] = m.classification
-    m.status, m.next_recommendation = durability.classify_status(
-        decoupling_result=dec, lag=lag, tss=m.tss, moving_s=frame.moving_s, thresholds=th
-    )
+    m.status, m.next_recommendation = durability.classify_status(tss=m.tss, thresholds=th)
 
     m.comparison = _comparison(m, inputs, pm, dec)
     m.explanation = explain_ride(m, inputs)

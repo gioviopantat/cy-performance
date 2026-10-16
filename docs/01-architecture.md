@@ -94,7 +94,8 @@ Pure functions over stored data. Details in [04-analysis-engine](04-analysis-eng
 - `longitudinal/` — PMC replay/simulation, eFTP tracking, power-duration model (CP/W′),
   durability trend, segment PR timeline, polarization index, monotony/strain, ACWR.
 - `readiness.py` — fuses wellness (HRV, RHR, sleep) + yesterday's internal/external load response
-  into a `Readiness` score with a `status ∈ {FRESH, NORMAL, BLUNTED, OVERREACHED}`.
+  into a `Readiness` score with a `status ∈ {FRESH, NORMAL, OVERREACHED, SICK}` (`readiness_v2`:
+  7-day HRV mean; ride decoupling / HR lag are not inputs).
 - `ride/intent.py` — did a ride reach its planned stimulus (minutes in the target band, reps that
   counted, outdoor interruptions excused); `ride/context.py` — stops, coasting, heat and which
   numbers they make unreliable; `longitudinal/goal.py` — FTP trend and projected date to the

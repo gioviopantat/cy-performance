@@ -159,7 +159,7 @@ REGISTRY: tuple[Feature, ...] = (
         True,
         "騎後感受納入準備度",
         "Post-ride RPE / feel (intervals.icu or the web 騎完感受, per field the web wins) of "
-        "the longest rated ride adjusts the next day's readiness (algo readiness_v1.1).",
+        "the longest rated ride adjusts the next day's readiness (algo readiness_v2.1).",
         requires=("analysis.rides",),
     ),
     Feature(

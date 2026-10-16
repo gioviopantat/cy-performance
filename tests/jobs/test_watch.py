@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 from collections.abc import Iterator, Sequence
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -15,6 +16,7 @@ from cyp.jobs import watch
 from cyp.jobs.notify import EmailError
 from cyp.jobs.runner import profile_lock
 from cyp.jobs.watch import spawn_tick as real_spawn_tick  # conftest stubs the attribute
+from cyp.reports import email_copy
 from cyp.services import ride_report
 from cyp.services.context import AppContext
 from cyp.settings import Settings
@@ -35,7 +37,12 @@ class Mailer:
         self.fail = fail
 
     def __call__(
-        self, settings: Settings, subject: str, body: str, attachments: Sequence[Path]
+        self,
+        settings: Settings,
+        subject: str,
+        body: str,
+        attachments: Sequence[Path],
+        **_kw: Any,
     ) -> None:
         if self.fail is not None:
             raise self.fail
@@ -60,6 +67,14 @@ def built(monkeypatch: pytest.MonkeyPatch) -> list[int]:
     monkeypatch.setattr(ride_report, "build_ride_report", fake_build)
     monkeypatch.setattr(ride_report, "render_ride_pdf", fake_render)
     monkeypatch.setattr(ride_report, "tomorrow_preview", lambda ctx, day: None)
+    monkeypatch.setattr(
+        ride_report, "load_report", lambda pdf: SimpleNamespace(athlete_name="Rider", stem=pdf.stem)
+    )
+    monkeypatch.setattr(
+        ride_report.email_copy,
+        "compose_ride",
+        lambda r, **_kw: email_copy.EmailContent(f"subject {r.stem}", "text", "<p>html</p>"),
+    )
     monkeypatch.setattr(watch.trends_service, "recompute", lambda *_a, **_k: {})
     return calls
 

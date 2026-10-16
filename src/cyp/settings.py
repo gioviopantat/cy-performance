@@ -111,8 +111,11 @@ class Settings(BaseSettings):
     cyp_smtp_password: SecretStr = SecretStr("")
     #: The recipient of this profile's reports.
     cyp_report_email_to: str = ""
-    #: Optional copies (comma-separated), e.g. the owner on a family member's reports.
+    #: Optional copies (comma-separated, ``Name <addr>`` or ``addr``), e.g. the owner on a family
+    #: member's reports.
     cyp_report_email_cc: str = ""
+    #: How the emails greet the recipient (``William 你好``); defaults to the profile's name.
+    cyp_report_email_name: str = ""
 
     # Optional LLM (not used yet; a narrator will ship behind a feature flag, ADR-0008)
     anthropic_api_key: SecretStr = SecretStr("")
