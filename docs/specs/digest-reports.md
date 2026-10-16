@@ -60,7 +60,8 @@ fitness drift, and the plan for coming back. Sections without data are omitted.
 | `reports/digest_sections.py` | 5 | period / break, sessions (ride intent per ride), load, TID by sessions |
 | `reports/digest_progress.py` | 5 | goal projection now vs period start, recovery, next plan |
 | `reports/digest_weekly.py`, `digest_monthly.py` | 5 | the kind's own sections (highlights; consistency, power curve, FTP / CP, limiters, research), headline, assembly |
-| `reports/digest_pdf.py`, `charts.py`, `templates/digest_*.html.j2` | 5 | render (WeasyPrint, matplotlib; same look as the ride PDF) |
+| `reports/digest_pdf.py`, `digest_charts.py`, `templates/digest_*.html.j2`, `digest.css` | 5 | render (WeasyPrint, matplotlib; same look as the ride PDF); a break period renders a one-page short version |
+| `reports/pdf.py`, `templates/report.css`, `_report.html.j2` | 5 | shared with the ride PDF: Jinja environment, local time, WeasyPrint call; base CSS; `stat` / `explain` / `methods` / `climb_table` macros. Chart helpers (palette, CJK font) stay in `charts.py` |
 | `store/models.py` + migration | 2 | `digest_reports(kind, period_start, status, attempts, pdf_path, sent_at, error)`, unique per kind + period |
 | `services/digest.py` | 7 | build / send one digest |
 | `jobs/digest.py`, `jobs/launchd.py` | 7 | `cyp digest --all`: per profile, build and send every due, unsent digest (so a Mac asleep at 07:00 catches up on wake); third launch agent `com.cy-performance.digest` at 07:00 daily (does nothing on days with nothing due) |

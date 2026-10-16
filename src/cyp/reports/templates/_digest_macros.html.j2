@@ -1,0 +1,86 @@
+{#- Maps and macros shared by the digest templates (_digest.html.j2 and its children);
+    import them `with context` (they read `charts`). Formatting only. -#}
+{% from "_report.html.j2" import stat, explain, methods %}
+{% set HEADLINE = {
+  "on_track": ("good", "✓ 照計畫"),
+  "partly": ("warning", "◐ 部分完成"),
+  "off_track": ("critical", "✕ 偏離計畫"),
+  "break": ("", "‖ 休息期"),
+  "no_data": ("", "– 資料不足"),
+} %}
+{% set SESSION = {
+  "achieved": ("good", "✓ 達成"),
+  "partial": ("warning", "◐ 部分"),
+  "missed": ("critical", "✕ 未達成"),
+  "overdone": ("warning", "▲ 騎過頭"),
+  "skipped": ("", "– 沒騎"),
+  "unplanned": ("", "○ 計畫外"),
+  "no_data": ("", "– 資料不足"),
+} %}
+{% set DIST = {
+  "on": ("good", "✓ 符合目標"),
+  "under": ("warning", "△ 低於目標"),
+  "over": ("warning", "△ 高於目標"),
+  "no_target": ("", "○ 沒有目標"),
+} %}
+{% set BAND = {"low": "低強度", "mid": "中強度", "high": "高強度"} %}
+{% set READINESS = {"REST": "休息", "EASY": "輕鬆騎", "AS_PLANNED": "照課表", "UPGRADE": "可以加碼"} %}
+{% set KIND = "週報" if d.version.startswith("digest_weekly") else "月報" %}
+{% macro badge(table, v) %}<span class="badge {{ table[v][0] }}">{{ table[v][1] }}</span>{% endmacro %}
+{% macro where(outdoor) %}{{ "–" if outdoor is none else ("戶外" if outdoor else "室內") }}{% endmacro %}
+{% macro next_plan(no, title, n) %}
+<section class="next">
+  <h2><span class="no">{{ no }}</span>{{ title }}</h2>
+  {% if n.phase_zh %}<p><strong>{{ n.phase_zh }}</strong></p>{% endif %}
+  {% if n.text_zh %}<p>{{ n.text_zh }}</p>{% endif %}
+  {% if n.key_sessions_zh %}
+  <h3>關鍵課表</h3>
+  <ul>{% for k in n.key_sessions_zh %}<li>{{ k }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if n.sessions %}
+  <table>
+    <thead><tr><th>日期</th><th>課表</th><th>目的</th><th class="n">TSS</th><th class="n">分鐘</th><th class="where">地點</th></tr></thead>
+    <tbody>
+    {% for s in n.sessions %}
+    <tr><td class="day">{{ s.day.strftime("%m/%d") }}（{{ s.day | weekday }}）</td><td>{{ s.name }}</td><td>{{ s.purpose_zh or "–" }}</td><td class="n">{{ s.tss | num }}</td><td class="n">{{ s.minutes | num }}</td><td class="where">{{ where(s.outdoor) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  <p class="note">課表已由 05:30 的自動排程寫進行事曆；這裡只是照抄，之後仍會依每天的恢復狀態調整。</p>
+</section>
+{% endmacro %}
+{% macro recovery_section(no, r, per_day) %}
+<section class="recovery">
+  <h2><span class="no">{{ no }}</span>恢復</h2>
+  <div class="figures">
+    {{ stat("休息日", r.rest_days, "天") }}
+    {% for k, v in r.readiness_counts.items() %}{{ stat("準備度：" ~ READINESS.get(k, k), v, "天") }}{% endfor %}
+  </div>
+  {% if charts.recovery %}<div class="figure"><img src="{{ charts.recovery }}" alt="HRV（7 天平均 z）與基準帶、安靜心率"></div>{% endif %}
+  {% if per_day and r.days %}
+  <table>
+    <thead><tr><th>日期</th><th class="n">HRV z（7 天）</th><th class="n">安靜心率</th><th class="n">睡眠（小時）</th><th class="n">感受落差</th><th>準備度</th></tr></thead>
+    <tbody>
+    {% for x in r.days %}
+    <tr><td class="day">{{ x.day.strftime("%m/%d") }}（{{ x.day | weekday }}）</td><td class="n">{{ x.hrv_z7 | signed("+.2f") }}</td><td class="n">{{ x.rhr | num }}</td><td class="n">{{ x.sleep_h | num(".1f") }}</td><td class="n">{{ x.feel_gap | signed }}</td><td>{{ READINESS.get(x.readiness, x.readiness) if x.readiness else "–" }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if r.text_zh %}<p>{{ r.text_zh }}</p>{% endif %}
+  {{ explain(r.explanation) }}
+</section>
+{% endmacro %}
+{% macro goal_figures(g) %}
+  <div class="figures">
+    {{ stat("現在 FTP", g.current_ftp_w | num, "W") }}
+    {% if g.trend_level_w is not none %}{{ stat("趨勢水準", g.trend_level_w | num, "W") }}{% endif %}
+    {% if g.evidence_w is not none %}{{ stat("本期最佳證據", g.evidence_w | num, "W") }}{% endif %}
+    {{ stat("賽季目標", g.target_w | num ~ " W", "· " ~ g.target_date.isoformat()) }}
+    {% if g.projected_date %}{{ stat("預估達成日", (g.projected_date_before.isoformat() ~ " → " if g.projected_date_before else "") ~ g.projected_date.isoformat()) }}{% endif %}
+  </div>
+  {% if g.text_zh %}<p>{{ g.text_zh }}</p>{% endif %}
+  {% if charts.goal %}<div class="figure"><img src="{{ charts.goal }}" alt="FTP 歷史、賽季目標與預估軌跡"></div>{% endif %}
+  {{ explain(g.explanation) }}
+{% endmacro %}

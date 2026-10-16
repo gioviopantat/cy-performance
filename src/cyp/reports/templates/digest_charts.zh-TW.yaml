@@ -1,0 +1,34 @@
+# Chart text for the weekly / monthly digest PDFs (cyp.reports.digest_charts). str.format.
+weekdays: 一二三四五六日
+day_tick: "週{wd}\n{date}"
+tss_planned: 計畫 TSS
+tss_actual: 實際 TSS
+ctl: CTL（體能）
+ctl_plan: 賽季計畫 CTL
+low: 低強度
+mid: 中強度
+high: 高強度
+target_split: 目標分界
+row_sessions: 本週（課次）
+row_target: 階段目標
+row_time: 時間（參考）
+week_of: "{date} 週"
+hrv_z7: HRV（7 天平均 z）
+hrv_band: 基準 ±1 SD
+rhr: 安靜心率
+no_recovery: 這段期間沒有 HRV 或安靜心率資料
+planned: 計畫
+done: 完成
+achieved: 達成目的
+sessions_unit: 課
+this_month: 本月最佳
+last_month: 上月最佳
+season_best: 賽季最佳
+no_power_curve: 沒有功率曲線資料
+month_ago: 一個月前
+now_rank: 現在
+new_limiter: 新出現
+rank_unit: 排名（1 = 最限制）
+period_evidence: 本期最佳證據
+this_period: 本期
+dropped_limiter: 已不在榜

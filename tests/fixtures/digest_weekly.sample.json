@@ -1,0 +1,147 @@
+{
+ "version": "digest_weekly_v1",
+ "profile": "sample",
+ "athlete_name": "範例車手",
+ "generated_at": "2026-03-16T07:00:00Z",
+ "period": {
+  "start": "2026-03-09",
+  "end": "2026-03-15",
+  "label_zh": "2026 第 11 週 · 3/9–3/15",
+  "season_week": 6,
+  "phase": "建構期 1",
+  "is_break": false,
+  "break_reason_zh": ""
+ },
+ "headline": {
+  "text_zh": "這週大致照計畫完成：兩堂甜蜜點都達成，週六長途因為紅燈多只算部分達成。",
+  "verdict": "partly",
+  "change_zh": "週四的恢復騎請真的放慢，這週騎過頭了。"
+ },
+ "sessions": [
+  {"day": "2026-03-09", "verdict": "skipped", "planned_name": "休息日", "planned_tss": 0, "note_zh": ""},
+  {"day": "2026-03-10", "planned_name": "甜蜜點 3×12", "planned_tss": 78, "ride_name": "室內甜蜜點", "activity_id": 1001, "actual_tss": 81, "moving_min": 70, "outdoor": false, "verdict": "achieved"},
+  {"day": "2026-03-11", "planned_name": "Z2 耐力 60 分", "planned_tss": 45, "ride_name": "河濱輕鬆騎", "activity_id": 1002, "actual_tss": 47, "moving_min": 62, "outdoor": true, "verdict": "no_data"},
+  {"day": "2026-03-12", "planned_name": "恢復騎 40 分", "planned_tss": 22, "ride_name": "午間小繞", "activity_id": 1003, "actual_tss": 58, "moving_min": 55, "outdoor": true, "verdict": "overdone", "note_zh": "負荷是計畫的 2.6 倍，大多在 Z3。"},
+  {"day": "2026-03-13", "planned_name": "甜蜜點 2×20", "planned_tss": 82, "ride_name": "室內甜蜜點", "activity_id": 1004, "actual_tss": 84, "moving_min": 72, "outdoor": false, "verdict": "achieved"},
+  {"day": "2026-03-14", "planned_name": "長途 Z2 3 小時", "planned_tss": 160, "ride_name": "山區長途", "activity_id": 1005, "actual_tss": 171, "moving_min": 176, "outdoor": true, "verdict": "partial", "note_zh": "停車 14 次已排除；Z2 時間 128 / 150 分鐘。"},
+  {"day": "2026-03-15", "verdict": "unplanned", "ride_name": "咖啡騎", "activity_id": 1006, "actual_tss": 30, "moving_min": 48, "outdoor": true}
+ ],
+ "load": {
+  "planned_tss": 387,
+  "actual_tss": 471,
+  "hours": 8.1,
+  "rides": 6,
+  "ctl_start": 52.4,
+  "ctl_end": 56.1,
+  "atl_end": 66.8,
+  "tsb_end": -10.7,
+  "ramp_per_week": 3.7,
+  "ramp_cap": 5.0,
+  "daily": [
+   ["2026-03-09", 0, 0],
+   ["2026-03-10", 78, 81],
+   ["2026-03-11", 45, 47],
+   ["2026-03-12", 22, 58],
+   ["2026-03-13", 82, 84],
+   ["2026-03-14", 160, 171],
+   ["2026-03-15", 0, 30]
+  ],
+  "ctl_series": [
+   ["2026-03-09", 51.2],
+   ["2026-03-10", 52.8],
+   ["2026-03-11", 53.6],
+   ["2026-03-12", 54.8],
+   ["2026-03-13", 56.0],
+   ["2026-03-14", 58.8],
+   ["2026-03-15", 56.1]
+  ],
+  "explanation": {
+   "headline_zh": "CTL 一週上升 3.7，在上限 5.0 以內。",
+   "because": [{"text_zh": "實際 TSS 比計畫多 22 %，主要來自週四與週日。", "weight": 0.6}],
+   "method": {"model_id": "pmc_v1"},
+   "confidence": "high",
+   "key": "load:2026-W11"
+  }
+ },
+ "distribution": {
+  "sessions": {"low": 3, "mid": 2, "high": 1},
+  "session_frac": {"low": 0.5, "mid": 0.333, "high": 0.167},
+  "target_frac": {"low": 0.6, "mid": 0.3, "high": 0.1},
+  "time_frac": {"low": 0.74, "mid": 0.2, "high": 0.06},
+  "verdict": "over"
+ },
+ "goal": {
+  "target_w": 270,
+  "target_date": "2026-09-30",
+  "current_ftp_w": 250,
+  "trend_level_w": 252,
+  "projected_date": "2026-08-20",
+  "projected_date_before": "2026-08-28",
+  "evidence_w": 254,
+  "history": [
+   {"day": "2025-11-01", "ftp_w": 236, "source": "icu_eftp"},
+   {"day": "2025-12-15", "ftp_w": 240, "source": "icu_eftp"},
+   {"day": "2026-01-10", "ftp_w": 240, "source": "setting:icu"},
+   {"day": "2026-02-01", "ftp_w": 246, "source": "icu_eftp"},
+   {"day": "2026-03-01", "ftp_w": 250, "source": "setting:icu"},
+   {"day": "2026-03-13", "ftp_w": 254, "source": "icu_eftp"}
+  ],
+  "text_zh": "週五甜蜜點 2×20 的功率相當於 FTP 254 W，預估達成日提前 8 天。",
+  "explanation": {"headline_zh": "趨勢線每週 +0.9 W。", "method": {"model_id": "goal_projection_v1"}, "confidence": "medium"}
+ },
+ "recovery": {
+  "days": [
+   {"day": "2026-03-09", "hrv_z7": 0.31, "rhr": 52, "sleep_h": 7.4, "readiness": "AS_PLANNED"},
+   {"day": "2026-03-10", "hrv_z7": 0.22, "rhr": 51, "sleep_h": 7.0, "readiness": "AS_PLANNED", "feel_gap": 0.4},
+   {"day": "2026-03-11", "hrv_z7": 0.05, "rhr": 53, "sleep_h": 6.6, "readiness": "AS_PLANNED", "feel_gap": -0.2},
+   {"day": "2026-03-12", "hrv_z7": -0.48, "rhr": 55, "sleep_h": 6.1, "readiness": "EASY", "feel_gap": 1.1},
+   {"day": "2026-03-13", "hrv_z7": -0.62, "rhr": 54, "sleep_h": 7.8, "readiness": "AS_PLANNED", "feel_gap": 0.3},
+   {"day": "2026-03-14", "hrv_z7": -0.35, "rhr": 53, "sleep_h": 8.2, "readiness": "UPGRADE"},
+   {"day": "2026-03-15", "hrv_z7": -1.12, "rhr": 56, "sleep_h": 6.9, "readiness": "EASY", "feel_gap": 0.8}
+  ],
+  "rest_days": 1,
+  "readiness_counts": {"AS_PLANNED": 4, "EASY": 2, "UPGRADE": 1},
+  "text_zh": "週後半 HRV 往基準下緣走，週日略低於基準帶；安靜心率多 3 下。"
+ },
+ "highlights": {
+  "climbs": [
+   {
+    "name": "示範坡 A",
+    "this": {"day": "2026-03-14", "power_w": 268, "w_kg": 3.83, "time_s": 742, "kj_before": 910, "temp_c": 19.5},
+    "history": [
+     {"day": "2025-12-06", "power_w": 255, "w_kg": 3.64, "time_s": 781, "kj_before": 420, "temp_c": 16.0},
+     {"day": "2026-01-24", "power_w": 261, "w_kg": 3.73, "time_s": 760, "kj_before": 600, "temp_c": 14.5},
+     {"day": "2026-02-21", "power_w": 264, "w_kg": 3.77, "time_s": 751, "kj_before": 1150, "temp_c": 22.0}
+    ],
+    "rank": 1,
+    "of_n": 4,
+    "note_zh": "已騎 910 kJ 之後仍是歷來最快，疲勞下的爬坡能力在進步。"
+   }
+  ],
+  "durability_ratio": 0.97,
+  "durability_median_ratio": 0.94,
+  "text_zh": "長途騎過 1000 kJ 後效率只掉 3 %，比近 4 週中位數好。",
+  "explanation": {"headline_zh": "疲勞後 EF 衰退比近 4 週少。", "method": {"model_id": "durability_v1"}, "confidence": "low"}
+ },
+ "next_week": {
+  "sessions": [
+   {"day": "2026-03-16", "name": "休息日", "purpose_zh": "吸收上週負荷"},
+   {"day": "2026-03-17", "name": "閾值 4×8", "purpose_zh": "提高 FTP 附近的耐受時間", "tss": 85, "minutes": 75, "outdoor": false},
+   {"day": "2026-03-18", "name": "Z2 耐力 75 分", "purpose_zh": "有氧基礎", "tss": 55, "minutes": 75, "outdoor": true},
+   {"day": "2026-03-19", "name": "恢復騎 40 分", "purpose_zh": "真的放慢", "tss": 22, "minutes": 40, "outdoor": false},
+   {"day": "2026-03-20", "name": "甜蜜點 3×15", "purpose_zh": "肌耐力", "tss": 88, "minutes": 80, "outdoor": false},
+   {"day": "2026-03-21", "name": "長途 Z2 3.5 小時", "purpose_zh": "耐力與後段功率", "tss": 185, "minutes": 210, "outdoor": true},
+   {"day": "2026-03-22", "name": "休息日"}
+  ],
+  "phase_zh": "建構期 1 · 第 3 週（負荷週）",
+  "key_sessions_zh": ["週二 閾值 4×8", "週六 長途 3.5 小時"],
+  "text_zh": "下週 TSS 目標 435，CTL 預計到 59。"
+ },
+ "methods": [
+  {"model_id": "pmc_v1", "claim_id": "ctl_atl_tsb", "grade": "B", "citation": "Banister 1975; Coggan", "doc": "docs/04-analysis-engine.md"},
+  {"model_id": "tid_v2", "claim_id": "polarized_tid", "grade": "A", "citation": "Rosenblat 2019", "doc": "docs/adr/0014-tid-by-sessions.md"},
+  {"model_id": "readiness_v2", "claim_id": "hrv_guided", "grade": "B", "citation": "Javaloyes 2019", "doc": "docs/04-analysis-engine.md"},
+  {"model_id": "durability_v1", "claim_id": "durability_kj", "grade": "C", "citation": "Maunder 2021", "doc": "docs/04-analysis-engine.md"},
+  {"model_id": "ride_intent_v1", "doc": "docs/specs/ride-report.md"}
+ ]
+}

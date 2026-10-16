@@ -1,0 +1,30 @@
+# zh-TW strings tests/reports/test_digest_pdf.py expects in the rendered digests (invented data).
+weekly_sections: [一句話結論, 計畫 vs 實際, 負荷, 強度分布, 還有多遠, 恢復, 本週亮點, 下週課表, 方法與證據]
+monthly_sections: [一句話結論, 一致性, 體能曲線, 功率–時間曲線, FTP / CP / W′, 強度分布, 限制因子, 恢復, 下個月, 文獻月報摘要, 方法與證據]
+break_sections: [一句話結論, 為什麼這段沒騎, 體能變化, 回來後的課表]
+# Headings of the sections a minimal digest (required fields only) must leave out.
+weekly_optional: [計畫 vs 實際, 負荷, 強度分布, 還有多遠, 恢復, 本週亮點, 下週課表, 方法與證據]
+monthly_optional: [一致性, 體能曲線, 功率–時間曲線, FTP / CP / W′, 強度分布, 限制因子, 恢復, 下個月, 文獻月報摘要, 方法與證據]
+badges:
+  overdone: 騎過頭
+  skipped: 沒騎
+  unplanned: 計畫外
+  partial: ◐ 部分
+  over: 高於目標
+  break: 休息期
+  no_data: 資料不足
+grades: [A 級, B 級, C 級]
+weak_grade: 參考（證據弱）
+no_grade: 未分級
+rest_day: 休息
+readiness_easy: 輕鬆騎
+durability_label: 騎 1000 kJ 後的效率
+best_since: 賽季最佳取自 2025-10-01 起
+climb_name: 示範坡 A
+this_week: （本週）
+minimal:
+  athlete_name: 測試車手
+  label: 測試週
+  month_label: 測試月
+  headline: 這段期間沒有資料可以整理。
+  limiter: 閾值功率

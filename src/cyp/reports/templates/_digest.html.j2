@@ -1,0 +1,84 @@
+{#- Base of the weekly / monthly digest PDFs (docs/specs/digest-reports.md).
+    Input: d = WeeklyDigest | MonthlyDigest, charts = digest_charts(d), grid (weekly only),
+    generated_local. Every number is a contract field; templates only format.
+    A break period (d.period.is_break) renders the short version below instead of `body`. -#}
+{% from "_report.html.j2" import stat, explain, methods %}
+{% from "_digest_macros.html.j2" import HEADLINE, SESSION, KIND, READINESS, badge, next_plan with context %}
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>{{ KIND }} · {{ d.athlete_name }} · {{ d.period.label_zh }}</title>
+<meta name="author" content="cy-performance">
+<meta name="generator" content="{{ d.version }}">
+<style>
+{% include "report.css" %}
+{% include "digest.css" %}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="kicker">訓練{{ KIND }} · {{ d.athlete_name }} · {{ d.period.start.isoformat() }}（{{ d.period.start | weekday }}）– {{ d.period.end.isoformat() }}（{{ d.period.end | weekday }}）{% if d.period.season_week is not none %} · 賽季第 {{ d.period.season_week }} 週{% endif %}{% if d.period.phase %} · {{ d.period.phase }}{% endif %}</div>
+  <h1>{{ d.period.label_zh }}</h1>
+  {% if d.load and not d.period.is_break %}
+  <div class="stats">
+    {{ stat("騎乘", d.load.rides, "次") }}
+    {{ stat("時數", d.load.hours | num(".1f"), "小時") }}
+    {{ stat("TSS 計畫 → 實際", d.load.planned_tss | num ~ " → " ~ d.load.actual_tss | num) }}
+    {% if d.load.ctl_start is not none and d.load.ctl_end is not none %}{{ stat("CTL", d.load.ctl_start | num ~ " → " ~ d.load.ctl_end | num) }}{% endif %}
+    {% if d.load.tsb_end is not none %}{{ stat("期末 TSB", d.load.tsb_end | signed("+.0f")) }}{% endif %}
+  </div>
+  {% endif %}
+</header>
+
+<section class="headline">
+  <h2><span class="no">1</span>一句話結論 {{ badge(HEADLINE, d.headline.verdict) }}</h2>
+  <p class="lead">{{ d.headline.text_zh }}</p>
+  {% if d.headline.change_zh %}<p><strong>要改的一件事</strong>　{{ d.headline.change_zh }}</p>{% endif %}
+</section>
+
+{% if d.period.is_break %}
+{# Short version: the reason, what was planned, the CTL drift, the plan for coming back. #}
+<section class="break">
+  <h2><span class="no">2</span>為什麼這段沒騎</h2>
+  <p>{{ d.period.break_reason_zh or "這段期間沒有騎乘紀錄，也沒有登記原因。" }}</p>
+  {% set planned = d.sessions | selectattr("planned_name") | list if d.sessions is defined else [] %}
+  {% if planned %}
+  <h3>原本排了什麼</h3>
+  <table>
+    <thead><tr><th>日期</th><th>課表</th><th class="n">計畫 TSS</th><th>結果</th></tr></thead>
+    <tbody>
+    {% for s in planned %}
+    <tr><td class="day">{{ s.day.strftime("%m/%d") }}（{{ s.day | weekday }}）</td><td>{{ s.planned_name }}</td><td class="n">{{ s.planned_tss | num }}</td><td>{{ badge(SESSION, s.verdict) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if d.consistency is defined and d.consistency %}
+  <div class="figures">{{ stat("原本排的課", d.consistency.planned, "課") }}{{ stat("完成", d.consistency.done, "課") }}</div>
+  {% endif %}
+</section>
+{% if d.load %}
+<section class="drift">
+  <h2><span class="no">3</span>體能變化</h2>
+  <div class="figures">
+    {% if d.load.ctl_start is not none and d.load.ctl_end is not none %}{{ stat("CTL", d.load.ctl_start | num(".1f") ~ " → " ~ d.load.ctl_end | num(".1f")) }}{% endif %}
+    {% if d.load.tsb_end is not none %}{{ stat("期末 TSB", d.load.tsb_end | signed("+.0f")) }}{% endif %}
+  </div>
+  {% if charts.ctl %}<div class="figure"><img src="{{ charts.ctl }}" alt="休息期間的 CTL"></div>{% endif %}
+  {{ explain(d.load.explanation) }}
+</section>
+{% endif %}
+{% set n = d.next_week if d.next_week is defined else d.next_month %}
+{% if n %}{{ next_plan(4, "回來後的課表", n) }}{% endif %}
+{% else %}
+{% block body %}{% endblock %}
+{% endif %}
+
+<footer class="colophon">
+  cy-performance · {{ d.version }} · 產生於 {{ generated_local.strftime("%Y-%m-%d %H:%M") }} · profile {{ d.profile }}<br>
+  所有數字都來自同一份 facts（旁邊的 .json）；文字敘述不會自己計算數字。
+</footer>
+</body>
+</html>
