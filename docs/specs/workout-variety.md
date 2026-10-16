@@ -1,5 +1,5 @@
 # workout-variety
-Status: draft · 2026-10-16
+Status: accepted · 2026-10-17
 
 ## Goal
 Weeks that do not feel the same, without giving up the planned dose. Today variety is thin:
@@ -101,14 +101,13 @@ local files under the profile's data dir. Dose and guardrails are unchanged by c
 - Replay on the roger profile (read-only, last 8 weeks): list how many picks change and why.
 - `uv run poe check` green; flags off -> golden plan unchanged.
 
-## Open questions (decide before code)
-1. **Preference input**: the web 騎完感受 dialog only (recommended), or also a reply link in
-   the PDF email?
-2. **Dislike strength**: ×0.60 (strong; recommended) or ×0.80 (gentle)?
-3. **New templates**: only the terrain versions (recommended), or also 6–8 new indoor
-   structures (e.g. progressive threshold, criss-cross, tempo with sprints)?
-4. **Flat-road "accumulate N minutes" sessions** on outdoor days: yes (recommended) or keep
-   fixed reps everywhere?
+## Decisions (Roger, 2026-10-17)
+1. Preference input: the web 騎完感受 dialog only.
+2. Dislike strength: ×0.60.
+3. New templates: the terrain versions **and** 6–8 new indoor structures (e.g. progressive
+   threshold, criss-cross, tempo with sprints), each with a family, a dose that the resolver
+   computes, an `explain_zh`, and an outdoor and HR-fallback version like the existing ones.
+4. Flat-road "accumulate N minutes in blocks of ≥ M minutes" sessions on outdoor days: yes.
 
 ## Docs to update
 `docs/05-training-engine.md` (selection), `docs/glossary/workout_library.md` (families,
