@@ -20,8 +20,11 @@ WEEKLY_VERSION = "digest_weekly_v1"
 MONTHLY_VERSION = "digest_monthly_v1"
 
 #: Per planned session: the ride's intent verdict, ``overdone`` for an easy day ridden far past
-#: its load, ``skipped`` when nothing was ridden, ``unplanned`` for a ride without a plan.
-SessionVerdict = Literal["achieved", "partial", "missed", "overdone", "skipped", "unplanned"]
+#: its load, ``skipped`` when nothing was ridden, ``unplanned`` for a ride without a plan,
+#: ``no_data`` for a planned ride the intent check could not judge (no trusted power).
+SessionVerdict = Literal[
+    "achieved", "partial", "missed", "overdone", "skipped", "unplanned", "no_data"
+]
 Band = Literal["low", "mid", "high"]
 
 
@@ -81,6 +84,10 @@ class Load(_Model):
         default_factory=list, description="(day, planned TSS, actual TSS)"
     )
     ctl_series: list[tuple[dt.date, float]] = Field(default_factory=list)
+    ctl_plan: list[tuple[dt.date, float]] = Field(
+        default_factory=list,
+        description="(week end, CTL the season plan projects); monthly only, empty otherwise",
+    )
     explanation: dict[str, Any] | None = None
 
 
@@ -132,12 +139,17 @@ class Recovery(_Model):
 
 
 class Highlights(_Model):
-    """Section 7 (weekly): climbs vs history and durability vs the 4-week median."""
+    """Section 7 (weekly): climbs vs history and durability vs the 4-week median.
+
+    Durability is the stored model's ratio (EF after 1000 kJ / fresh EF, 1.0 = no fade), not
+    watts: the per-ride model keeps no late-ride power.
+    """
 
     climbs: list[ClimbCompare] = Field(default_factory=list)
-    durability_w: float | None = None
-    durability_median_w: float | None = None
+    durability_ratio: float | None = None
+    durability_median_ratio: float | None = None
     text_zh: str = ""
+    explanation: dict[str, Any] | None = None
 
 
 class PlannedSession(_Model):
@@ -200,6 +212,8 @@ class PowerCurve(_Model):
     this_month_w: list[float | None]
     last_month_w: list[float | None]
     season_best_w: list[float | None]
+    #: First day of the ``season_best_w`` window (the season start, or a year back before it).
+    best_since: dt.date | None = None
     text_zh: str = ""
 
 
