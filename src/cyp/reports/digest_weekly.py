@@ -331,8 +331,12 @@ def build(inp: DigestInputs, week_start: dt.date, *, generated_at: dt.datetime) 
     sessions = build_sessions(inp, start, end)
     facts = weekly_facts(inp.session, start, reports_dir=inp.reports_dir, cfg=inp.cfg)
     load = build_load(inp, start, end, sessions, warnings=facts["warnings"])
-    next_week = build_next(
-        inp, end + dt.timedelta(days=1), end + dt.timedelta(days=7), monthly=False
+    # A backfilled week's "next week" is already in the past: no plan section then.
+    nxt = end + dt.timedelta(days=1)
+    next_week = (
+        build_next(inp, nxt, end + dt.timedelta(days=7), monthly=False)
+        if nxt >= inp.today
+        else None
     )
     if period.is_break:
         dist = goal = recovery = highlights = None

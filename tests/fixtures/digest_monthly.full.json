@@ -2,7 +2,7 @@
  "version": "digest_monthly_v1",
  "profile": "test",
  "athlete_name": "Test Rider",
- "generated_at": "2026-11-01T23:00:00Z",
+ "generated_at": "2026-10-31T23:00:00Z",
  "period": {
   "start": "2026-10-01",
   "end": "2026-10-31",

@@ -475,7 +475,10 @@ def build(inp: DigestInputs, month_start: dt.date, *, generated_at: dt.datetime)
     consistency = build_consistency(inp, start, end, sessions)
     load = build_load(inp, start, end, sessions, with_plan_path=True)
     nxt_start, nxt_end = month_bounds(end + dt.timedelta(days=1))
-    next_month = build_next(inp, nxt_start, nxt_end, monthly=True)
+    # A backfilled month's "next month" has already begun: no plan section then.
+    next_month = (
+        build_next(inp, nxt_start, nxt_end, monthly=True) if nxt_start >= inp.today else None
+    )
     research = build_research(start)
     if period.is_break:
         curve = fitness = limiters = recovery = None

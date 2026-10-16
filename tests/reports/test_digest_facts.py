@@ -13,6 +13,8 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -75,19 +77,39 @@ def _fixed(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(digest_monthly, "RESEARCH_DIR", FIXTURES / "research")
 
 
+def _due(day: dt.date) -> dt.datetime:
+    """07:00 Taipei on ``day``: when the digest job sends (Monday / the 1st)."""
+    return dt.datetime.combine(day, dt.time(7, 0), tzinfo=ZoneInfo("Asia/Taipei")).astimezone(
+        dt.UTC
+    )
+
+
 def weekly(
-    world: tuple[Any, StreamStore, Path], ws: dt.date, cfg: AthleteConfig | None
+    world: tuple[Any, StreamStore, Path],
+    ws: dt.date,
+    cfg: AthleteConfig | None,
+    *,
+    at: dt.datetime | None = None,
 ) -> WeeklyDigest:
+    """Build the week as the job would on the following Monday (``at`` overrides the clock)."""
     factory: sessionmaker[Session] = world[0]
-    with factory() as s:
+    when = at or _due(ws + dt.timedelta(days=7))
+    with factory() as s, patch.object(digest_facts, "now_utc", lambda: when):
         return build_weekly(s, world[1], ws, profile="test", cfg=cfg, reports_dir=world[2])
 
 
 def monthly(
-    world: tuple[Any, StreamStore, Path], ms: dt.date, cfg: AthleteConfig | None
+    world: tuple[Any, StreamStore, Path],
+    ms: dt.date,
+    cfg: AthleteConfig | None,
+    *,
+    at: dt.datetime | None = None,
 ) -> MonthlyDigest:
+    """Build the month as the job would on the 1st of the next month."""
     factory: sessionmaker[Session] = world[0]
-    with factory() as s:
+    nxt = (ms.replace(day=28) + dt.timedelta(days=4)).replace(day=1)
+    when = at or _due(nxt)
+    with factory() as s, patch.object(digest_facts, "now_utc", lambda: when):
         return build_monthly(s, world[1], ms, profile="test", cfg=cfg, reports_dir=world[2])
 
 
@@ -224,14 +246,18 @@ def test_recovery_week_label(world: Any, cfg: AthleteConfig) -> None:
     assert [s.verdict for s in d.sessions] == ["achieved", "achieved", "unplanned"]
 
 
-def test_days_from_today_are_not_judged(
-    world: Any, cfg: AthleteConfig, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(
-        digest_facts, "now_utc", lambda: dt.datetime(2026, 10, 8, 23, 0, tzinfo=dt.UTC)
-    )
-    d = weekly(world, WEEK_FULL, cfg)
+def test_days_from_today_are_not_judged(world: Any, cfg: AthleteConfig) -> None:
+    d = weekly(world, WEEK_FULL, cfg, at=dt.datetime(2026, 10, 8, 23, 0, tzinfo=dt.UTC))
     assert "skipped" not in {s.verdict for s in d.sessions}  # 10-09 is "today"
+
+
+def test_backfilled_periods_have_no_next_plan(world: Any, cfg: AthleteConfig) -> None:
+    """Built weeks after the fact, "next week" / "next month" is already over or under way."""
+    late = _due(WEEK_FULL + dt.timedelta(days=21))
+    assert weekly(world, WEEK_FULL, cfg, at=late).next_week is None
+    assert weekly(world, WEEK_FULL, cfg).next_week is not None
+    month = WEEK_FULL.replace(day=1)
+    assert monthly(world, month, cfg, at=late + dt.timedelta(days=40)).next_month is None
 
 
 def test_week_must_start_on_monday(world: Any, cfg: AthleteConfig) -> None:
