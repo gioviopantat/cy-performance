@@ -81,6 +81,9 @@ class Load(_Model):
         default_factory=list, description="(day, planned TSS, actual TSS)"
     )
     ctl_series: list[tuple[dt.date, float]] = Field(default_factory=list)
+    #: The season plan's CTL path over the same days (``season.py`` week targets); monthly
+    #: section 3 draws ``ctl_series`` against it. Empty when there is no season plan.
+    ctl_plan: list[tuple[dt.date, float]] = Field(default_factory=list)
     explanation: dict[str, Any] | None = None
 
 

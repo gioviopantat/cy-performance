@@ -1,5 +1,8 @@
 """Charts for the per-ride PDF (docs/specs/ride-report.md): matplotlib -> SVG.
 
+The figure helpers here (palette, CJK font, chrome, ``data:`` URIs) are shared with
+:mod:`cyp.reports.digest_charts`.
+
 Each chart carries our verdict (counted vs excused minutes, goal trajectory, outdoor
 discounts, climb history under fatigue/heat); intervals.icu already draws the raw traces.
 Charts read only :mod:`cyp.reports.ride_model` fields and compute nothing beyond plotting.
@@ -70,14 +73,16 @@ SURFACE = "#ffffff"
 HEAT = LinearSegmentedColormap.from_list("heat", ["#fbd9c9", "#eb6834", "#8a3110"])
 
 WIDTH_IN = 6.7  # A4 text block (170 mm)
-TEXT_FILE = "templates/ride_charts.zh-TW.yaml"
+TEXT_FILES = ("templates/ride_charts.zh-TW.yaml", "templates/digest_charts.zh-TW.yaml")
 
 
 @cache
 def _text() -> dict[str, str]:
-    raw = resources.files("cyp.reports").joinpath(TEXT_FILE).read_text(encoding="utf-8")
-    loaded = yaml.safe_load(raw)
-    return {str(k): str(v) for k, v in loaded.items()}
+    out: dict[str, str] = {}
+    for name in TEXT_FILES:
+        raw = resources.files("cyp.reports").joinpath(name).read_text(encoding="utf-8")
+        out.update({str(k): str(v) for k, v in yaml.safe_load(raw).items()})
+    return out
 
 
 def _t(key: str, **kw: object) -> str:
@@ -258,11 +263,12 @@ def is_setting(source: str) -> bool:
     return source.startswith("setting:")
 
 
-def ftp_trajectory(goal: Goal, today: dt.date) -> bytes:
+def ftp_trajectory(goal: Goal, today: dt.date, *, evidence_key: str = "evidence") -> bytes:
     """Section 3: FTP estimates and settings, season target, trend and projected date.
 
     Settings are a step line apart from the estimates; the projection starts at the trend
-    level (``trend_level_w``), falling back to the current FTP.
+    level (``trend_level_w``), falling back to the current FTP. ``evidence_key`` names the
+    legend text of ``this_ride_evidence_w`` (the digests show the period's evidence).
     """
     with _figure(2.1) as (fig, ax):
         handles: list[Any] = []
@@ -335,7 +341,7 @@ def ftp_trajectory(goal: Goal, today: dt.date) -> bytes:
             ax.plot(
                 [_dn(today)], [goal.this_ride_evidence_w], "D", color=SERIES_3, ms=6, mec=SURFACE
             )
-            handles.append(Line2D([], [], color=SERIES_3, marker="D", lw=0, label=_t("evidence")))
+            handles.append(Line2D([], [], color=SERIES_3, marker="D", lw=0, label=_t(evidence_key)))
         if goal.projected_date is not None:
             ax.plot(
                 [_dn(today), _dn(goal.projected_date)],
@@ -433,8 +439,11 @@ def _kj_size(kj: float | None) -> float:
     return 30.0 if kj is None else 20.0 + min(kj, 1500.0) / 1500.0 * 160.0
 
 
-def climb_history(climb: ClimbCompare) -> bytes:
-    """Section 5: each ascent vs date; size = kJ already spent, colour = temperature."""
+def climb_history(climb: ClimbCompare, *, this_key: str = "today") -> bytes:
+    """Section 5: each ascent vs date; size = kJ already spent, colour = temperature.
+
+    ``this_key`` names the label of ``climb.this`` (the digests mark the period's best ascent).
+    """
     efforts: list[ClimbEffort] = [climb.this, *climb.history]
     unit, ys = _climb_metric(climb)
     temps = [e.temp_c for e in efforts if e.temp_c is not None]
@@ -452,7 +461,7 @@ def climb_history(climb: ClimbCompare) -> bytes:
                 zorder=3 if i == 0 else 2,
             )
         ax.annotate(
-            _t("today"),
+            _t(this_key),
             (_dn(climb.this.day), ys[0]),
             xytext=(0, 9),
             textcoords="offset points",
@@ -471,7 +480,7 @@ def climb_history(climb: ClimbCompare) -> bytes:
         _unit(ax, unit)
         handles: list[Any] = [
             Line2D(
-                [], [], lw=0, marker="o", mfc=SURFACE, mec=INK, mew=1.6, ms=7, label=_t("today")
+                [], [], lw=0, marker="o", mfc=SURFACE, mec=INK, mew=1.6, ms=7, label=_t(this_key)
             ),
         ]
         handles += [

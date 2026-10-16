@@ -56,7 +56,8 @@ fitness drift, and the plan for coming back. Sections without data are omitted.
 |--------|-------|------|
 | `reports/digest_model.py` | 5 | contract: `WeeklyDigest`, `MonthlyDigest` (pydantic, like `ride_model.py`) |
 | `reports/digest_facts.py` (+ section modules) | 5 | fill the contract from stored results; reuse `facts.weekly_facts` and the ride-report builders |
-| `reports/digest_pdf.py`, `charts.py`, `templates/digest_*.html.j2` | 5 | render (WeasyPrint, matplotlib; same look as the ride PDF) |
+| `reports/digest_pdf.py`, `digest_charts.py`, `templates/digest_*.html.j2`, `digest.css` | 5 | render (WeasyPrint, matplotlib; same look as the ride PDF); a break period renders a one-page short version |
+| `reports/pdf.py`, `templates/report.css`, `_report.html.j2` | 5 | shared with the ride PDF: Jinja environment, local time, WeasyPrint call; base CSS; `stat` / `explain` / `methods` / `climb_table` macros. Chart helpers (palette, CJK font) stay in `charts.py` |
 | `store/models.py` + migration | 2 | `digest_reports(kind, period_start, status, attempts, pdf_path, sent_at, error)`, unique per kind + period |
 | `services/digest.py` | 7 | build / send one digest |
 | `jobs/digest.py`, `jobs/launchd.py` | 7 | `cyp digest --all`: per profile, build and send every due, unsent digest (so a Mac asleep at 07:00 catches up on wake); third launch agent `com.cy-performance.digest` at 07:00 daily (does nothing on days with nothing due) |
@@ -86,6 +87,7 @@ per kind + period, so a digest is sent once; tests stub SMTP.
 3. Same level of detail for both athletes.
 
 ## Contract
-`src/cyp/reports/digest_model.py` (`WeeklyDigest`, `MonthlyDigest` and their sections) plus
+`src/cyp/reports/digest_model.py` (`WeeklyDigest`, `MonthlyDigest` and their sections; `Load.ctl_plan`
+carries the season plan's CTL path for monthly section 3) plus
 the stub signatures `reports.digest_facts.build_weekly` / `build_monthly` and
 `reports.digest_pdf.render_digest_pdf`. Builders, renderer and the job meet only there.

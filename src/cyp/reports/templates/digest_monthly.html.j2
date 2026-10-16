@@ -1,0 +1,157 @@
+{#- Monthly digest PDF (digest_monthly_v1; docs/specs/digest-reports.md, monthly table).
+    Section 1 and the break version are in _digest.html.j2. -#}
+{% extends "_digest.html.j2" %}
+{% block body %}
+{% from "_report.html.j2" import stat, explain, methods %}
+{% from "_digest_macros.html.j2" import DIST, BAND, badge, next_plan, recovery_section, goal_figures with context %}
+
+{# 2 #}
+{% if d.consistency %}
+{% set c = d.consistency %}
+<section class="consistency">
+  <h2><span class="no">2</span>一致性</h2>
+  <div class="figures">
+    {{ stat("計畫", c.planned, "課") }}
+    {{ stat("完成", c.done, "課") }}
+    {{ stat("達成目的", c.achieved, "課") }}
+    {{ stat("最長空檔", c.longest_gap_days, "天") }}
+  </div>
+  {% if charts.consistency %}<div class="figure"><img src="{{ charts.consistency }}" alt="每週計畫、完成與達成目的的課數"></div>{% endif %}
+  {% if c.by_week %}
+  <table>
+    <thead><tr><th>週</th><th class="n">計畫</th><th class="n">完成</th><th class="n">達成目的</th></tr></thead>
+    <tbody>
+    {% for start, planned, done, achieved in c.by_week %}
+    <tr><td class="day">{{ start.strftime("%m/%d") }} 週</td><td class="n">{{ planned }}</td><td class="n">{{ done }}</td><td class="n">{{ achieved }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if c.text_zh %}<p>{{ c.text_zh }}</p>{% endif %}
+</section>
+{% endif %}
+
+{# 3 #}
+{% if d.load %}
+{% set l = d.load %}
+<section class="load">
+  <h2><span class="no">3</span>體能曲線</h2>
+  <div class="figures">
+    {% if l.ctl_start is not none and l.ctl_end is not none %}{{ stat("CTL", l.ctl_start | num(".1f") ~ " → " ~ l.ctl_end | num(".1f")) }}{% endif %}
+    {% if l.ramp_per_week is not none %}{{ stat("CTL 週增幅", l.ramp_per_week | signed, ("上限 " ~ l.ramp_cap | num(".1f")) if l.ramp_cap is not none else "") }}{% endif %}
+    {% if l.atl_end is not none %}{{ stat("月底 ATL", l.atl_end | num) }}{% endif %}
+    {% if l.tsb_end is not none %}{{ stat("月底 TSB", l.tsb_end | signed("+.0f")) }}{% endif %}
+  </div>
+  {% if charts.ctl %}<div class="figure"><img src="{{ charts.ctl }}" alt="本月 CTL 與賽季計畫的 CTL 路徑"></div>{% endif %}
+  {{ explain(l.explanation) }}
+</section>
+{% endif %}
+
+{# 4 #}
+{% if d.power_curve %}
+{% set p = d.power_curve %}
+<section class="power-curve">
+  <h2><span class="no">4</span>功率–時間曲線</h2>
+  {% if charts.power_curve %}<div class="figure"><img src="{{ charts.power_curve }}" alt="本月、上月與賽季最佳的功率–時間曲線"></div>{% endif %}
+  <table>
+    <thead><tr><th>時間</th>{% for s in p.durations_s %}<th class="n">{{ s | mmss }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    <tr class="this"><td>本月</td>{% for w in p.this_month_w %}<td class="n">{{ w | num }}</td>{% endfor %}</tr>
+    <tr><td>上月</td>{% for w in p.last_month_w %}<td class="n">{{ w | num }}</td>{% endfor %}</tr>
+    <tr><td>賽季最佳</td>{% for w in p.season_best_w %}<td class="n">{{ w | num }}</td>{% endfor %}</tr>
+    </tbody>
+  </table>
+  <p class="note">單位 W；時間欄為 分:秒。</p>
+  {% if p.text_zh %}<p>{{ p.text_zh }}</p>{% endif %}
+</section>
+{% endif %}
+
+{# 5 #}
+{% if d.fitness %}
+{% set f = d.fitness %}
+<section class="fitness">
+  <h2><span class="no">5</span>FTP / CP / W′</h2>
+  <div class="figures">
+    {% if f.ftp_start_w is not none or f.ftp_end_w is not none %}{{ stat("FTP 月初 → 月底", f.ftp_start_w | num ~ " → " ~ f.ftp_end_w | num, "W") }}{% endif %}
+    {% if f.cp_w is not none %}{{ stat("CP", f.cp_w | num, "W") }}{% endif %}
+    {% if f.w_prime_j is not none %}{{ stat("W′", (f.w_prime_j / 1000) | num(".1f"), "kJ") }}{% endif %}
+  </div>
+  {% if f.backing_efforts_zh %}
+  <h3>撐起這些估計的努力</h3>
+  <ul>{% for e in f.backing_efforts_zh %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if f.text_zh %}<p>{{ f.text_zh }}</p>{% endif %}
+  {{ explain(f.explanation) }}
+  {% if f.goal %}
+  <h3>離 {{ f.goal.target_w | num }}W 還有多遠</h3>
+  {{ goal_figures(f.goal) }}
+  {% endif %}
+</section>
+{% endif %}
+
+{# 6 #}
+{% if d.distribution_by_week %}
+<section class="distribution">
+  <h2><span class="no">6</span>強度分布</h2>
+  {% if charts.distribution %}<div class="figure"><img src="{{ charts.distribution }}" alt="每週依課次計算的強度分布與階段目標"></div>{% endif %}
+  <table>
+    <thead><tr><th>週</th>{% for b in ["low", "mid", "high"] %}<th class="n">{{ BAND[b] }}（課）</th>{% endfor %}<th>對照目標</th></tr></thead>
+    <tbody>
+    {% for start, t in d.distribution_by_week %}
+    <tr><td class="day">{{ start.strftime("%m/%d") }} 週</td>{% for b in ["low", "mid", "high"] %}<td class="n">{{ t.sessions.get(b, 0) }}</td>{% endfor %}<td>{{ badge(DIST, t.verdict) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">以「課次」分類（一堂課算一次，依它的主要刺激）；黑色刻線是該週階段目標的分界。</p>
+</section>
+{% endif %}
+
+{# 7 #}
+{% if d.limiters %}
+{% set lim = d.limiters %}
+<section class="limiters">
+  <h2><span class="no">7</span>限制因子</h2>
+  {% if charts.limiters %}<div class="figure"><img src="{{ charts.limiters }}" alt="限制因子排名：一個月前與現在"></div>{% endif %}
+  {% if lim.lines %}
+  <table>
+    <thead><tr><th>限制因子</th><th class="n">一個月前</th><th class="n">現在</th></tr></thead>
+    <tbody>
+    {% for x in lim.lines %}
+    <tr><td>{{ x.name_zh }}</td><td class="n">{{ x.rank_before | num }}</td><td class="n">{{ x.rank_now | num }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if lim.plan_response_zh %}<p><strong>課表怎麼應對</strong>　{{ lim.plan_response_zh }}</p>{% endif %}
+</section>
+{% endif %}
+
+{# 8 #}
+{% if d.recovery %}{{ recovery_section(8, d.recovery, false) }}{% endif %}
+
+{# 9 #}
+{% if d.next_month %}{{ next_plan(9, "下個月", d.next_month) }}{% endif %}
+
+{# 10 #}
+{% if d.research %}
+{% set rn = d.research %}
+<section class="research">
+  <h2><span class="no">10</span>文獻月報摘要</h2>
+  <p>本月的文獻審查：<code>{{ rn.report_path }}</code></p>
+  {% if rn.approved_changes_zh %}<ul>{% for x in rn.approved_changes_zh %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+  {% if rn.grade_changes %}
+  <table>
+    <thead><tr><th>主張</th><th>原等級</th><th>新等級</th></tr></thead>
+    <tbody>
+    {% for claim, before, after in rn.grade_changes %}
+    <tr><td><code>{{ claim }}</code></td><td><span class="badge grade">{{ before }} 級</span></td><td><span class="badge grade">{{ after }} 級</span></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</section>
+{% endif %}
+
+{# 11 #}
+{% if d.methods %}{{ methods(11, d.methods) }}{% endif %}
+{% endblock %}

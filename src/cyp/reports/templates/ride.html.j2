@@ -8,26 +8,7 @@
   "no_data": ("", "– 資料不足"),
 } %}
 {% macro verdict_badge(v) %}<span class="badge {{ VERDICT[v][0] }}">{{ VERDICT[v][1] }}</span>{% endmacro %}
-{% macro stat(label, value, unit="") %}
-<div class="stat"><span class="label">{{ label }}</span><span class="value">{{ value }}</span>{% if unit %}<span class="unit">{{ unit }}</span>{% endif %}</div>
-{% endmacro %}
-{% macro explain(e) %}
-{% if e %}
-<div class="explain">
-  <p><strong>為什麼</strong>　{{ e.get("headline_zh", "") }}</p>
-  {% if e.get("because") %}
-  <ul>
-    {% for b in e["because"] %}
-    <li>{{ b.get("text_zh", "") }}{% if b.get("weight") is not none %}（權重 {{ (b["weight"] * 100) | num }} %）{% endif %}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-  {% if e.get("method") %}
-  <p class="note">模型 <code>{{ e["method"].get("model_id", "") }}</code>{% if e.get("confidence") %} · 信心 {{ {"high": "高", "medium": "中", "low": "低"}.get(e["confidence"], e["confidence"]) }}{% endif %}{% if e.get("key") %} · <code>cyp explain {{ e["key"] }}</code>{% endif %}</p>
-  {% endif %}
-</div>
-{% endif %}
-{% endmacro %}
+{% from "_report.html.j2" import stat, explain, methods, climb_table %}
 <!doctype html>
 <html lang="zh-Hant-TW">
 <head>
@@ -36,6 +17,7 @@
 <meta name="author" content="cy-performance">
 <meta name="generator" content="{{ r.version }}">
 <style>
+{% include "report.css" %}
 {% include "ride.css" %}
 </style>
 </head>
@@ -133,14 +115,7 @@
   {% if c.note_zh %}<p>{{ c.note_zh }}</p>{% endif %}
   <div class="figure"><img src="{{ charts.climbs[loop.index0] }}" alt="{{ c.name }} 歷次功率：點大小為已騎 kJ，顏色為氣溫"></div>
   </div>
-  <table>
-    <thead><tr><th>日期</th><th class="n">功率 W</th><th class="n">W/kg</th><th class="n">時間（分:秒）</th><th class="n">已騎 kJ</th><th class="n">氣溫 °C</th></tr></thead>
-    <tbody>
-    {% for e in [c.this] + c.history %}
-    <tr class="{{ 'this' if loop.first }}"><td>{{ e.day.isoformat() }}{% if loop.first %}（今天）{% endif %}</td><td class="n">{{ e.power_w | num }}</td><td class="n">{{ e.w_kg | num(".2f") }}</td><td class="n">{{ e.time_s | mmss }}</td><td class="n">{{ e.kj_before | num }}</td><td class="n">{{ e.temp_c | num(".1f") }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  {{ climb_table(c, "今天") }}
   {% endfor %}
 </section>
 {% endif %}
@@ -194,24 +169,7 @@
 
 {# 9 #}
 {% if r.methods %}
-<section class="methods">
-  <h2><span class="no">9</span>方法與證據</h2>
-  <table>
-    <thead><tr><th>模型</th><th>主張</th><th>證據等級</th><th>出處</th><th>文件</th></tr></thead>
-    <tbody>
-    {% for m in r.methods %}
-    <tr>
-      <td><code>{{ m.model_id }}</code></td>
-      <td>{{ m.claim_id or "–" }}</td>
-      <td>{% if m.grade %}<span class="badge grade">{{ m.grade }} 級</span>{% if m.grade == "C" %} <span class="note">參考（證據弱）</span>{% endif %}{% else %}<span class="note">未分級</span>{% endif %}</td>
-      <td>{{ m.citation or "–" }}</td>
-      <td><code>{{ m.doc }}</code></td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
-  <p class="note">證據等級（docs/specs/research-review.md）：A 統合分析或多項對照研究一致，可單獨支撐結論 · B 群體層級有支持、個人誤差不小 · C 經驗法則、專有公式或單一小型研究，只當參考。</p>
-</section>
+{{ methods(9, r.methods) }}
 {% endif %}
 
 <footer class="colophon">
