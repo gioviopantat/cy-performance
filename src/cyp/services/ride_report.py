@@ -27,6 +27,9 @@ from cyp.store.models import Activity, RideReport
 
 log = get_logger(__name__)
 
+#: Rides older than this (local days before today) get no section 8 tomorrow preview.
+PREVIEW_MAX_AGE_DAYS = 1
+
 PENDING = "pending_feel"
 BUILT = "built"
 SENT = "sent"
@@ -72,7 +75,10 @@ def build(ctx: AppContext, activity_id: int) -> Path:
     """
     _require(ctx, "report.ride")
     day, icu_id, _name = _ride(ctx, activity_id)
-    tomorrow = tomorrow_preview(ctx, day + dt.timedelta(days=1))
+    # A preview is only meaningful while the next day is still ahead: for an older ride (a
+    # resend or a backfill) today's planner would describe a day that already happened.
+    fresh = day >= ctx.today() - dt.timedelta(days=PREVIEW_MAX_AGE_DAYS)
+    tomorrow = tomorrow_preview(ctx, day + dt.timedelta(days=1)) if fresh else None
     rate_url = ICU_ACTIVITY_URL.format(id=icu_id) if icu_id else None
     fb = ride_feedback.get(ctx, activity_id)
     with ctx.factory() as session:

@@ -354,3 +354,23 @@ def test_rating_save_survives_a_failed_spawn(
     monkeypatch.setattr(watch, "spawn_tick", broken)
     aid = _one_ride(wctx)
     assert ride_feedback.save(wctx, aid, 7, None).rpe == 7
+
+
+def test_tomorrow_preview_only_for_recent_rides(
+    wctx: AppContext, built: list[int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A resend or backfill of an old ride gets no section 8: that next day already happened."""
+    days: list[dt.date] = []
+    monkeypatch.setattr(ride_report, "tomorrow_preview", lambda _c, day: days.append(day))
+    with wctx.factory() as s:
+        rides = s.scalars(select(Activity).where(Activity.is_ride.is_(True))).all()
+        newest = max(rides, key=lambda a: a.start_local or "")
+        oldest = min(rides, key=lambda a: a.start_local or "")
+        newest_id, oldest_id = newest.id, oldest.id
+    monkeypatch.setattr(wctx, "fixed_now", None)
+    ride_day = dt.date.fromisoformat((newest.start_local or "")[:10])
+    monkeypatch.setattr(type(wctx), "today", lambda _self: ride_day)
+    ride_report.build(wctx, oldest_id)
+    assert days == []
+    ride_report.build(wctx, newest_id)
+    assert days == [ride_day + dt.timedelta(days=1)]
