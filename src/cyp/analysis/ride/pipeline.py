@@ -16,7 +16,8 @@ from cyp.analysis.ride.explain import explain_ride
 from cyp.analysis.ride.frames import FloatArray, RideFrame, elevation_gain
 from cyp.analysis.ride.result import RideInputs, RideMetrics, TssSource
 
-#: 1.1 durability per ride; 1.2 NP from 60 s, trainer moving; 1.3 status from TSS only (ADR-0012)
+#: 1.1 durability per ride; 1.2 NP from 60 s, trainer moving; 1.3 status from TSS only
+#: (ADR-0012) and sustained Z5+ bouts in ``pacing`` (ADR-0014)
 ALGO_VERSION = "ride-1.3.0"
 
 
@@ -191,6 +192,13 @@ def compute_ride_metrics(frame: RideFrame, inputs: RideInputs) -> RideMetrics:
     m.pacing["surges"] = sum(1 for e in m.efforts if e["kind"] == "sprint")
     m.pacing["structure"] = efforts.effort_structure(m.efforts)
     m.pacing["elev_gain_m"] = round(m.elev_gain_m, 1) if m.elev_gain_m is not None else None
+    # Sustained Z5+ bouts (read by the TID session rule for unplanned rides, ADR-0014).
+    z5_floor = power.zone_floor(inputs.power_zones, 5) or (
+        power.zone_floor(power.coggan_zones(inputs.ftp), 5) if inputs.ftp else None
+    )
+    p30 = frame.power_30s(watts) if use_power else None
+    if p30 is not None and z5_floor:
+        m.pacing["z5_bouts"] = power.sustained_bouts(p30, z5_floor)
 
     # Classification + verdict
     if_for_class = pm.if_ if (use_power or tss_source == "estimated") else None

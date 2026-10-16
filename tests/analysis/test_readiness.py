@@ -174,3 +174,17 @@ def test_stored_z_is_direction_normalised_not_raw() -> None:
     assert comp["z"] == pytest.approx(-2.0) and comp["raw_z"] == pytest.approx(2.0)
     text = r.explanation.because[0].text_zh
     assert text.startswith("安靜心率比你的基準高 2.0 個標準差") and "不利" in text
+
+
+def test_sparse_day_shrinks_toward_neutral() -> None:
+    """ADR-0016: TSB alone (weight 0.15) no longer decides the day on its own."""
+    s, score = rd.aggregate([rd.Component("tsb", -1.287, 0.15)])
+    assert s == pytest.approx(0.15 * -1.287 / rd.MIN_TOTAL_WEIGHT)
+    assert score == pytest.approx(40.3, abs=0.1)  # EASY, not the 17.8 (REST) of full renorm
+    two = [rd.Component("rhr", -2.0, 0.15), rd.Component("tsb", -0.542, 0.15)]
+    assert rd.aggregate(two)[0] == pytest.approx((-0.30 - 0.0813) / 0.5, abs=1e-3)
+    full = [rd.Component("hrv", -1.0, 0.30), rd.Component("sleep", -1.0, 0.20)]
+    assert rd.aggregate(full)[0] == pytest.approx(-1.0)  # at 0.5 nothing is shrunk
+    r = rd.compute_readiness(rd.ReadinessInputs(DAY, None, tsb=-38.6))
+    assert r.recommendation == "EASY"
+    assert any("當成中性 0" in b.text_zh for b in r.explanation.because if b.text_zh)

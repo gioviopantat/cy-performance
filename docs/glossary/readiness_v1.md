@@ -40,10 +40,10 @@ z7     = (mean7 − 基準平均) / 基準標準差   ← 基準 = 前 60 天每
 ```
 例：z7 = −1.0 → 分量 −1；z7 = −1.25 → −1.5（REST 規則的線）；z7 = +0.75 → +0.5。單晚很低（例如前 60 天平均以下 4 個標準差）只會把 7 日平均拉低約 0.6 個標準差，分量約 −0.16，不會單獨觸發休息。
 
-**缺值不會被當成 0**：沒有的輸入整個拿掉，剩下的權重重新正規化（例如沒戴錶睡覺、也沒填主觀，就只用 HRV／安靜心率以外的 TSB 與昨天騎乘）。
+**缺值不會被當成 0**：沒有的輸入整個拿掉，剩下的權重重新正規化（例如沒戴錶睡覺、也沒填主觀，就只用 TSB 與昨天騎乘）。**但有下限**（v2，ADR-0016）：有資料的權重合計少於 0.5 時，分母用 0.5，不足的部分當成中性 0。例：只有 TSB −39（分量 −1.29、權重 0.15）→ S = 0.15 × (−1.29) / 0.5 = −0.39 → 40 分 EASY；沒有下限時是 −1.29 → 18 分 REST，等於只靠 TSB 一個 C 級輸入就叫你休息。
 
 ```
-S     = Σ 權重_i × z_i' / Σ 權重_i（只加總有資料的輸入）
+S     = Σ 權重_i × z_i' / max(Σ 權重_i, 0.5)（只加總有資料的輸入）
 score = clamp( 50 + 25 × S, 0, 100 )
 建議  = score ≥ 65 → UPGRADE（還要 TSB > −10 且昨天不是 vo2／threshold／sweetspot／race；否則 AS_PLANNED）
         45–64 → AS_PLANNED
@@ -81,6 +81,7 @@ HRV 7 日平均 z7 −0.8（→ 分量 −0.6）、安靜心率 z +0.4（→ −
 | `readiness_v1.weights` 我們 v1 的權重與切點 | **C** | 自訂，只是起點 | 2026-10-16 |
 | `readiness_v1.hrv_single_day` 7 日平均 ln rMSSD（至少 3 晚）對照基準平均 ± 0.5 標準差反映準備度；單晚不行（readiness_v2） | **C**（提議） | Plews et al. 2013（[PMID 23479420](https://pubmed.ncbi.nlm.nih.gov/23479420/)）：7 日平均 r = .72，單日只有 −.06；Plews et al. 2014（[PMID 24334285](https://pubmed.ncbi.nlm.nih.gov/24334285/)）：每週 3 晚就夠；Manresa-Rocamora et al. 2021：HRV 引導試驗都用這個形式 | 2026-10-16 |
 | `readiness_v1.overreached_rule` HRV 7 日平均低於基準 1.25 個標準差以上且安靜心率 z > +1.5 ＝急性壓力（休息） | **C**（提議） | Bellenger et al. 2016（[PMID 26888648](https://pubmed.ncbi.nlm.nih.gov/26888648/)）：耐力選手過度訓練常見 HRV 上升 | 2026-10-16 |
+| `readiness_v1.missing_shrinkage` 有資料的輸入權重合計 < 0.5 時，不足的部分當成中性 0，不再全部分給剩下的輸入 | **C**（提議） | 我們的選擇（ADR-0016）：避免只有 TSB 之類的單一 C 級輸入決定今天 | 2026-10-17 |
 | `readiness_v1.sleep` 睡不好會降低隔天耐力表現 | **B**（提議） | Craven et al. 2022 Sports Med（[PMID 35708888](https://pubmed.ncbi.nlm.nih.gov/35708888/)） | 2026-10-16 |
 | `readiness_v1.rpe_surprise` RPE 比預期高 ≥ 3 → 隔天至多 EASY | **C**（提議） | Inoue et al. 2022 Sports Med Open（統合分析，證據確定性極低） | 2026-10-16 |
 

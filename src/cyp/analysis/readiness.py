@@ -20,8 +20,10 @@ change band of the HRV-guided trials) the component is 0; outside it each furthe
 one unit: ``hrv = sign(z7)·(|z7| − 0.5)/0.5``, clipped ±2. v1 used the single-day z.
 
 **Score**: each available component is a direction-normalised z (positive = good), clipped to
-±2; ``S = Σ wᵢ·zᵢ / Σ wᵢ`` over *present* components (missing → dropped, weights
-renormalised); ``score = clamp(50 + 25·S, 0, 100)``.
+±2; ``S = Σ wᵢ·zᵢ / max(Σ wᵢ, MIN_TOTAL_WEIGHT)`` over *present* components (missing →
+dropped, weights renormalised, but when the present weights sum to less than
+:data:`MIN_TOTAL_WEIGHT` the shortfall counts as a neutral 0, ADR-0016);
+``score = clamp(50 + 25·S, 0, 100)``.
 
 | component | z | weight |
 |-----------|---|--------|
@@ -65,6 +67,9 @@ MIN_HRV_WINDOW_N = 3
 HRV_SWC_SD = 0.5
 #: Rule 2 fires at or below this HRV component (= the 7-day mean 1.25 SD under baseline).
 HRV_REST_COMPONENT = -1.5
+#: Below this total weight of present components the rest counts as neutral (ADR-0016), so a
+#: day with only TSB (0.15) is not scored as if TSB were the whole picture.
+MIN_TOTAL_WEIGHT = 0.5
 RHR_REST_Z = 1.5
 Z_CLIP = 2.0
 INJURY_REST_MIN = 3
@@ -366,14 +371,15 @@ def _cap(rec: Recommendation, cap: Recommendation) -> Recommendation:
 
 
 def aggregate(comps: Sequence[Component]) -> tuple[float, float]:
-    """``(S, score)``: renormalised weighted mean of the present components and its 0–100 map.
+    """``(S, score)``: weighted mean of the present components and its 0–100 map.
 
-    No components -> ``(0, 50)`` (neutral, confidence low).
+    The divisor is at least :data:`MIN_TOTAL_WEIGHT`: missing weight beyond what the present
+    components cover is shrunk to a neutral 0. No components -> ``(0, 50)``.
     """
     total_w = sum(c.weight for c in comps)
     if total_w <= 0:
         return 0.0, 50.0
-    s = sum(c.weight * c.z for c in comps) / total_w
+    s = sum(c.weight * c.z for c in comps) / max(total_w, MIN_TOTAL_WEIGHT)
     return s, max(0.0, min(100.0, 50.0 + 25.0 * s))
 
 
@@ -538,8 +544,9 @@ def _explain(
     rules: list[Reason],
 ) -> Explanation:
     because: list[Reason] = list(rules)
+    divisor = max(total_w, MIN_TOTAL_WEIGHT)
     for c in sorted(comps, key=lambda c: -abs(c.weight * c.z)):
-        share = c.weight / total_w if total_w else 0.0
+        share = c.weight / divisor if total_w else 0.0
         because.append(
             Reason(
                 text_zh=_component_text(c),
@@ -553,6 +560,22 @@ def _explain(
             Reason(
                 text_zh="缺少資料、權重已重新分配：" + "、".join(missing),
                 evidence={"missing": missing},
+            )
+        )
+    if 0 < total_w < MIN_TOTAL_WEIGHT:
+        neutral = 1.0 - total_w / MIN_TOTAL_WEIGHT
+        because.append(
+            Reason(
+                text_zh=(
+                    f"有資料的輸入權重只有 {total_w:.2f}（< {MIN_TOTAL_WEIGHT}），"
+                    f"不足的 {neutral * 100:.0f} % 當成中性 0，避免單一輸入決定今天"
+                ),
+                evidence={
+                    "present_weight": round(total_w, 2),
+                    "min_total_weight": MIN_TOTAL_WEIGHT,
+                    "neutral_share_pct": round(neutral * 100),
+                },
+                weight=round(neutral, 3),
             )
         )
     n_obj = sum(1 for c in comps if c.name in {"hrv", "rhr", "sleep"})
@@ -570,6 +593,7 @@ def _explain(
                 "weights": WEIGHTS,
                 "baseline_days": BASELINE_DAYS,
                 "min_baseline_n": MIN_BASELINE_N,
+                "min_total_weight": MIN_TOTAL_WEIGHT,
                 "hrv_window_days": HRV_WINDOW_DAYS,
                 "min_hrv_window_n": MIN_HRV_WINDOW_N,
                 "hrv_swc_sd": HRV_SWC_SD,

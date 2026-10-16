@@ -40,4 +40,5 @@ are enough. Garmin's overnight HRV adds per-night noise (Dial 2025).
   with few other inputs (no HRV, sleep or plan) the remaining ones, often TSB alone, now carry
   all the weight, so such days score lower. Replay: Roger's last 45 days (HRV, sleep and plans
   present) change 9 verdicts, none to `REST` (3 `REST` → `EASY` from single bad nights); his
-  July days without wellness data and the dad profile gain `REST` days from that weighting.
+  July days without wellness data and the dad profile gained `REST` days from that weighting,
+  which ADR-0016 (shrinkage toward neutral) addresses.

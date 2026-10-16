@@ -48,9 +48,11 @@ The sibling project already implements and tests most per-ride metrics. Port (no
 - **Durability trend**: decoupling and EF at matched intensity vs accumulated kJ (e.g. EF after
   1 000 kJ), tracked per block — the athlete's stated goal (GC-rider level) is primarily a durability
   and W/kg problem.
-- **TID** (`tid_v2`, ADR-0014): each ride counts as one session in the zone of its dominant
-  intensity (ride class recovery/endurance → low, tempo/sweetspot/threshold → mid, vo2/race →
-  high; `mixed` → ≥ 10 min Z5+ high, else ≥ 20 min Z3+Z4 mid, else low). Weekly session
+- **TID** (`tid_v2`, ADR-0014): each ride counts as one session. A planned ride counts by its
+  planned workout's intent (recovery/endurance/opener → low, tempo/sweetspot → mid,
+  threshold/vo2/anaerobic/test → high). An unplanned ride is high only with ≥ 10 min Z5+ and ≥ 3
+  sustained bouts (≥ 60 s of 30 s power over the Z5 floor, `pacing.z5_bouts`); else ≥ 20 min
+  Z3+Z4 is mid; else low. Weekly session
   fractions are compared with the phase targets; time-in-zone fractions and the polarization
   index are kept as reference only. The `grey_zone` limiter still reads 4-week mid *time*.
 - **Climb repeats**: per fingerprint, best time, best VAM, W/kg trend, pacing pattern (from
@@ -63,7 +65,8 @@ The sibling project already implements and tests most per-ride metrics. Port (no
 - HRV: the 7-day rolling mean of ln(rMSSD) (today and the 6 days before, missing nights
   skipped, ≥ 3 nights) as `z7` against the baseline's daily values; inside ±0.5 SD (the
   smallest-worthwhile-change band of the HRV-guided trials) the component is 0, outside it
-  `sign(z7)·(|z7| − 0.5)/0.5`, clipped ±2. Resting HR z, sleep duration + score z (icu wellness)
+  `sign(z7)·(|z7| − 0.5)/0.5`, clipped ±2. When the present inputs weigh < 0.5 in total, the
+  shortfall counts as a neutral 0 (`S = Σwz / max(Σw, 0.5)`, ADR-0016). Resting HR z, sleep duration + score z (icu wellness)
 - TSB (icu), yesterday's TSS vs plan (the plan = the WORKOUT events the calendar showed, else our live proposal), post-ride RPE / feel
 - Subjective: soreness, fatigue, stress, mood, injury, `SICK`/`INJURED` calendar events
 - Not inputs since v2: yesterday's decoupling, HR lag and ride status (ADR-0012)

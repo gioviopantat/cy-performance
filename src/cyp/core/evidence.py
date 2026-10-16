@@ -370,6 +370,16 @@ REGISTRY: tuple[Claim, ...] = (
         "C",
         "Bellenger CR et al. 2016, Sports Med 46(10):1461-1486, PMID 26888648",
     ),
+    Claim(
+        "readiness_v1.missing_shrinkage",
+        "readiness_v1",
+        "When the present inputs weigh less than 0.5, the missing weight counts as a neutral 0 "
+        "instead of renormalising onto the few inputs left (ADR-0016).",
+        "C",
+        ("Ours: a shrinkage choice so one grade-C input (e.g. TSB alone) cannot decide the day",),
+        reviewed=dt.date(2026, 10, 17),
+        status="proposed",
+    ),
     _proposed(
         "readiness_v1.sleep",
         "readiness_v1",

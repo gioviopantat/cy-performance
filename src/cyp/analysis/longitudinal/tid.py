@@ -3,12 +3,13 @@
 Two views of the same week (ADR-0014):
 
 - **Sessions** (what the phase targets are compared with, as in Seiler & Kjerland 2006 and the
-  session-goal literature): each ride counts once, in the zone of its dominant intensity,
-  :func:`session_zone`. A ride the classifier (``analysis/ride/classify.py``) called
-  ``recovery`` / ``endurance`` is low; ``tempo`` / ``sweetspot`` / ``threshold`` is mid;
-  ``vo2`` / ``race`` is high. A ``mixed`` or unclassified ride falls back on its time in zone:
-  high with ≥ :data:`SESSION_HIGH_MIN_S` in Z5+, else mid with ≥ :data:`SESSION_MID_MIN_S` in
-  Z3+Z4, else low.
+  session-goal literature): each ride counts once, :func:`session_zone`. A ride that executed
+  one of our planned workouts counts by the plan's intent (:data:`INTENT_ZONE`: recovery /
+  endurance / opener low, tempo / sweetspot mid, threshold / vo2 / anaerobic / test high).
+  An unplanned ride falls back on what it did: high only with ≥ :data:`SESSION_HIGH_MIN_S` in
+  Z5+ **and** ≥ :data:`SESSION_HIGH_MIN_BOUTS` sustained bouts (≥ 60 s of 30 s power over the
+  Z5 floor, ``pacing.z5_bouts``), so scattered climb spikes stay out; else mid with
+  ≥ :data:`SESSION_MID_MIN_S` in Z3+Z4; else low.
 - **Time** (reference only): low = Z1+Z2, mid = Z3+Z4, high = Z5+ seconds. Each ride
   contributes its power TIZ when available, else its HR TIZ (same 3-zone collapse). Time
   fractions are always lower in the high zone than session fractions (a VO2 session is mostly
@@ -40,19 +41,23 @@ PHASE_TARGETS: dict[str, tuple[float, float, float]] = {
     "threshold": (0.75, 0.05, 0.20),
     "test": (0.80, 0.10, 0.10),
 }
-#: Ride class -> session zone (classes from ``analysis/ride/classify.py``).
-SESSION_ZONE: dict[str, Zone3] = {
+#: Planned-workout intent (``planning/templates.py`` INTENTS) -> session zone.
+INTENT_ZONE: dict[str, Zone3] = {
     "recovery": "low",
     "endurance": "low",
+    "opener": "low",
     "tempo": "mid",
     "sweetspot": "mid",
-    "threshold": "mid",
+    "threshold": "high",
     "vo2": "high",
-    "race": "high",
+    "anaerobic": "high",
+    "test": "high",
 }
-#: Fallback for ``mixed`` / unclassified rides: Z5+ seconds that make a high session.
+#: Unplanned rides: Z5+ seconds needed for a high session ...
 SESSION_HIGH_MIN_S = 600.0
-#: Fallback: Z3+Z4 seconds that make a mid session.
+#: ... together with this many sustained Z5+ bouts (``pacing.z5_bouts``).
+SESSION_HIGH_MIN_BOUTS = 3
+#: Unplanned rides: Z3+Z4 seconds that make a mid session.
 SESSION_MID_MIN_S = 1200.0
 
 
@@ -63,16 +68,20 @@ class RideTiz:
     date: dt.date
     tiz: Mapping[str, float]  # {"Z1": s, ...}
     basis: str = "power"
-    #: The ride classifier's class; ``None`` when unknown or computed from untrusted power.
-    classification: str | None = None
+    #: Intent of the planned workout this ride executed; ``None`` when unplanned.
+    planned_intent: str | None = None
+    #: Sustained Z5+ bouts; ``None`` without trusted measured power.
+    z5_bouts: int | None = None
 
 
-def session_zone(classification: str | None, three: Mapping[str, float]) -> Zone3:
+def session_zone(
+    planned_intent: str | None, three: Mapping[str, float], z5_bouts: int | None = None
+) -> Zone3:
     """The zone a ride counts in as a session (see the module docstring)."""
-    zone = SESSION_ZONE.get(classification or "")
+    zone = INTENT_ZONE.get(planned_intent or "")
     if zone is not None:
         return zone
-    if three.get("high", 0.0) >= SESSION_HIGH_MIN_S:
+    if three.get("high", 0.0) >= SESSION_HIGH_MIN_S and (z5_bouts or 0) >= SESSION_HIGH_MIN_BOUTS:
         return "high"
     return "mid" if three.get("mid", 0.0) >= SESSION_MID_MIN_S else "low"
 
@@ -143,7 +152,7 @@ def weekly_tid(rides: Iterable[RideTiz]) -> list[WeekTid]:
         w.mid_s += three["mid"]
         w.high_s += three["high"]
         w.n_rides += 1
-        zone = session_zone(r.classification, three)
+        zone = session_zone(r.planned_intent, three, r.z5_bouts)
         setattr(w, f"{zone}_n", getattr(w, f"{zone}_n") + 1)
     return [weeks[k] for k in sorted(weeks)]
 
@@ -235,6 +244,7 @@ def explain_week(week: WeekTid, phase: str | None = None) -> Explanation:
             inputs={
                 "phase": phase,
                 "session_high_min_s": SESSION_HIGH_MIN_S,
+                "session_high_min_bouts": SESSION_HIGH_MIN_BOUTS,
                 "session_mid_min_s": SESSION_MID_MIN_S,
             },
             doc="docs/glossary/time_in_zone_tid.md",

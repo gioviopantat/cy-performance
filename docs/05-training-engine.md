@@ -29,8 +29,8 @@ Given the next `RACE_A` date (or a target date for an FTP/W/kg goal) and current
    from the block's intensity factor profile.
 4. Block focus by phase and limiter:
 
-TID targets are fractions of **sessions** (low/mid/high by each ride's dominant intensity,
-`analysis/longitudinal/tid.py`, ADR-0014), as in the session-goal literature they come from;
+TID targets are fractions of **sessions** (planned rides by their planned intent, unplanned
+rides by sustained Z5+ bouts / Z3+Z4 time, `analysis/longitudinal/tid.py`, ADR-0014), as in the session-goal literature they come from;
 time-in-zone fractions are shown as reference only and are never compared with them.
 
 | Phase | Primary stimulus | HIT sessions/wk | TID model (by sessions) |

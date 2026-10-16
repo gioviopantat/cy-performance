@@ -260,14 +260,16 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
     tid_lo = week_start(as_of) - dt.timedelta(weeks=TID_WEEKS - 1)
     tiz_rides = []
     for a in ds.rides(tid_lo, as_of):
-        cls = a.classification
+        bouts = a.z5_bouts
         if a.power_unreliable is None:
             picked = tid_mod.tiz_from_metrics(a.tiz_power, a.tiz_hr, a.icu_zone_times)
-        else:  # power zones and the class come from the unreliable meter: use HR
+        else:  # power zones and bouts come from the unreliable meter: use HR
             picked = tid_mod.tiz_from_metrics(None, a.tiz_hr, None)
-            cls = None
+            bouts = None
         if picked:
-            tiz_rides.append(tid_mod.RideTiz(a.date, picked[0], picked[1], cls))
+            tiz_rides.append(
+                tid_mod.RideTiz(a.date, picked[0], picked[1], ds.planned_intent(a), bouts)
+            )
     weeks = tid_mod.weekly_tid(tiz_rides)
     for w in weeks:
         low, mid, high = w.fractions()

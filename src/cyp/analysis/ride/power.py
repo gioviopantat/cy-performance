@@ -21,7 +21,7 @@ from typing import Any
 
 import numpy as np
 
-from cyp.analysis.ride.frames import FloatArray, RideFrame, rolling_mean
+from cyp.analysis.ride.frames import FloatArray, RideFrame, rolling_mean, runs
 from cyp.core.athlete import Zone, ZoneModel
 
 POWER_CURVE_DURATIONS: tuple[int, ...] = (1, 5, 15, 30, 60, 120, 300, 600, 1200, 1800, 3600, 5400)
@@ -162,6 +162,23 @@ def zones_from_pct_bounds(
 def coggan_zones(ftp: float) -> ZoneModel | None:
     """Classic Coggan 7 zones for ``ftp``."""
     return zones_from_pct_bounds(ftp, COGGAN_PCT_BOUNDS)
+
+
+#: A sustained high-intensity bout: 30 s power at or above the Z5 floor for at least this long.
+BOUT_MIN_S = 60
+
+
+def sustained_bouts(p30: FloatArray, floor_w: float, *, min_s: int = BOUT_MIN_S) -> int:
+    """Runs of 30 s power ``>= floor_w`` lasting ``>= min_s`` seconds (NaN counts as below)."""
+    above = np.nan_to_num(p30, nan=0.0) >= floor_w
+    return sum(1 for s, e in runs(above) if e - s >= min_s)
+
+
+def zone_floor(zones: ZoneModel | None, idx: int) -> float | None:
+    """Lower bound (W) of zone ``idx``, if the model has it."""
+    if zones is None:
+        return None
+    return next((z.lo for z in zones.zones if z.idx == idx), None)
 
 
 def time_in_zones(values: FloatArray, zones: ZoneModel) -> dict[str, float]:
