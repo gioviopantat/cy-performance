@@ -80,9 +80,9 @@ def send_email(
     *,
     smtp: SmtpFactory = _smtp,
 ) -> None:
-    """Send one email to ``CYP_REPORT_EMAIL_TO`` from ``CYP_SMTP_USER`` over TLS.
+    """Send one email to ``CYP_REPORT_EMAIL_TO`` (copies to ``CYP_REPORT_EMAIL_CC``) over TLS.
 
-    The recipient comes only from this profile's settings. Logs host and port, never the
+    Recipients come only from this profile's settings. Logs host and port, never the
     password.
 
     Raises:
@@ -108,6 +108,9 @@ def send_email(
     msg["Subject"] = subject
     msg["From"] = user
     msg["To"] = to
+    cc = [a.strip() for a in settings.cyp_report_email_cc.split(",") if a.strip()]
+    if cc:
+        msg["Cc"] = ", ".join(cc)
     msg.set_content(body_text)
     for path in attachments:
         ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
@@ -123,4 +126,4 @@ def send_email(
     except (OSError, smtplib.SMTPException) as exc:
         log.warning("email.failed", host=host, port=port, error=type(exc).__name__)
         raise EmailError(f"email via {host}:{port} failed: {type(exc).__name__}: {exc}") from exc
-    log.info("email.sent", host=host, port=port, attachments=len(attachments))
+    log.info("email.sent", host=host, port=port, attachments=len(attachments), cc=len(cc))

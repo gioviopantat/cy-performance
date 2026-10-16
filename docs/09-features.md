@@ -22,7 +22,7 @@ Check a profile: `cyp --profile <name> features`.
 | `api.calendar_write` | on | `publish.calendar` | The web UI's "run and write" button works for this profile (also needs `planner.mode: apply`, a confirmation and the write guard). |
 | `strava.write_description` | off | `sync.strava` | Write a ride's RIDE.LOG into its Strava description (`cyp ride-log push`, the 紀錄 page). Needs the `activity:write` token scope, a confirmation, and the token owner = the ride owner; the athlete's own text is kept. |
 | `notify.macos` | on | | macOS notification when a run fails (no-op on other systems). |
-| `notify.email` | off | `report.ride` | Email the PDF to `CYP_REPORT_EMAIL_TO`. |
+| `notify.email` | off | `report.ride` | Email the PDF to `CYP_REPORT_EMAIL_TO` (copies to `CYP_REPORT_EMAIL_CC`, optional). |
 
 ## Setting flags
 

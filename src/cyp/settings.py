@@ -109,8 +109,10 @@ class Settings(BaseSettings):
     cyp_smtp_user: str = ""
     #: Gmail App Password (or the SMTP account's password).
     cyp_smtp_password: SecretStr = SecretStr("")
-    #: The one recipient of this profile's ride reports.
+    #: The recipient of this profile's reports.
     cyp_report_email_to: str = ""
+    #: Optional copies (comma-separated), e.g. the owner on a family member's reports.
+    cyp_report_email_cc: str = ""
 
     # Optional LLM (not used yet; a narrator will ship behind a feature flag, ADR-0008)
     anthropic_api_key: SecretStr = SecretStr("")

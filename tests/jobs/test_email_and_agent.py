@@ -88,6 +88,16 @@ def test_send_email_with_attachment(tmp_path: Path) -> None:
     assert att.get_filename() == pdf.name and att.get_content_type() == "application/pdf"
 
 
+def test_cc_copies_go_in_the_cc_header(monkeypatch: pytest.MonkeyPatch) -> None:
+    FakeSmtp.instances = []
+    monkeypatch.setattr(notify.smtplib, "SMTP", FakeSmtp)
+    send_email(_settings(cyp_report_email_cc=" owner@example.test, , b@example.test "), "s", "b")
+    send_email(_settings(), "s", "b")
+    with_cc, without = (c.sent[0] for c in FakeSmtp.instances)
+    assert with_cc["Cc"] == "owner@example.test, b@example.test"
+    assert without["Cc"] is None
+
+
 def test_tls_mode_follows_the_port(monkeypatch: pytest.MonkeyPatch) -> None:
     FakeSmtp.instances = []
     monkeypatch.setattr(notify.smtplib, "SMTP", FakeSmtp)

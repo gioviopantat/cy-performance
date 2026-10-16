@@ -109,7 +109,7 @@ model {
   smtp = extsys 'SMTP mail server' {
     #optional
     technology 'SMTP over TLS (e.g. Gmail with an App Password)'
-    description 'Delivers the per-ride PDF to CYP_REPORT_EMAIL_TO from the profile .env (feature notify.email, jobs/notify.py)'
+    description 'Delivers the per-ride PDF to CYP_REPORT_EMAIL_TO (and CYP_REPORT_EMAIL_CC) from the profile .env (feature notify.email, jobs/notify.py)'
   }
   macNotify = extsys 'macOS Notification Center' {
     #optional

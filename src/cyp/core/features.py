@@ -184,7 +184,7 @@ REGISTRY: tuple[Feature, ...] = (
         "notify",
         False,
         "Email 騎乘報告",
-        "Email the PDF to CYP_REPORT_EMAIL_TO.",
+        "Email the PDF to CYP_REPORT_EMAIL_TO (copies to CYP_REPORT_EMAIL_CC).",
         requires=("report.ride",),
     ),
 )
