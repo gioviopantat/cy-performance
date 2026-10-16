@@ -23,6 +23,8 @@ from cyp.jobs import digest as job
 from cyp.jobs.launchd import DIGEST_LABEL, AgentSpec, build_plist, digest_spec
 from cyp.jobs.notify import EmailError
 from cyp.jobs.runner import profile_lock
+from cyp.reports import email_copy
+from cyp.reports.digest_model import DigestHeadline, MonthlyDigest, Period, WeeklyDigest
 from cyp.services import digest
 from cyp.services.context import AppContext
 from cyp.settings import Settings
@@ -47,40 +49,71 @@ class Mailer:
 
     def __init__(self, fail: Exception | None = None) -> None:
         self.sent: list[tuple[str, str, list[Path]]] = []
+        self.html: list[str | None] = []
         self.fail = fail
 
     def __call__(
-        self, settings: Settings, subject: str, body: str, attachments: Sequence[Path]
+        self,
+        settings: Settings,
+        subject: str,
+        body: str,
+        attachments: Sequence[Path],
+        *,
+        html: str | None = None,
     ) -> None:
         if self.fail is not None:
             raise self.fail
         self.sent.append((subject, body, list(attachments)))
+        self.html.append(html)
 
 
 @pytest.fixture
 def built(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dt.date]]:
-    """Fake the contract stubs; records ``(kind, period_start)`` per build."""
+    """Fake the contract stubs and the email copy; records ``(kind, period_start)`` per build."""
     calls: list[tuple[str, dt.date]] = []
 
     def fake(kind: str) -> Any:
+        model = WeeklyDigest if kind == "weekly" else MonthlyDigest
+
         def build(
             session: Any, store: Any, start: dt.date, *, profile: str, cfg: Any, reports_dir: Path
-        ) -> tuple[str, dt.date]:
+        ) -> WeeklyDigest | MonthlyDigest:
             assert reports_dir.name == "reports"
             calls.append((kind, start))
-            return (kind, start)
+            return model(
+                profile=profile,
+                athlete_name="Rider Test",
+                generated_at=dt.datetime(2026, 10, 19, tzinfo=dt.UTC),
+                period=Period(
+                    start=start, end=digest.period_end(kind, start), label_zh=start.isoformat()
+                ),
+                headline=DigestHeadline(text_zh="ok", verdict="on_track"),
+            )
 
         return build
 
-    def fake_render(report: tuple[str, dt.date], out_dir: Path) -> Path:
+    def fake_render(report: WeeklyDigest | MonthlyDigest, out_dir: Path) -> Path:
         out_dir.mkdir(parents=True, exist_ok=True)
-        path = out_dir / f"{report[0]}_{report[1].isoformat()}.pdf"
+        kind = "weekly" if isinstance(report, WeeklyDigest) else "monthly"
+        path = out_dir / f"{kind}_{report.period.start.isoformat()}.pdf"
         path.write_bytes(b"%PDF-1.7 fake")
+        path.with_suffix(".json").write_text(report.model_dump_json(), encoding="utf-8")
         return path
+
+    def fake_compose(kind: str) -> Any:
+        def compose(
+            d: WeeklyDigest | MonthlyDigest, *, to_name: str, cc_names: Any, today: dt.date
+        ) -> email_copy.EmailContent:
+            subject = f"{kind} {d.period.start} to {to_name} cc {','.join(cc_names)}"
+            return email_copy.EmailContent(subject, "text", "<p>html</p>")
+
+        return compose
 
     monkeypatch.setattr(digest, "build_weekly", fake("weekly"))
     monkeypatch.setattr(digest, "build_monthly", fake("monthly"))
     monkeypatch.setattr(digest, "render_digest_pdf", fake_render)
+    monkeypatch.setattr(email_copy, "compose_weekly", fake_compose("weekly"))
+    monkeypatch.setattr(email_copy, "compose_monthly", fake_compose("monthly"))
     return calls
 
 
@@ -222,11 +255,26 @@ def test_a_period_is_sent_once(dctx: AppContext, built: list[Any]) -> None:
     assert _run(dctx, local(2026, 10, 20, 7, 0), mailer).digests == []
     assert len(mailer.sent) == 1
     subject, body, files = mailer.sent[0]
-    assert subject.endswith(" 2026-10-12 – 2026-10-18") and "\n" not in subject
-    assert body.count("\n") == 2 and "PDF" in body and files[0].name == "weekly_2026-10-12.pdf"
+    assert subject == "weekly 2026-10-12 to Rider cc " and body == "text"
+    assert mailer.html == ["<p>html</p>"] and files[0].name == "weekly_2026-10-12.pdf"
     assert files[0].parent == dctx.reports_dir / "digest"
     row = _row(dctx, "weekly", "2026-10-12")
     assert (row.status, row.attempts) == ("sent", 1) and row.sent_at
+
+
+def test_email_greets_the_profile_name_and_names_the_cc(data: Path, built: list[Any]) -> None:
+    ctx = make_ctx(
+        data,
+        cyp_features=ON,
+        cyp_report_email_name="Dad",
+        cyp_report_email_cc="Roger <roger@example.test>, coach@example.test",
+    )
+    try:
+        mailer = Mailer()
+        _run(ctx, local(2026, 10, 19, 7, 0), mailer)
+        assert mailer.sent[0][0] == "weekly 2026-10-12 to Dad cc Roger,coach@example.test"
+    finally:
+        ctx.close()
 
 
 def test_monday_06_59_sends_nothing(dctx: AppContext, built: list[Any]) -> None:
@@ -243,7 +291,7 @@ def test_monthly_email_and_catch_up_after_sleep(dctx: AppContext, built: list[An
     # Asleep through 11-01 07:00, woken on the 3rd.
     report = _run(dctx, local(2026, 11, 3, 8, 0), mailer, ("monthly",))
     assert [(t.kind, t.period_start) for t in report.digests] == [("monthly", "2026-10-01")]
-    assert " 2026 " in mailer.sent[0][0] and " 10 " in mailer.sent[0][0]
+    assert mailer.sent[0][0].startswith("monthly 2026-10-01 to Rider")
     assert built == [("monthly", d("2026-10-01"))]
 
 

@@ -18,11 +18,12 @@ from sqlalchemy.orm import Session
 from cyp.core.errors import ConfigError
 from cyp.core.timeutil import iso_utc, now_utc, to_local
 from cyp.logging import get_logger
+from cyp.reports import email_copy
 from cyp.reports.digest_facts import build_monthly, build_weekly
 from cyp.reports.digest_model import MonthlyDigest, WeeklyDigest
 from cyp.reports.digest_pdf import render_digest_pdf
 from cyp.services.context import AppContext
-from cyp.services.ride_report import Mailer
+from cyp.services.ride_report import Mailer, recipient_name
 from cyp.store.models import DigestReport
 
 log = get_logger(__name__)
@@ -41,8 +42,6 @@ GAVE_UP = "gave_up"
 #: Terminal states: the job never touches these periods again.
 DONE = (BUILT, SENT, GAVE_UP)
 MAX_ATTEMPTS = 3
-#: zh-TW subject (first line) and body of the email (``reports/templates``).
-EMAIL_TEMPLATE = "digest_email.txt.j2"
 
 
 @dataclass(frozen=True)
@@ -188,15 +187,26 @@ def _deliver(
         from cyp.jobs.notify import send_email
 
         mailer = send_email
-    from cyp.reports.render import environment
+    from cyp.jobs.notify import cc_recipients
 
-    text = (
-        environment()
-        .get_template(EMAIL_TEMPLATE)
-        .render(kind=kind, start=period_start, end=period_end(kind, period_start))
-    )
-    subject, _, body = text.partition("\n")
-    mailer(ctx.settings, subject.strip(), body, [pdf])
+    digest = load_digest(kind, pdf)
+    to_name = recipient_name(ctx, digest.athlete_name)
+    cc_names = [n or a for n, a in cc_recipients(ctx.settings)]
+    if isinstance(digest, WeeklyDigest):
+        content = email_copy.compose_weekly(
+            digest, to_name=to_name, cc_names=cc_names, today=ctx.today()
+        )
+    else:
+        content = email_copy.compose_monthly(
+            digest, to_name=to_name, cc_names=cc_names, today=ctx.today()
+        )
+    mailer(ctx.settings, content.subject, content.text, [pdf], html=content.html)
+
+
+def load_digest(kind: Kind, pdf: Path) -> WeeklyDigest | MonthlyDigest:
+    """The facts the PDF was rendered from (the ``.json`` written beside it)."""
+    model = WeeklyDigest if kind == "weekly" else MonthlyDigest
+    return model.model_validate_json(pdf.with_suffix(".json").read_text(encoding="utf-8"))
 
 
 def _require(ctx: AppContext, flag: str) -> None:

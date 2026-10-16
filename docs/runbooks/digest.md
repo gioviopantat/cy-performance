@@ -4,7 +4,8 @@ The digest agent (`com.cy-performance.digest`, `cyp schedule install --digest`) 
 `cyp digest run --all` daily at 07:00, after the 05:30 autopilot. Per profile with
 `report.digest_weekly` and/or `report.digest_monthly` on, it builds every **due** digest without
 a finished `digest_reports` row under `profiles/<name>/data/reports/digest/` and emails it when
-`notify.email` is on (to `CYP_REPORT_EMAIL_TO`, copies to `CYP_REPORT_EMAIL_CC`). Spec:
+`notify.email` is on (to `CYP_REPORT_EMAIL_TO`, copies to `CYP_REPORT_EMAIL_CC`; the greeting
+uses `CYP_REPORT_EMAIL_NAME`; copy from `reports/email_copy.py`). Spec:
 [docs/specs/digest-reports.md](../specs/digest-reports.md).
 
 Due (profile time zone): the weekly for the ISO week Monday..Sunday from the next Monday 07:00;
