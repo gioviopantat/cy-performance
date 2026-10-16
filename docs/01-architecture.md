@@ -49,7 +49,7 @@
                  │                        └─► reports (md/html/pdf), logs   │──► SMTP: per-ride PDF email
                  └──────────────────────────────────────────────────────────┘
                             ▲
-                 launchd: 05:30 autopilot · every 10 min `cyp watch` · `cyp serve`
+                 launchd: 05:30 autopilot · every 10 min `cyp watch` · 07:00 `cyp digest run --all` · `cyp serve`
 ```
 
 ## 5. Components (Python package `cyp`)
@@ -156,6 +156,9 @@ Details in [05-training-engine](05-training-engine.md).
   analysis → for each new ride, wait for streams (≤ 6 h) and the rating (≤ 2 h), then build the
   PDF and email it; one `ride_reports` row per ride so it is sent once. Never writes a calendar
   or Strava ([ADR-0010](adr/0010-ride-report-polling-and-email.md)).
+- `jobs/digest.py` — the 07:00 digest job: per profile, every due and unsent weekly (Monday)
+  or monthly (the 1st) digest is built and emailed once, missed ones on wake; one
+  `digest_reports` row per kind + period ([specs/digest-reports.md](specs/digest-reports.md)).
 
 ### 5.7.1 Layering (enforced by `tests/test_layering.py`)
 A package may import only from its own layer or lower ones:
@@ -196,6 +199,12 @@ A package may import only from its own layer or lower ones:
 - `reports/ride_model.py` — the per-ride report contract; `reports/ride_facts.py` (+
   `ride_intent.py`, `ride_goal.py`, `ride_sections.py`, `ride_common.py`) fill it from stored
   results; `reports/ride_pdf.py` + `charts.py` render it to a zh-TW PDF (WeasyPrint, matplotlib).
+- `services/digest.py` — build / send one weekly or monthly digest (CLI `cyp digest`, the job).
+- `reports/digest_model.py` — the digest contract; `reports/digest_facts.py` (+
+  `digest_common.py`, `digest_sections.py`, `digest_progress.py`, `digest_weekly.py`,
+  `digest_monthly.py`) fill it; `reports/digest_pdf.py` + `digest_charts.py` render it, sharing
+  `reports/pdf.py` and `templates/_report.html.j2` with the ride PDF; `reports/email_copy.py`
+  writes every report email (subject, text, HTML) from `i18n/email.zh-TW.yaml`.
 - `services/calendar.py` — the calendar view: planned (calendar first) vs done per day, compliance status and week summaries (`GET /v1/calendar`, read-only);
 - `services/ride_feedback.py` — post-ride RPE / feel answered on the web, fed into readiness (`data/ride_feedback/<id>.json`);
 - `services/ride_log.py` — the deterministic WORKOUT + RIDE.LOG text of a ride, plus the athlete-edited version saved in `data/ride_logs/<id>.txt` (previous version kept as `.prev.txt`);

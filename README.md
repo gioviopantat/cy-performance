@@ -111,6 +111,16 @@ uv run cyp --profile me ride-report --send   # build and email it
 uv run cyp schedule install --watch          # `cyp watch --all` every 10 min (polls intervals.icu)
 ```
 
+Weekly and monthly digests (flags `report.digest_weekly`, `report.digest_monthly`, off by
+default; [docs/specs/digest-reports.md](docs/specs/digest-reports.md)): a zh-TW PDF every Monday
+and on the 1st at 07:00, same SMTP settings.
+
+```bash
+uv run cyp --profile me digest weekly --period 2026-10-05   # build one week (no email)
+uv run cyp --profile me digest monthly --period 2026-09 --send
+uv run cyp schedule install --digest         # 07:00 daily; sends what is due, catches up on wake
+```
+
 Monthly literature review of the evidence grades: the `research-review` skill
 (`.claude/skills/research-review/`), run by a scheduled agent; it writes
 `docs/research/<YYYY-MM>.md` on a branch for approval and never edits code.

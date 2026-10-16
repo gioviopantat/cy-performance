@@ -78,14 +78,15 @@ uv run cyp --profile <name> run --no-write --json   # a dry run of the morning
 uv run cyp schedule status               # are the 05:30 and watch agents loaded; last exit codes
 uv run cyp --profile <name> watch --json # one ride-watcher tick (emails new rides' PDFs)
 uv run cyp --profile <name> ride-report  # newest ride's PDF, no email
+uv run cyp --profile <name> digest weekly --period <monday>  # one weekly digest PDF, no email
 uv run cyp --profile <name> doctor       # config, DB, tokens, last job runs
 ```
 Morning run failed? `docs/runbooks/README.md`. Never run `cyp ride-log push --confirm-write`,
 `cyp run` without `--no-write`,
 `cyp plan --apply --confirm-write`, `cyp profile promote` or `cyp publish spike --confirm-write`
 without the user asking: they write to a real person's calendar. Likewise never run
-`cyp ride-report --send` or `cyp watch` with `notify.email` on without the user asking: they
-send email.
+`cyp ride-report --send`, `cyp digest weekly --send`, `cyp digest monthly --send`, `cyp digest run` or `cyp watch` with
+`notify.email` on without the user asking: they send email.
 `.claude/hooks/ask_before_writes.sh` makes Claude Code ask before each of them, and before
 `curl` POSTs to the API's write endpoints or Python that calls the write functions.
 
