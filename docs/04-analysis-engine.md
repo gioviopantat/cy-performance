@@ -30,8 +30,13 @@ The sibling project already implements and tests most per-ride metrics. Port (no
 - Pacing: variability index, negative/positive split, surges count.
 - Ride classification: `recovery | endurance | tempo | sweetspot | threshold | vo2 | race | mixed`
   from TIZ + IF, used for compliance and TID (training intensity distribution) stats.
-- Status + next (the fields the athlete already reads in `RIDE.LOG`):
-  `status ∈ {FRESH, NORMAL, BLUNTED, OVERREACHED}`, `next ∈ {REST, EASY, AS_PLANNED, UPGRADE}`.
+- Status + next (the fields the athlete already reads in `RIDE.LOG`), from the ride's TSS only
+  (ADR-0012, `ride-1.3.0`): TSS ≥ 250 → `OVERREACHED` (next `EASY`, `REST` at ≥ 300); TSS ≥ 150
+  → `NORMAL` / `EASY`; else `NORMAL` / `AS_PLANNED`. Decoupling and HR lag are reported (and
+  decoupling feeds the durability trend) but never set the status or the next day: in
+  functional overreaching HR at a given power is *lower* and decoupling shrinks (Roete 2021,
+  Le Meur 2013), and no study supports an HR-lag cut-off. Rows analysed before ride-1.3 may
+  still read `FRESH` / `BLUNTED`.
 
 ## 3. Longitudinal
 - **PMC replay** (`ctl_sim/atl_sim`, τ = 42/7, seeded from icu on `season.start_date`) over icu
@@ -43,21 +48,29 @@ The sibling project already implements and tests most per-ride metrics. Port (no
 - **Durability trend**: decoupling and EF at matched intensity vs accumulated kJ (e.g. EF after
   1 000 kJ), tracked per block — the athlete's stated goal (GC-rider level) is primarily a durability
   and W/kg problem.
-- **TID**: weekly polarization index, Z1/Z2/Z3 distribution vs the block's target model.
+- **TID** (`tid_v2`, ADR-0014): each ride counts as one session in the zone of its dominant
+  intensity (ride class recovery/endurance → low, tempo/sweetspot/threshold → mid, vo2/race →
+  high; `mixed` → ≥ 10 min Z5+ high, else ≥ 20 min Z3+Z4 mid, else low). Weekly session
+  fractions are compared with the phase targets; time-in-zone fractions and the polarization
+  index are kept as reference only. The `grey_zone` limiter still reads 4-week mid *time*.
 - **Climb repeats**: per fingerprint, best time, best VAM, W/kg trend, pacing pattern (from
   `breakthrough` limiter logic).
 - **Weight / W/kg**: from icu wellness weight; smoothed 7-day.
 
 ## 4. Readiness (`readiness_daily`)
-Inputs (each z-scored against the athlete's trailing 30/60-day baseline, missing → ignored, weights
-renormalised):
-- HRV (rMSSD, ln-transformed) z, resting HR z, sleep duration + score z (from icu wellness)
-- TSB (icu), ramp rate, yesterday's TSS vs plan (the plan = the WORKOUT events the calendar showed, else our live proposal)
-- Yesterday's ride durability: decoupling, HR lag, HR blunting (low HR for power → `BLUNTED`)
+`readiness_v2` (ADR-0013; `readiness_v2.1` when post-ride RPE / feel is an input). Inputs
+(z-scored against the athlete's 60-day baseline, missing → ignored, weights renormalised):
+- HRV: the 7-day rolling mean of ln(rMSSD) (today and the 6 days before, missing nights
+  skipped, ≥ 3 nights) as `z7` against the baseline's daily values; inside ±0.5 SD (the
+  smallest-worthwhile-change band of the HRV-guided trials) the component is 0, outside it
+  `sign(z7)·(|z7| − 0.5)/0.5`, clipped ±2. Resting HR z, sleep duration + score z (icu wellness)
+- TSB (icu), yesterday's TSS vs plan (the plan = the WORKOUT events the calendar showed, else our live proposal), post-ride RPE / feel
 - Subjective: soreness, fatigue, stress, mood, injury, `SICK`/`INJURED` calendar events
+- Not inputs since v2: yesterday's decoupling, HR lag and ride status (ADR-0012)
 
 Output: score 0–100, status, recommendation, explanation. Rules first (sick/injured → REST;
-HRV z < −1.5 and RHR z > 1.5 → REST; BLUNTED yesterday → EASY), then a weighted score. Fully
+HRV component ≤ −1.5, i.e. z7 ≤ −1.25, and RHR z > 1.5 → REST; RPE / feel far worse than
+expected or load > 130 % of plan → at most EASY), then a weighted score. Fully
 transparent and logged so it can be tuned against how the athlete actually felt (`feel`, `icu_rpe`).
 
 ## 5. Compliance

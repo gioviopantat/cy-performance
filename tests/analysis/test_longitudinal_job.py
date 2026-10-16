@@ -210,7 +210,7 @@ def test_run_readiness_uses_store_inputs(
     with factory() as s:
         row = s.get(ReadinessDaily, (1, AS_OF))
         assert row is not None and row.explanation["key"] == "readiness.2026-10-02"
-        assert row.algo_version == "readiness_v1"
+        assert row.algo_version == "readiness_v2"
 
 
 def test_cli_trends_readiness_explain(data_dir: Path, db_url: str, store: StreamStore) -> None:

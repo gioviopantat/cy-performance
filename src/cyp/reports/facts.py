@@ -360,8 +360,9 @@ def weekly_facts(
             picked = tid_mod.tiz_from_metrics(
                 m.time_in_zone_power, m.time_in_zone_hr, a.icu_zone_times
             )
+            cls = (m.pacing or {}).get("classification") if isinstance(m.pacing, dict) else None
             if picked:
-                tiz_rides.append(tid_mod.RideTiz(day, picked[0], picked[1]))
+                tiz_rides.append(tid_mod.RideTiz(day, picked[0], picked[1], cls))
         r = _readiness(session, athlete_id, day)
         days_out.append(
             {
@@ -380,7 +381,12 @@ def weekly_facts(
     tid_fact = None
     if week_tid is not None:
         low, mid, high = week_tid.fractions()
+        s_low, s_mid, s_high = week_tid.session_fractions()
         tid_fact = {
+            "sessions": {"low": week_tid.low_n, "mid": week_tid.mid_n, "high": week_tid.high_n},
+            "session_low": s_low,
+            "session_mid": s_mid,
+            "session_high": s_high,
             "low": low,
             "mid": mid,
             "high": high,

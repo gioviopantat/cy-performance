@@ -119,14 +119,15 @@ def explain_ride(metrics: RideMetrics, inputs: RideInputs) -> Explanation:
             "ef_second": round(detail["ef_second"], 2),
             "decoupling_pct": round(metrics.decoupling_pct, 1),
             "reliable": bool(detail.get("reliable")),
-            "threshold_pct": th.easy_min_decoupling,
+            "reference_pct": th.decoupling_reference_pct,
         }
-        note = "" if ev["reliable"] else "；此趟太短或不夠穩定，僅供參考"
+        note = "" if ev["reliable"] else "；此趟太短或不夠穩定"
         because.append(
             Reason(
                 text_zh=(
                     f"前半 EF {ev['ef_first']} → 後半 EF {ev['ef_second']}，"
-                    f"有氧解耦 {ev['decoupling_pct']}%（警戒線 {ev['threshold_pct']}%）{note}"
+                    f"有氧解耦 {ev['decoupling_pct']}%（經驗參考線 {ev['reference_pct']}%{note}；"
+                    "只看耐久力趨勢，不影響明天的課）"
                 ),
                 evidence=ev,
             )
@@ -138,13 +139,12 @@ def explain_ride(metrics: RideMetrics, inputs: RideInputs) -> Explanation:
         ev = {
             "hr_lag_s": round(metrics.hr_lag_s),
             "corr": round(metrics.hr_lag_corr, 2) if metrics.hr_lag_corr is not None else None,
-            "blunted_s": round(th.blunted_min_lag_s),
         }
         because.append(
             Reason(
                 text_zh=(
                     f"心率在功率變化後約 {ev['hr_lag_s']} 秒跟上（相關 {ev['corr']}；"
-                    f"≥ {ev['blunted_s']} 秒視為鈍化）"
+                    "僅供參考，不影響明天的課）"
                 ),
                 evidence=ev,
             )

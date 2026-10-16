@@ -28,7 +28,9 @@ FTP 設定 {{ ftp | num }} W{% if goal %} · 目標 {{ goal.name }}（{{ goal.da
 
 ## 2. 強度分布（TID）
 {% if tid %}
-低／中／高 = **{{ tid.low | pct }} / {{ tid.mid | pct }} / {{ tid.high | pct }}**{% if tid.target %}（本階段目標 {{ tid.target[0] | pct }} / {{ tid.target[1] | pct }} / {{ tid.target[2] | pct }}）{% endif %}
+以課次計 低／中／高 = **{{ tid.sessions.low }} / {{ tid.sessions.mid }} / {{ tid.sessions.high }} 趟（{{ tid.session_low | pct }} / {{ tid.session_mid | pct }} / {{ tid.session_high | pct }}）**{% if tid.target %}（本階段目標 {{ tid.target[0] | pct }} / {{ tid.target[1] | pct }} / {{ tid.target[2] | pct }}）{% endif %}
+
+以時間計 {{ tid.low | pct }} / {{ tid.mid | pct }} / {{ tid.high | pct }}（僅供參考）
 
 {{ explain(tid.explanation) }}
 {% else %}

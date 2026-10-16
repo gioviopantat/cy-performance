@@ -88,6 +88,43 @@ def test_weekly_tid_and_polarization() -> None:
     assert e.key == "tid.2026-09-14" and "base 期目標" in e.because[-1].text_zh
 
 
+def test_tid_counts_sessions_for_targets() -> None:
+    """ADR-0014: targets compare session fractions; time fractions stay as reference."""
+    mon = dt.date(2026, 9, 14)
+    vo2 = {"Z1": 900, "Z2": 2400, "Z3": 300, "Z4": 300, "Z5": 960}  # 4x4 min: 20 % of time
+    easy = {"Z1": 600, "Z2": 6600}
+    rides = [
+        tid.RideTiz(mon, vo2, classification="vo2"),
+        tid.RideTiz(mon + dt.timedelta(days=1), easy, classification="endurance"),
+        tid.RideTiz(mon + dt.timedelta(days=2), easy, classification="endurance"),
+        tid.RideTiz(mon + dt.timedelta(days=3), easy, classification="recovery"),
+        tid.RideTiz(mon + dt.timedelta(days=5), {"Z2": 9000, "Z5": 700}, classification="mixed"),
+    ]
+    w = tid.weekly_tid(rides)[0]
+    assert (w.low_n, w.mid_n, w.high_n) == (3, 0, 2)
+    assert w.session_fractions() == pytest.approx((0.6, 0.0, 0.4))
+    assert w.fractions()[2] < 0.1  # by time the same week is under 10 % high
+    e = tid.explain_week(w, "threshold")
+    assert e.because[0].evidence["high_n"] == 2
+    assert e.because[-1].evidence["high_delta_pp"] == pytest.approx(20.0)
+    assert e.method is not None and e.method.claim == "time_in_zone_tid.phase_targets"
+
+
+@pytest.mark.parametrize(
+    ("cls", "three", "zone"),
+    [
+        ("endurance", {"high": 900.0}, "low"),  # the class wins over the TIZ fallback
+        ("sweetspot", {}, "mid"),
+        ("race", {}, "high"),
+        ("mixed", {"high": 600.0}, "high"),
+        ("mixed", {"high": 599.0, "mid": 1200.0}, "mid"),
+        (None, {"high": 300.0, "mid": 600.0}, "low"),
+    ],
+)
+def test_session_zone(cls: str | None, three: dict[str, float], zone: str) -> None:
+    assert tid.session_zone(cls, three) == zone
+
+
 def test_tiz_source_priority() -> None:
     assert tid.tiz_from_metrics({"Z1": 5}, {"Z1": 9}, [1, 2]) == ({"Z1": 5.0}, "power")
     assert tid.tiz_from_metrics(None, {"Z1": 9}, [1, 2]) == ({"Z1": 1.0, "Z2": 2.0}, "power_icu")

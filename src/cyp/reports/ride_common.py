@@ -18,6 +18,7 @@ import numpy as np
 import yaml
 from sqlalchemy.orm import Session
 
+from cyp.analysis import readiness as readiness_mod
 from cyp.analysis.longitudinal import goal as goal_mod
 from cyp.analysis.longitudinal.run import TrendsResult
 from cyp.analysis.ride import context as ctx_mod
@@ -39,7 +40,7 @@ METHOD_DOCS: dict[str, str] = {
     "eftp": "docs/glossary/eftp.md",
     ctx_mod.CONTEXT_VERSION: "docs/specs/ride-report.md",
     "climb_repeats": "docs/04-analysis-engine.md",
-    "readiness_v1.1": "docs/glossary/readiness_v1.md",
+    readiness_mod.ALGO_VERSION_FEEL: "docs/glossary/readiness_v1.md",
     "limiters": "docs/04-analysis-engine.md",
     "planner": "docs/glossary/workout_library.md",
 }
@@ -52,7 +53,7 @@ METHOD_CLAIMS: dict[str, str | None] = {
     "eftp": "eftp.icu_value",
     ctx_mod.CONTEXT_VERSION: "outdoor_context.model",
     "climb_repeats": None,
-    "readiness_v1.1": "readiness_v1.rpe_surprise",
+    readiness_mod.ALGO_VERSION_FEEL: "readiness_v1.rpe_surprise",
     "limiters": None,
     "planner": "workout_library.template_structure",
 }

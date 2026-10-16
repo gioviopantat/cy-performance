@@ -108,8 +108,10 @@ def test_drifting_ride_flags_decoupling(drifting_ride: pl.DataFrame) -> None:
     m = compute_ride_metrics(frame(drifting_ride), inputs())
     assert m.decoupling_pct == pytest.approx(5.71, abs=0.4) and m.decoupling_reliable
     assert m.hr_drift_detail is not None and m.hr_drift_detail["reliable"] is True
-    assert (m.status, m.next_recommendation) == ("NORMAL", "EASY")  # decoupling >= 5 %
+    # ADR-0012: decoupling is reported, never a verdict on tomorrow.
+    assert (m.status, m.next_recommendation) == ("NORMAL", "AS_PLANNED")
     assert m.explanation is not None
+    assert any("不影響明天的課" in r.text_zh for r in m.explanation.because if r.text_zh)
     assert_numbers_backed(m.explanation)
 
 

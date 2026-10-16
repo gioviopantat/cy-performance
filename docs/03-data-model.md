@@ -101,7 +101,7 @@ grade_pct:float32`. One file per ride keeps rewrites cheap; longitudinal scans u
 | wbal_min_j | real | if CP/W′ known |
 | estimated_power_meta | json | method used for no-power rides |
 | comparison | json | deltas vs trailing baselines (EF, NP@HR, climb times) |
-| status, next_recommendation | text | `NORMAL/BLUNTED/…`, `EASY/REST/…` (the `RIDE.LOG` fields) |
+| status, next_recommendation | text | `NORMAL/OVERREACHED` from TSS since ride-1.3 (older rows may read `FRESH/BLUNTED`), `EASY/REST/…` (the `RIDE.LOG` fields) |
 | explanation | json | `Explanation` object, see [07](07-explainability.md) |
 | computed_at | text | |
 
@@ -150,8 +150,8 @@ cp, w_prime, p_max, eftp_icu, source(icu|cyp), raw_json`
 weight_kg, power_zones json, hr_zones json, source(icu_sport_settings|icu_eftp|manual), raw_json`
 
 ### readiness_daily (ours)
-`athlete_id, date_local PK, score_0_100, status(FRESH|NORMAL|BLUNTED|OVERREACHED|SICK),
-inputs json (hrv_z, rhr_z, sleep_z, tsb, yesterday_decoupling, yesterday_hr_lag, soreness…),
+`athlete_id, date_local PK, score_0_100, status(FRESH|NORMAL|OVERREACHED|SICK; BLUNTED only in v1 rows),
+inputs json (components: hrv {z, raw_z = 7-day z7, n_days, band}, rhr, sleep, tsb, ride {load_vs_plan, feel, rpe}, subjective…),
 recommendation(REST|EASY|AS_PLANNED|UPGRADE), explanation json (Explanation), algo_version`
 
 ### goals

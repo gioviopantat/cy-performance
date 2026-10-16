@@ -1,4 +1,4 @@
-"""readiness_v1: components, renormalisation, rules, the glossary worked example."""
+"""readiness_v2: components, renormalisation, rules, the glossary worked example."""
 
 from __future__ import annotations
 
@@ -49,13 +49,11 @@ def test_tsb_and_ride_components() -> None:
     assert rd.tsb_component(10) == pytest.approx(1)
     assert rd.tsb_component(-90) == -2.0
     assert rd.tsb_component(None) is None
-    z, parts = rd.ride_component(
-        rd.YesterdayRide(decoupling_pct=6.5, decoupling_reliable=True, load=108, planned_load=100)
-    )
-    assert parts == {"decoupling": pytest.approx(-0.5), "load_vs_plan": 0.0}
-    assert z == pytest.approx(-0.25)
-    unreliable, _ = rd.ride_component(rd.YesterdayRide(decoupling_pct=12))
-    assert unreliable is None
+    z, parts = rd.ride_component(rd.YesterdayRide(load=130, planned_load=100, feel=3))
+    assert parts == {"load_vs_plan": pytest.approx(-1.0), "feel": 0.0}
+    assert z == pytest.approx(-0.5)
+    nothing, _ = rd.ride_component(rd.YesterdayRide(classification="endurance"))
+    assert nothing is None
 
 
 def test_neutral_day_is_as_planned_and_missing_renormalised() -> None:
@@ -80,12 +78,50 @@ def test_good_day_upgrades_unless_yesterday_was_hard() -> None:
     assert r2.recommendation == "AS_PLANNED"
 
 
+def _low_week(hist: list[rd.WellnessPoint], hrv: float) -> list[rd.WellnessPoint]:
+    for h in hist[-6:]:
+        h.hrv = hrv
+    return hist
+
+
 def test_hrv_rhr_rule_forces_rest() -> None:
-    hist = _history()
-    today = rd.WellnessPoint(DAY, hrv=48.0, resting_hr=53, sleep_s=7 * 3600, sleep_score=80)
+    """A week-long HRV drop plus a high resting HR today -> REST."""
+    hist = _low_week(_history(), 45.0)
+    today = rd.WellnessPoint(DAY, hrv=45.0, resting_hr=53, sleep_s=7 * 3600, sleep_score=80)
     r = rd.compute_readiness(rd.ReadinessInputs(DAY, today, hist, tsb=0.0))
     assert r.recommendation == "REST" and r.status == "OVERREACHED"
-    assert r.inputs["rule_hits"] and "HRV" in r.explanation.because[0].text_zh
+    assert r.inputs["rule_hits"] and "HRV 7 日平均" in r.explanation.because[0].text_zh
+    assert r.inputs["components"]["hrv"]["band"] == "below"
+
+
+def test_single_low_night_does_not_force_rest() -> None:
+    """v1 rested on one low night; v2 reads the 7-day mean, which one night barely moves."""
+    hist = _history()
+    today = rd.WellnessPoint(DAY, hrv=40.0, resting_hr=53, sleep_s=7 * 3600, sleep_score=80)
+    r = rd.compute_readiness(rd.ReadinessInputs(DAY, today, hist, tsb=0.0))
+    assert r.recommendation != "REST"
+    hrv = r.inputs["components"]["hrv"]
+    assert hrv["raw_z"] == pytest.approx(-0.58, abs=0.01)  # one night at -4 SD, averaged
+    assert hrv["z"] == pytest.approx(-0.16, abs=0.01)  # just outside the band, far from -1.5
+
+
+def test_hrv_window_band_and_minimum_nights() -> None:
+    hist = _history()
+    w = rd.hrv_window(DAY, 60.0, hist)
+    assert w is not None and w.n_days == 7 and w.band == "within" and w.component == 0.0
+    # z7 = -1.0 is one unit beyond the band; -1.25 is the REST line.
+    assert rd.HrvWindow(-1.0, 0, 7, 0, 1).component == pytest.approx(-1.0)
+    assert rd.HrvWindow(-1.25, 0, 7, 0, 1).component == pytest.approx(rd.HRV_REST_COMPONENT)
+    assert rd.HrvWindow(0.75, 0, 7, 0, 1).component == pytest.approx(0.5)
+    assert rd.HrvWindow(-3.0, 0, 7, 0, 1).component == -2.0  # clipped
+    # Missing nights are skipped; fewer than three valid nights -> no HRV component.
+    sparse = [h for h in hist if h.date < DAY - dt.timedelta(days=6)]
+    sparse.append(rd.WellnessPoint(DAY - dt.timedelta(days=2), hrv=60.0))
+    assert rd.hrv_window(DAY, 60.0, sparse) is None
+    sparse.append(rd.WellnessPoint(DAY - dt.timedelta(days=4), hrv=60.0))
+    three = rd.hrv_window(DAY, 60.0, sparse)
+    assert three is not None and three.n_days == 3
+    assert rd.hrv_window(DAY, None, sparse) is None  # today missing leaves two nights
 
 
 def test_sick_event_and_injury_force_rest() -> None:
@@ -97,12 +133,9 @@ def test_sick_event_and_injury_force_rest() -> None:
     assert rd.compute_readiness(rd.ReadinessInputs(DAY, hurt, hist)).recommendation == "REST"
 
 
-def test_blunted_and_overload_cap_at_easy() -> None:
+def test_overload_caps_at_easy() -> None:
     hist = _history()
     today = rd.WellnessPoint(DAY, hrv=72.0, resting_hr=45, sleep_s=8 * 3600, sleep_score=88)
-    blunted = rd.YesterdayRide(status="BLUNTED", hr_lag_s=95)
-    r = rd.compute_readiness(rd.ReadinessInputs(DAY, today, hist, tsb=5.0, yesterday=blunted))
-    assert (r.recommendation, r.status) == ("EASY", "BLUNTED")
     over = rd.YesterdayRide(load=150, planned_load=100)
     r2 = rd.compute_readiness(rd.ReadinessInputs(DAY, today, hist, tsb=5.0, yesterday=over))
     assert r2.recommendation == "EASY"

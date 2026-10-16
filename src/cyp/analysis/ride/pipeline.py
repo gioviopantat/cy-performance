@@ -16,7 +16,8 @@ from cyp.analysis.ride.explain import explain_ride
 from cyp.analysis.ride.frames import FloatArray, RideFrame, elevation_gain
 from cyp.analysis.ride.result import RideInputs, RideMetrics, TssSource
 
-ALGO_VERSION = "ride-1.2.0"  # 1.1 durability per ride; 1.2 NP from 60 s, trainer moving
+#: 1.1 durability per ride; 1.2 NP from 60 s, trainer moving; 1.3 status from TSS only (ADR-0012)
+ALGO_VERSION = "ride-1.3.0"
 
 
 def _pacing(frame: RideFrame, p_rec: FloatArray | None, pm: power.PowerMetrics) -> dict[str, Any]:
@@ -199,9 +200,7 @@ def compute_ride_metrics(frame: RideFrame, inputs: RideInputs) -> RideMetrics:
         pm.time_in_zone, if_for_class, moving_s=frame.moving_s, race=inputs.race
     )
     m.pacing["classification"] = m.classification
-    m.status, m.next_recommendation = durability.classify_status(
-        decoupling_result=dec, lag=lag, tss=m.tss, moving_s=frame.moving_s, thresholds=th
-    )
+    m.status, m.next_recommendation = durability.classify_status(tss=m.tss, thresholds=th)
 
     m.comparison = _comparison(m, inputs, pm, dec)
     m.explanation = explain_ride(m, inputs)
