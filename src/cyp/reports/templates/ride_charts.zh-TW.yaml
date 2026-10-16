@@ -1,11 +1,14 @@
 # Chart text for the per-ride PDF (cyp.reports.charts). Placeholders use str.format.
 power: 功率
 target_band: "目標區間 {low}–{high} W"
+ceiling: "上限 {high} W"
 counted: 計入刺激
 excused: 外騎干擾（不計）
 no_power: 沒有功率資料
 minutes: 分鐘
-ftp_history: FTP 歷史
+ftp_estimates: FTP 估計
+ftp_settings: FTP 設定
+trend: "趨勢 {w} W"
 now: "現在 {w} W"
 evidence: 本次騎乘證據
 projected: "預估 {date}"

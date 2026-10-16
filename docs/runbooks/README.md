@@ -23,3 +23,4 @@ Each failed stage prints `failed <stage> <ExceptionType>: <message>`. Find the m
 | plan `NEEDS REVIEW`, publish "diff only (plan needs review)" | [needs-review.md](needs-review.md) |
 | Strava 429 / token expired | [strava.md](strava.md) |
 | `invalid athlete config`, unknown feature | [config.md](config.md) |
+| ride PDF: `WeasyPrint could not import some external libraries`, garbled or missing zh-TW text | [pdf.md](pdf.md) |

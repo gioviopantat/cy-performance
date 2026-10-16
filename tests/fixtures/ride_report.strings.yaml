@@ -2,7 +2,7 @@
 sections: [一句話結論, 目的達成度, 還有多遠, 外騎情境卡, 同一條坡比一比, 感受 vs 數據, 弱點帳本, 明天會怎麼排, 方法與證據]
 optional_sections: [目的達成度, 還有多遠, 外騎情境卡, 同一條坡比一比, 弱點帳本, 明天會怎麼排, 方法與證據]
 always_sections: [一句話結論, 感受 vs 數據]
-climb_name: 林口長坡
+climb_name: 示範長坡
 grades: [A 級, B 級, C 級]
 weak_grade: 參考（證據弱）
 no_grade: 未分級
@@ -12,3 +12,4 @@ minimal:
   headline: 沒有排課的輕鬆騎。
   purpose: 測試
   climb: 無名坡
+climb_badge: 第 1 快 · 共 6 次

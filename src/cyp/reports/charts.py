@@ -209,13 +209,20 @@ def _no_data(ax: Axes, text: str) -> None:
 
 
 def intent_timeline(intent: Intent, series: Series | None) -> bytes:
-    """Section 2: power over time, target band, counted (aqua) and excused (hatched) stretches."""
-    with _figure(2.3) as (fig, ax):
+    """Section 2: power over time, target band (or ceiling line), counted and excused stretches."""
+    with _figure(2.0) as (fig, ax):
         end = _span_end_min(series, [*intent.counted, *intent.excused])
         _shade(ax, intent.counted, color=SERIES_3, hatch=None)
         _shade(ax, intent.excused, color=MUTED, hatch="////")
         handles: list[Any] = []
-        if intent.target_low_w is not None and intent.target_high_w is not None:
+        if intent.kind == "ceiling" and intent.target_high_w is not None:
+            ax.axhline(intent.target_high_w, color=SERIES_2, lw=1.2)
+            handles.append(
+                Line2D(
+                    [], [], color=SERIES_2, lw=1.2, label=_t("ceiling", high=intent.target_high_w)
+                )
+            )
+        elif intent.target_low_w is not None and intent.target_high_w is not None:
             ax.axhspan(intent.target_low_w, intent.target_high_w, color=SERIES_2, alpha=0.16, lw=0)
             handles.append(
                 Patch(
@@ -246,14 +253,25 @@ def intent_timeline(intent: Intent, series: Series | None) -> bytes:
         return _svg(fig)
 
 
+def is_setting(source: str) -> bool:
+    """FTP points from a setting (``setting:<origin>``) vs an estimate id (ride_model.FtpPoint)."""
+    return source.startswith("setting:")
+
+
 def ftp_trajectory(goal: Goal, today: dt.date) -> bytes:
-    """Section 3: FTP history, season target, this ride's evidence and the projected date."""
-    with _figure(2.4) as (fig, ax):
+    """Section 3: FTP estimates and settings, season target, trend and projected date.
+
+    Settings are a step line apart from the estimates; the projection starts at the trend
+    level (``trend_level_w``), falling back to the current FTP.
+    """
+    with _figure(2.1) as (fig, ax):
         handles: list[Any] = []
-        if goal.history:
+        settings = [p for p in goal.history if is_setting(p.source)]
+        estimates = [p for p in goal.history if not is_setting(p.source)]
+        if estimates:
             ax.plot(
-                [_dn(p.day) for p in goal.history],
-                [p.ftp_w for p in goal.history],
+                [_dn(p.day) for p in estimates],
+                [p.ftp_w for p in estimates],
                 color=SERIES_1,
                 lw=1.5,
                 marker="o",
@@ -262,17 +280,57 @@ def ftp_trajectory(goal: Goal, today: dt.date) -> bytes:
                 mew=1,
             )
             handles.append(
-                Line2D([], [], color=SERIES_1, lw=1.5, marker="o", label=_t("ftp_history"))
+                Line2D([], [], color=SERIES_1, lw=1.5, marker="o", label=_t("ftp_estimates"))
             )
-        ax.plot([_dn(today)], [goal.current_ftp_w], "o", color=SERIES_1, ms=7, mec=SURFACE, mew=1.5)
+        current_is_setting = is_setting(goal.current_source)
+        if settings or current_is_setting:
+            steps = [(p.day, p.ftp_w) for p in settings]
+            if current_is_setting:
+                steps.append((today, goal.current_ftp_w))
+            ax.plot(
+                [_dn(d) for d, _ in steps],
+                [w for _, w in steps],
+                color=INK_2,
+                lw=1.0,
+                drawstyle="steps-post",
+                marker="s",
+                ms=3.5,
+                mec=SURFACE,
+                mew=0.8,
+            )
+            handles.append(
+                Line2D([], [], color=INK_2, lw=1.0, marker="s", label=_t("ftp_settings"))
+            )
+        ax.plot(
+            [_dn(today)],
+            [goal.current_ftp_w],
+            "s" if current_is_setting else "o",
+            color=INK_2 if current_is_setting else SERIES_1,
+            ms=6,
+            mec=SURFACE,
+            mew=1.2,
+        )
         ax.annotate(
             _t("now", w=f"{goal.current_ftp_w:.0f}"),
             (_dn(today), goal.current_ftp_w),
-            xytext=(-6, 8),
+            xytext=(-6, -4),
             textcoords="offset points",
             ha="right",
+            va="top",
             color=INK,
         )
+        start_w = goal.trend_level_w if goal.trend_level_w is not None else goal.current_ftp_w
+        if goal.trend_level_w is not None:
+            ax.plot([_dn(today)], [start_w], "o", color=SERIES_1, ms=6, mec=SURFACE, mew=1.2)
+            ax.annotate(
+                _t("trend", w=f"{start_w:.0f}"),
+                (_dn(today), start_w),
+                xytext=(-6, 5),
+                textcoords="offset points",
+                ha="right",
+                va="bottom",
+                color=INK,
+            )
         if goal.this_ride_evidence_w is not None:
             ax.plot(
                 [_dn(today)], [goal.this_ride_evidence_w], "D", color=SERIES_3, ms=6, mec=SURFACE
@@ -281,7 +339,7 @@ def ftp_trajectory(goal: Goal, today: dt.date) -> bytes:
         if goal.projected_date is not None:
             ax.plot(
                 [_dn(today), _dn(goal.projected_date)],
-                [goal.current_ftp_w, goal.target_w],
+                [start_w, goal.target_w],
                 color=SERIES_1,
                 lw=1.2,
                 ls=(0, (1.5, 2)),
@@ -318,19 +376,24 @@ def ftp_trajectory(goal: Goal, today: dt.date) -> bytes:
             _dn(first - dt.timedelta(days=14)),
             _dn(last + dt.timedelta(days=21)),
         )
-        lows = [goal.current_ftp_w, *(p.ftp_w for p in goal.history)]
+        lows = [goal.current_ftp_w, start_w, *(p.ftp_w for p in goal.history)]
         ax.set_ylim(min(lows) - 15, goal.target_w + 12)
         ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))  # type: ignore[no-untyped-call]
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))  # type: ignore[no-untyped-call]
         _unit(ax, "W")
-        ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=4)
+        ax.legend(
+            handles=handles,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.14),
+            ncol=min(len(handles), 5),
+        )
         return _svg(fig)
 
 
 def outdoor_strip(outdoor: OutdoorContext, series: Series | None) -> bytes:
     """Section 4: stops (hatched) on the time axis, with temperature when it was recorded."""
     has_temp = bool(series and any(v is not None for v in series.temp_c))
-    with _figure(1.9 if has_temp else 0.9) as (fig, ax):
+    with _figure(1.4 if has_temp else 0.8) as (fig, ax):
         end = _span_end_min(series, outdoor.stops)
         _shade(ax, outdoor.stops, color=MUTED, hatch="////")
         handles: list[Any] = [
@@ -376,7 +439,7 @@ def climb_history(climb: ClimbCompare) -> bytes:
     unit, ys = _climb_metric(climb)
     temps = [e.temp_c for e in efforts if e.temp_c is not None]
     norm = Normalize(min(temps, default=20.0) - 1, max(temps, default=30.0) + 1)
-    with _figure(2.2) as (fig, ax):
+    with _figure(1.9) as (fig, ax):
         for i, (e, y) in enumerate(zip(efforts, ys, strict=True)):
             colour = MUTED if e.temp_c is None else HEAT(norm(e.temp_c))
             ax.scatter(

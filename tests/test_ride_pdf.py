@@ -168,6 +168,7 @@ def test_charts_handle_empty_and_single_point_inputs(no_missing_glyphs: None) ->
 
     intent = Intent(
         planned_name="SST",
+        kind="work",
         purpose_zh=MIN["purpose"],
         target_zone="Z3",
         target_min=40,
@@ -191,3 +192,54 @@ def test_charts_handle_empty_and_single_point_inputs(no_missing_glyphs: None) ->
         history=[ClimbEffort(day=dt.date(2026, 9, 1), w_kg=3.5, time_s=310)],
     )
     assert _is_svg(charts.climb_history(mixed))
+
+
+def test_units_precision_and_local_time() -> None:
+    html = ride_pdf.render_html(_sample())
+    # coasting_pct is already a percent (0-100), never multiplied again
+    assert '<span class="value">18</span><span class="unit">%</span>' in html
+    assert STRINGS["climb_badge"] in html
+    # one precision for RPE, expected RPE and their gap
+    for value in ("7.0", "5.6", "+1.4"):
+        assert f'<span class="value">{value}</span>' in html
+    # generated_at is UTC in the facts; the footer shows the athlete's local time
+    assert "2026-10-11 10:42" in html
+    assert "2026-10-11 11:42" in ride_pdf.render_html(_sample(), tz="Asia/Tokyo")
+
+
+def test_ftp_chart_with_settings_only_and_ceiling_intent(no_missing_glyphs: None) -> None:
+    today = dt.date(2026, 10, 11)
+    goal = Goal(
+        target_w=280,
+        target_date=dt.date(2027, 6, 30),
+        current_ftp_w=250,
+        current_source="setting:icu",
+        trend_level_w=255,
+        projected_date=dt.date(2027, 5, 1),
+        history=[FtpPoint(day=dt.date(2026, 6, 1), ftp_w=240, source="setting:icu")],
+    )
+    assert _is_svg(charts.ftp_trajectory(goal, today))
+    ceiling = Intent(
+        planned_name="Recovery",
+        kind="ceiling",
+        purpose_zh=MIN["purpose"],
+        target_zone="Z1",
+        target_high_w=140,
+        target_min=45,
+        achieved_min=44,
+        verdict="achieved",
+    )
+    assert _is_svg(charts.intent_timeline(ceiling, Series(step_s=30, power_w=[120, 130, 150])))
+
+
+def test_builder_golden_renders_if_present(tmp_path: Path, need_weasyprint: None) -> None:
+    """The ride-facts session's golden (tests/fixtures/ride_report.full.json) renders end to end."""
+    golden = FIXTURE.parent / "ride_report.full.json"
+    if not golden.exists():
+        pytest.skip("ride_report.full.json arrives with the ride-facts branch")
+    report = RideReport.model_validate_json(golden.read_text(encoding="utf-8"))
+    pdf = ride_pdf.render_ride_pdf(report, tmp_path)
+    text = "".join(page.extract_text() for page in PdfReader(pdf).pages)
+    assert report.headline.text_zh[:10] in text
+    if report.outdoor and report.outdoor.coasting_pct is not None:
+        assert f"{report.outdoor.coasting_pct:.0f}%" in text.replace(" ", "")

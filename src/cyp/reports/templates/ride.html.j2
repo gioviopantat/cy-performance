@@ -67,7 +67,11 @@
   <h2><span class="no">2</span>目的達成度 {{ verdict_badge(i.verdict) }}</h2>
   <p><strong>{{ i.planned_name }}</strong>　{{ i.purpose_zh }}</p>
   <div class="figures">
-    {{ stat("目標區間 " ~ i.target_zone, i.achieved_min | num(".1f") ~ " / " ~ i.target_min | num(".0f"), "分鐘") }}
+    {% if i.kind == "ceiling" %}
+    {{ stat(i.target_zone ~ "：維持在上限以下", i.achieved_min | num(".1f") ~ " / " ~ i.target_min | num(".1f"), "分鐘") }}
+    {% else %}
+    {{ stat("目標區間 " ~ i.target_zone, i.achieved_min | num(".1f") ~ " / " ~ i.target_min | num(".1f"), "分鐘") }}
+    {% endif %}
     {% if i.reps_planned is not none %}{{ stat("有效組數", (i.reps_counted if i.reps_counted is not none else "–") ~ " / " ~ i.reps_planned, "組") }}{% endif %}
     {% if i.load_ratio is not none %}{{ stat("負荷比（實際／計畫）", i.load_ratio | num(".2f")) }}{% endif %}
     {% if i.load_planned is not none and i.load_actual is not none %}{{ stat("負荷", i.load_planned | num ~ " → " ~ i.load_actual | num, "TSS") }}{% endif %}
@@ -107,7 +111,7 @@
   <h2><span class="no">4</span>外騎情境卡</h2>
   <div class="figures">
     {{ stat("停車", o.stops_n ~ " 次 · " ~ o.stopped_min | num(".1f"), "分") }}
-    {% if o.coasting_pct is not none %}{{ stat("滑行", o.coasting_pct | pct) }}{% endif %}
+    {% if o.coasting_pct is not none %}{{ stat("滑行", o.coasting_pct | num(".0f"), "%") }}{% endif %}
     {% if o.temp_avg_c is not none %}{{ stat("平均氣溫", o.temp_avg_c | num(".1f"), "°C") }}{% endif %}
     {% if o.temp_max_c is not none %}{{ stat("最高氣溫", o.temp_max_c | num(".1f"), "°C") }}{% endif %}
   </div>
@@ -125,9 +129,10 @@
   <h2><span class="no">5</span>同一條坡比一比</h2>
   {% for c in r.climbs %}
   <div class="keep">
-  <h3>{{ c.name }}{% if c.rank is not none and c.of_n is not none %}　<span class="badge">第 {{ c.rank }} / {{ c.of_n }} 次</span>{% endif %}</h3>
+  <h3>{{ c.name }}{% if c.rank is not none and c.of_n is not none %}　<span class="badge">第 {{ c.rank }} 快 · 共 {{ c.of_n }} 次</span>{% endif %}</h3>
   {% if c.note_zh %}<p>{{ c.note_zh }}</p>{% endif %}
   <div class="figure"><img src="{{ charts.climbs[loop.index0] }}" alt="{{ c.name }} 歷次功率：點大小為已騎 kJ，顏色為氣溫"></div>
+  </div>
   <table>
     <thead><tr><th>日期</th><th class="n">功率 W</th><th class="n">W/kg</th><th class="n">時間（分:秒）</th><th class="n">已騎 kJ</th><th class="n">氣溫 °C</th></tr></thead>
     <tbody>
@@ -136,7 +141,6 @@
     {% endfor %}
     </tbody>
   </table>
-  </div>
   {% endfor %}
 </section>
 {% endif %}
@@ -147,8 +151,8 @@
   <h2><span class="no">6</span>感受 vs 數據</h2>
   {% if f.rated %}
   <div class="figures">
-    {% if f.rpe is not none %}{{ stat("你的 RPE", f.rpe | num(".0f")) }}{% endif %}
-    {% if f.expected_rpe is not none %}{{ stat("這類騎乘預期", f.expected_rpe | num(".0f")) }}{% endif %}
+    {% if f.rpe is not none %}{{ stat("你的 RPE", f.rpe | num(".1f")) }}{% endif %}
+    {% if f.expected_rpe is not none %}{{ stat("這類騎乘預期", f.expected_rpe | num(".1f")) }}{% endif %}
     {% if f.gap is not none %}{{ stat("差距", f.gap | signed) }}{% endif %}
     {% if f.feel is not none %}{{ stat("感受（1–5）", f.feel) }}{% endif %}
   </div>
@@ -180,7 +184,7 @@
 {# 8 #}
 {% if r.tomorrow %}
 {% set t = r.tomorrow %}
-<section class="tomorrow keep">
+<section class="tomorrow">
   <h2><span class="no">8</span>明天會怎麼排 {% if t.changed %}<span class="badge warning">△ 已調整</span>{% else %}<span class="badge">○ 不變</span>{% endif %}</h2>
   <p class="lead">{{ t.day.isoformat() }}（{{ t.day | weekday }}）　{% if t.changed and t.before_name %}{{ t.before_name }}<span class="arrow">→</span>{% endif %}{{ t.after_name or "休息" }}</p>
   {% if t.reasons_zh %}<ul>{% for x in t.reasons_zh %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
@@ -190,7 +194,7 @@
 
 {# 9 #}
 {% if r.methods %}
-<section class="methods keep">
+<section class="methods">
   <h2><span class="no">9</span>方法與證據</h2>
   <table>
     <thead><tr><th>模型</th><th>主張</th><th>證據等級</th><th>出處</th><th>文件</th></tr></thead>
@@ -211,7 +215,7 @@
 {% endif %}
 
 <footer class="colophon">
-  cy-performance · {{ r.version }} · 產生於 {{ r.generated_at.strftime("%Y-%m-%d %H:%M") }} · 活動 {{ r.ride.activity_id }} · profile {{ r.profile }}<br>
+  cy-performance · {{ r.version }} · 產生於 {{ generated_local.strftime("%Y-%m-%d %H:%M") }} · 活動 {{ r.ride.activity_id }} · profile {{ r.profile }}<br>
   所有數字都來自同一份 facts（旁邊的 .json）；文字敘述不會自己計算數字。
 </footer>
 </body>
