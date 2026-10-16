@@ -1,8 +1,9 @@
-"""macOS launchd agent for the daily autopilot (ADR-0006 L3).
+"""macOS launchd agents: the daily autopilot (ADR-0006 L3) and the ride watcher.
 
 ``StartCalendarInterval`` jobs that were missed while the Mac slept run once on wake, so a
-closed lid at 05:30 delays the run instead of skipping it. The agent runs
-``<venv python> -m cyp.cli run --all`` from the repo directory.
+closed lid at 05:30 delays the run instead of skipping it. The autopilot agent runs
+``<venv python> -m cyp.cli run --all`` from the repo directory; the watch agent runs
+``cyp watch --all`` every ``StartInterval`` seconds (docs/specs/ride-report.md).
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ from pathlib import Path
 from cyp.core.errors import CypError
 
 LABEL = "com.cy-performance.autopilot"
+WATCH_LABEL = "com.cy-performance.watch"
+WATCH_INTERVAL_S = 600
 
 
 @dataclass(frozen=True)
@@ -29,11 +32,16 @@ class AgentSpec:
     minute: int = 30
     python: str = sys.executable
     label: str = LABEL
+    #: ``cyp`` arguments the agent runs.
+    args: tuple[str, ...] = ("run", "--all")
+    #: Run every N seconds instead of daily at ``hour:minute``.
+    interval_s: int | None = None
 
     @property
     def log_path(self) -> Path:
         """stdout/stderr of the agent (outside the repo, survives profile moves)."""
-        return Path.home() / "Library" / "Logs" / "cy-performance" / "autopilot.log"
+        name = self.label.rsplit(".", 1)[-1]
+        return Path.home() / "Library" / "Logs" / "cy-performance" / f"{name}.log"
 
     @property
     def plist_path(self) -> Path:
@@ -41,16 +49,30 @@ class AgentSpec:
         return Path.home() / "Library" / "LaunchAgents" / f"{self.label}.plist"
 
 
+def watch_spec(workdir: Path, interval_s: int = WATCH_INTERVAL_S) -> AgentSpec:
+    """The ride watcher agent: ``cyp watch --all`` every ``interval_s`` seconds."""
+    return AgentSpec(
+        workdir=workdir, label=WATCH_LABEL, args=("watch", "--all"), interval_s=interval_s
+    )
+
+
 def build_plist(spec: AgentSpec) -> bytes:
     """The agent plist (XML)."""
     if not (0 <= spec.hour <= 23 and 0 <= spec.minute <= 59):
         raise ValueError(f"invalid time {spec.hour:02d}:{spec.minute:02d}")
+    if spec.interval_s is not None and spec.interval_s < 60:
+        raise ValueError(f"interval {spec.interval_s}s is below 60s")
+    when: dict[str, object] = (
+        {"StartInterval": spec.interval_s}
+        if spec.interval_s is not None
+        else {"StartCalendarInterval": {"Hour": spec.hour, "Minute": spec.minute}}
+    )
     return plistlib.dumps(
         {
             "Label": spec.label,
-            "ProgramArguments": [spec.python, "-m", "cyp.cli", "run", "--all"],
+            "ProgramArguments": [spec.python, "-m", "cyp.cli", *spec.args],
             "WorkingDirectory": str(spec.workdir),
-            "StartCalendarInterval": {"Hour": spec.hour, "Minute": spec.minute},
+            **when,
             "StandardOutPath": str(spec.log_path),
             "StandardErrorPath": str(spec.log_path),
             "EnvironmentVariables": {"PATH": "/usr/bin:/bin:/usr/sbin:/sbin"},

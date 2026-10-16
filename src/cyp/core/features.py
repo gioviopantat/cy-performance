@@ -79,6 +79,14 @@ REGISTRY: tuple[Feature, ...] = (
         requires=("analysis.rides",),
     ),
     Feature(
+        "report.ride",
+        "report",
+        False,
+        "單趟騎乘報告",
+        "Build the per-ride PDF for new rides (cyp watch).",
+        requires=("analysis.rides",),
+    ),
+    Feature(
         "plan.horizon",
         "plan",
         True,
@@ -170,6 +178,14 @@ REGISTRY: tuple[Feature, ...] = (
         True,
         "macOS 失敗通知",
         "Show a macOS notification when a run fails (no-op on other systems).",
+    ),
+    Feature(
+        "notify.email",
+        "notify",
+        False,
+        "Email 騎乘報告",
+        "Email the PDF to CYP_REPORT_EMAIL_TO.",
+        requires=("report.ride",),
     ),
 )
 

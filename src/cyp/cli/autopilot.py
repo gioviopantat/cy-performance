@@ -71,13 +71,30 @@ def _echo_report(report: dict[str, Any]) -> None:
 @schedule_app.command("install")
 def schedule_install(
     at: Annotated[str, typer.Option("--at", help="Local time HH:MM.")] = "05:30",
+    watch: Annotated[
+        bool,
+        typer.Option("--watch", help="Install the ride watcher (`cyp watch --all` every 10 min)."),
+    ] = False,
 ) -> None:
-    """Install/refresh the launchd agent running ``cyp run --all`` daily (catches up on wake)."""
-    from cyp.jobs.launchd import AgentSpec, install
+    """Install/refresh the launchd agent running ``cyp run --all`` daily (catches up on wake).
 
+    ``--watch`` installs the second agent instead; the autopilot agent is left as it is.
+    """
+    from cyp.jobs.launchd import AgentSpec, install, watch_spec
+
+    workdir = Path.cwd().resolve()
+    if watch:
+        spec = watch_spec(workdir)
+        try:
+            path = install(spec)
+        except CypError as exc:
+            fail(str(exc), code=1)
+        typer.echo(f"installed {path}: every {spec.interval_s}s from {spec.workdir}")
+        typer.echo(f"log: {spec.log_path}")
+        return
     try:
         hour, minute = (int(x) for x in at.split(":"))
-        spec = AgentSpec(workdir=Path.cwd().resolve(), hour=hour, minute=minute)
+        spec = AgentSpec(workdir=workdir, hour=hour, minute=minute)
         path = install(spec)
     except ValueError:
         fail(f"--at {at!r}: expected HH:MM", code=2)
@@ -88,26 +105,46 @@ def schedule_install(
 
 
 @schedule_app.command("uninstall")
-def schedule_uninstall() -> None:
-    """Remove the launchd agent."""
-    from cyp.jobs.launchd import uninstall
+def schedule_uninstall(
+    watch: Annotated[bool, typer.Option("--watch", help="Remove the ride watcher agent.")] = False,
+) -> None:
+    """Remove the launchd agent (``--watch``: the ride watcher's)."""
+    from cyp.jobs.launchd import LABEL, WATCH_LABEL, uninstall
 
-    typer.echo("removed" if uninstall() else "no agent installed")
+    typer.echo("removed" if uninstall(WATCH_LABEL if watch else LABEL) else "no agent installed")
 
 
 @schedule_app.command("status")
 def schedule_status() -> None:
-    """Whether the agent is loaded, its schedule and last exit status."""
-    from cyp.jobs.launchd import LABEL, status
+    """Whether each agent (autopilot, ride watcher) is loaded, its schedule and last exit status.
 
-    out = status()
-    if out is None:
-        typer.echo(f"{LABEL}: not loaded (`cyp schedule install`)")
+    Exit 1 when the autopilot agent is not loaded (the watcher is optional).
+    """
+    from cyp.jobs.launchd import LABEL, WATCH_LABEL, status
+
+    keep = (
+        "state =",
+        "last exit code",
+        "program",
+        "Hour",
+        "Minute",
+        "StartInterval",
+        "run interval",
+        "working directory",
+    )
+    autopilot_loaded = True
+    for label, hint in ((LABEL, "`cyp schedule install`"), (WATCH_LABEL, "`--watch`")):
+        out = status(label)
+        if out is None:
+            typer.echo(f"{label}: not loaded ({hint})")
+            autopilot_loaded = autopilot_loaded and label != LABEL
+            continue
+        typer.echo(f"{label}:")
+        for line in out.splitlines():
+            if any(k in line for k in keep):
+                typer.echo(line.rstrip())
+    if not autopilot_loaded:
         raise typer.Exit(code=1)
-    keep = ("state =", "last exit code", "program", "Hour", "Minute", "working directory")
-    for line in out.splitlines():
-        if any(k in line for k in keep):
-            typer.echo(line.rstrip())
 
 
 def register(app: typer.Typer) -> None:
