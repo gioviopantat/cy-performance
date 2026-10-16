@@ -48,7 +48,8 @@ src/cyp/            Python package (see docs/01-architecture.md §5)
   analysis/         per-ride metrics, longitudinal trends, readiness          (M2)
   planning/         athlete model, periodization, workout library, planner, guardrails (M4)
   publish/          intervals.icu calendar writer (idempotent upsert), plan diffs      (M3)
-  jobs/             sync.py (unified sync/backfill), runner.py (cyp run, locks), launchd.py, notify.py
+  jobs/             sync.py (unified sync/backfill), runner.py (cyp run, locks), watch.py (ride
+                    reports), launchd.py, notify.py (macOS notice, SMTP email)
   llm/              optional coach narrative + plan review (never computes numbers)   (M5)
   services/         operations shared by CLI and API; autopilot.py, publish.py (write guard)
   profiles.py       one workspace per athlete under profiles/ (ADR-0006)
@@ -95,6 +96,24 @@ Strava is optional (`sync.strava` flag; ADR-0003: icu is primary). For the owner
 then set `sync.strava: true` under `features:` in the profile's `athlete.yaml`.
 
 New athlete? The questions to ask are in [docs/onboarding-questions.md](docs/onboarding-questions.md).
+
+Report after every ride (flags `report.ride` and `notify.email`, off by default;
+[docs/specs/ride-report.md](docs/specs/ride-report.md)): a zh-TW PDF with what intervals.icu,
+Strava and Garmin do not show (stimulus reached with outdoor stops excused, distance to the FTP
+target, climbs vs history at the same fatigue and heat, feel vs expectation, tomorrow's plan,
+evidence grade of every model). `brew install pango` once (WeasyPrint); put `CYP_SMTP_HOST`,
+`CYP_SMTP_PORT`, `CYP_SMTP_USER`, `CYP_SMTP_PASSWORD` (a Gmail App Password) and
+`CYP_REPORT_EMAIL_TO` in the profile's `.env`, turn both flags on in its `athlete.yaml`, then:
+
+```bash
+uv run cyp --profile me ride-report          # newest ride's PDF under data/reports/ride (no email)
+uv run cyp --profile me ride-report --send   # build and email it
+uv run cyp schedule install --watch          # `cyp watch --all` every 10 min (polls intervals.icu)
+```
+
+Monthly literature review of the evidence grades: the `research-review` skill
+(`.claude/skills/research-review/`), run by a scheduled agent; it writes
+`docs/research/<YYYY-MM>.md` on a branch for approval and never edits code.
 
 RIDE.LOG to Strava (flag `strava.write_description`, off by default): add `activity:write` to
 `STRAVA_SCOPE` in the profile's `.env`, run `uv run cyp --profile me auth strava` once, set

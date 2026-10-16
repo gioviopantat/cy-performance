@@ -1,6 +1,7 @@
 // cy-performance: container-level architecture (LikeC4).
 // Backed by: README.md, CLAUDE.md, pyproject.toml, .env.example, src/cyp/cli/*, src/cyp/api/*,
-// src/cyp/services/{autopilot,publish,ride_log,ride_feedback,strava_write}.py, src/cyp/jobs/{runner,launchd,notify}.py,
+// src/cyp/services/{autopilot,publish,ride_log,ride_feedback,strava_write,ride_report,ride_preview}.py,
+// src/cyp/jobs/{runner,launchd,notify,watch}.py, src/cyp/reports/ride_*.py, docs/specs/ride-report.md, ADR-0010,
 // src/cyp/profiles.py, src/cyp/settings.py, src/cyp/store/{db,streams}.py,
 // src/cyp/ingest/{intervals,strava}/client.py, web/index.html, web/src/{App,main,bike}.tsx,
 // docs/adr/0003, 0005, 0006, 0008, 0009, docs/runbooks/network.md.
@@ -43,9 +44,17 @@ model {
       technology 'macOS LaunchAgent com.cy-performance.autopilot'
       description 'Daily 05:30 (catches up on wake): python -m cyp.cli run --all (jobs/launchd.py)'
     }
+    watchAgent = container 'Watch agent' {
+      technology 'macOS LaunchAgent com.cy-performance.watch'
+      description 'Every 10 min: python -m cyp.cli watch --all (jobs/launchd.py, cyp schedule install --watch)'
+    }
+    watcher = container 'Ride watcher' {
+      technology 'Python subprocess per profile + flock'
+      description 'Per profile with report.ride on: lock -> light intervals.icu sync -> per-ride analysis -> for each new ride wait for streams (<= 6 h) and the rating (<= 2 h) -> build the zh-TW PDF (WeasyPrint, matplotlib; tomorrow is a dry-run preview) -> email it (notify.email) -> ride_reports row; never writes a calendar or Strava (jobs/watch.py, services/ride_report.py, ADR-0010)'
+    }
     cli = container 'cyp CLI' {
       technology 'Python 3.12, typer'
-      description 'profile, run, plan, sync, analyze, report, doctor, schedule; global --profile (src/cyp/cli)'
+      description 'profile, run, watch, ride-report, plan, sync, analyze, report, doctor, schedule; global --profile (src/cyp/cli)'
     }
     runner = container 'Autopilot run' {
       technology 'Python subprocess per profile + flock'
@@ -65,15 +74,15 @@ model {
     }
     db = store 'Profile database' {
       technology 'SQLite + SQLAlchemy/Alembic'
-      description 'Activities, metrics, wellness, plans, publish_log, job_runs, sync cursors; one file per profile (store/)'
+      description 'Activities, metrics, wellness, plans, publish_log, job_runs, ride_reports, sync cursors; one file per profile (store/)'
     }
     streams = store 'Stream store' {
       technology 'Parquet per activity'
       description 'Per-second ride streams under data/streams (store/streams.py)'
     }
     reports = store 'Reports and logs' {
-      technology 'Markdown + JSON, structlog JSON lines'
-      description 'data/reports/{daily,weekly,autopilot}, data/logs/cyp.jsonl per profile'
+      technology 'Markdown + JSON + PDF, structlog JSON lines'
+      description 'data/reports/{daily,weekly,autopilot,ride}, data/logs/cyp.jsonl per profile; ride/ holds each ride PDF and its facts JSON'
     }
     rideFiles = store 'Ride notes' {
       technology 'Text + JSON files per ride'
@@ -97,6 +106,11 @@ model {
     technology 'fonts.googleapis.com / fonts.gstatic.com'
     description 'Web fonts for the dashboard, bitmap fonts of the 8-bit look (web/index.html)'
   }
+  smtp = extsys 'SMTP mail server' {
+    #optional
+    technology 'SMTP over TLS (e.g. Gmail with an App Password)'
+    description 'Delivers the per-ride PDF to CYP_REPORT_EMAIL_TO from the profile .env (feature notify.email, jobs/notify.py)'
+  }
   macNotify = extsys 'macOS Notification Center' {
     #optional
     technology 'osascript'
@@ -112,6 +126,16 @@ model {
   cyp.api -> cyp.profileFiles 'lists profiles, reads flags'
   cyp.launchd -> cyp.cli 'starts run --all daily'
   cyp.cli -> cyp.runner 'run [--all] [--no-write]: one subprocess per profile'
+  cyp.watchAgent -> cyp.cli 'starts watch --all every 10 min'
+  cyp.cli -> cyp.watcher 'watch [--all]: one subprocess per profile; ride-report <id> [--send]'
+  cyp.api -> cyp.watcher 'a saved post-ride feeling starts that profile tick at once'
+  cyp.watcher -> icu 'checks key owner, syncs recent activities and streams (read only)'
+  cyp.watcher -> cyp.db 'reads rides, metrics, plans; writes ride_reports and job_runs'
+  cyp.watcher -> cyp.streams 'reads ride streams for the charts'
+  cyp.watcher -> cyp.rideFiles 'reads post-ride feelings'
+  cyp.watcher -> cyp.reports 'writes ride PDFs and facts JSON'
+  cyp.watcher -> smtp 'emails the ride PDF'
+  cyp.watcher -> macNotify 'notice after 3 failed attempts'
   cyp.cli -> cyp.profileFiles 'profile add/adopt/promote; reads settings and flags'
   cyp.cli -> cyp.db 'reads, migrates, plans'
   cyp.runner -> cyp.profileFiles 'loads .env, athlete.yaml, flags, icu_athlete_id'
@@ -139,13 +163,13 @@ model {
 views {
   view index {
     title 'cy-performance: context'
-    include owner, athlete, cyp, icu, strava, garmin, macNotify
+    include owner, athlete, cyp, icu, strava, garmin, macNotify, smtp
   }
 
   view containers of cyp {
     title 'cy-performance: containers'
     include *
     include cyp.*
-    include owner, athlete, icu, strava, garmin, macNotify, googleFonts
+    include owner, athlete, icu, strava, garmin, macNotify, googleFonts, smtp
   }
 }

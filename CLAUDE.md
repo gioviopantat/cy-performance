@@ -61,6 +61,8 @@ the docs below match the code in the same commit. Format/autofix: `uv run poe fm
 | `src/cyp/services/profiles.py` | onboarding, adopt, profile status (CLI stays thin) |
 | `src/cyp/profiles.py`, `src/cyp/settings.py` | profile store, settings resolution, flags bridge |
 | `src/cyp/core/features.py` | flag registry |
+| `src/cyp/core/evidence.py` | A/B/C evidence grades; verdicts only on A/B (ADR-0011) |
+| `src/cyp/jobs/watch.py`, `src/cyp/services/ride_report.py`, `src/cyp/reports/ride_*.py` | per-ride PDF: detect, build, email (ADR-0010) |
 | `src/cyp/jobs/runner.py`, `src/cyp/jobs/launchd.py` | `run_profile` (lock, migrate, notify), `run --all`; launch agent |
 | `docs/onboarding-questions.md` | the questions a new athlete answers, and what they drive |
 | `src/cyp/api/`, `web/` | HTTP API (one server, every profile via `X-CYP-Profile`) and the React dashboard; after changing a schema run `uv run cyp dev openapi` and `npm --prefix web run gen:api` |
@@ -73,16 +75,21 @@ the docs below match the code in the same commit. Format/autofix: `uv run poe fm
 uv run cyp profile list                  # who, mode, last autopilot run
 uv run cyp --profile <name> features     # what will run and why
 uv run cyp --profile <name> run --no-write --json   # a dry run of the morning
-uv run cyp schedule status               # is the 05:30 agent loaded; last exit code
+uv run cyp schedule status               # are the 05:30 and watch agents loaded; last exit codes
+uv run cyp --profile <name> watch --json # one ride-watcher tick (emails new rides' PDFs)
+uv run cyp --profile <name> ride-report  # newest ride's PDF, no email
 uv run cyp --profile <name> doctor       # config, DB, tokens, last job runs
 ```
 Morning run failed? `docs/runbooks/README.md`. Never run `cyp ride-log push --confirm-write`,
 `cyp run` without `--no-write`,
 `cyp plan --apply --confirm-write`, `cyp profile promote` or `cyp publish spike --confirm-write`
-without the user asking: they write to a real person's calendar.
+without the user asking: they write to a real person's calendar. Likewise never run
+`cyp ride-report --send` or `cyp watch` with `notify.email` on without the user asking: they
+send email.
 `.claude/hooks/ask_before_writes.sh` makes Claude Code ask before each of them, and before
 `curl` POSTs to the API's write endpoints or Python that calls the write functions.
 
 ## Skills
 `.claude/skills/`: `morning-run` (run/verify today's autopilot), `diagnose-run` (why a run
-failed), `add-profile` (onboard an athlete).
+failed), `add-profile` (onboard an athlete), `research-review` (monthly literature review of
+the evidence grades in `src/cyp/core/evidence.py`; proposes, never edits).

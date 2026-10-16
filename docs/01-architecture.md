@@ -46,10 +46,10 @@
                  │                      cy-performance                      │
                  │  ingest ─► store ─► analysis ─► planning ─► publish ─────┼──► PUT/POST events (our external_id only)
                  │                        │                                 │
-                 │                        └─► reports (md/html), logs, llm  │
+                 │                        └─► reports (md/html/pdf), logs   │──► SMTP: per-ride PDF email
                  └──────────────────────────────────────────────────────────┘
                             ▲
-                 launchd / cron / `cyp serve` scheduler
+                 launchd: 05:30 autopilot · every 10 min `cyp watch` · `cyp serve`
 ```
 
 ## 5. Components (Python package `cyp`)
@@ -63,6 +63,8 @@ Domain types shared by everything else. Pydantic v2 models, no I/O.
 - `units.py`, `timeutil.py` (all timestamps UTC + local; athlete tz `Asia/Taipei`)
 - `features.py` — the feature-flag registry and resolver ([ADR-0008](adr/0008-feature-flags.md),
   [09-features](09-features.md)). Pure: no I/O, no settings.
+- `evidence.py` — evidence grades (A/B/C) of every claim the models rely on, with citations;
+  reports may base a verdict only on A/B ([specs/research-review.md](specs/research-review.md)).
 - `errors.py`
 
 ### 5.2 `ingest/`
@@ -93,6 +95,10 @@ Pure functions over stored data. Details in [04-analysis-engine](04-analysis-eng
   durability trend, segment PR timeline, polarization index, monotony/strain, ACWR.
 - `readiness.py` — fuses wellness (HRV, RHR, sleep) + yesterday's internal/external load response
   into a `Readiness` score with a `status ∈ {FRESH, NORMAL, BLUNTED, OVERREACHED}`.
+- `ride/intent.py` — did a ride reach its planned stimulus (minutes in the target band, reps that
+  counted, outdoor interruptions excused); `ride/context.py` — stops, coasting, heat and which
+  numbers they make unreliable; `longitudinal/goal.py` — FTP trend and projected date to the
+  season target (all for the per-ride report, [specs/ride-report.md](specs/ride-report.md)).
 - `compliance.py` *(planned)* — planned vs executed workout (paired via intervals.icu `paired_event_id`).
 
 ### 5.5 `planning/`
@@ -142,8 +148,13 @@ Details in [05-training-engine](05-training-engine.md).
   report) and `run_all()` (`cyp run --all`: one subprocess per profile, notifies for crashes).
 - `jobs/sync.py` also checks, before any intervals.icu sync of a profile, that the API key
   belongs to the profile's athlete (otherwise their rides would enter this DB).
-- `jobs/launchd.py` — the macOS launch agent (`cyp schedule install`); `jobs/notify.py` —
-  macOS notification on failure (`notify.macos`).
+- `jobs/launchd.py` — the macOS launch agents (`cyp schedule install`: 05:30 autopilot;
+  `--watch`: `cyp watch --all` every 10 min); `jobs/notify.py` — macOS notification on failure
+  (`notify.macos`) and SMTP email (`notify.email`).
+- `jobs/watch.py` — one watcher tick per profile: lock → light intervals.icu sync → per-ride
+  analysis → for each new ride, wait for streams (≤ 6 h) and the rating (≤ 2 h), then build the
+  PDF and email it; one `ride_reports` row per ride so it is sent once. Never writes a calendar
+  or Strava ([ADR-0010](adr/0010-ride-report-polling-and-email.md)).
 
 ### 5.7.1 Layering (enforced by `tests/test_layering.py`)
 A package may import only from its own layer or lower ones:
@@ -179,6 +190,11 @@ A package may import only from its own layer or lower ones:
   (reads, what-ifs, explicit writes, jobs, profiles, autopilot) with ETag caching and optional
   bearer token. `api/registry.py` serves every profile (`X-CYP-Profile`). Contract and budgets:
   [08-api.md](08-api.md).
+- `services/ride_report.py` — build / send one ride's PDF (CLI `cyp ride-report`, the watcher);
+  `services/ride_preview.py` — tomorrow's plan as a dry run for the report (never written).
+- `reports/ride_model.py` — the per-ride report contract; `reports/ride_facts.py` (+
+  `ride_intent.py`, `ride_goal.py`, `ride_sections.py`, `ride_common.py`) fill it from stored
+  results; `reports/ride_pdf.py` + `charts.py` render it to a zh-TW PDF (WeasyPrint, matplotlib).
 - `services/calendar.py` — the calendar view: planned (calendar first) vs done per day, compliance status and week summaries (`GET /v1/calendar`, read-only);
 - `services/ride_feedback.py` — post-ride RPE / feel answered on the web, fed into readiness (`data/ride_feedback/<id>.json`);
 - `services/ride_log.py` — the deterministic WORKOUT + RIDE.LOG text of a ride, plus the athlete-edited version saved in `data/ride_logs/<id>.txt` (previous version kept as `.prev.txt`);
