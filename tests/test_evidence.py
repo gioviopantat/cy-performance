@@ -18,6 +18,7 @@ from cyp.analysis import readiness as rd
 from cyp.analysis.longitudinal import pdc, pmc
 from cyp.core import evidence
 from cyp.core.explain import Explanation, MethodRef
+from cyp.core.timeutil import today_local
 from cyp.reports import facts as facts_mod
 from cyp.reports.render import WEAK_BADGE_ZH, render
 
@@ -51,7 +52,8 @@ def test_registry_ids_unique_and_well_formed() -> None:
         assert c.grade in ("A", "B", "C") and c.status in ("accepted", "proposed")
         assert c.glossary is not None or c.status == "proposed", c.id
         assert c.citations and all(s.strip() for s in c.citations), c.id
-        assert c.claim.strip() and c.reviewed <= dt.date.today()
+        # Review dates are the owner's local dates; CI runs in UTC, hours behind Taipei.
+        assert c.claim.strip() and c.reviewed <= today_local()
 
 
 def test_every_glossary_file_has_a_matching_grade_table() -> None:
