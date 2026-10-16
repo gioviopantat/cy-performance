@@ -59,6 +59,8 @@ class Intent(_Model):
     """Section 2: planned stimulus vs achieved."""
 
     planned_name: str
+    #: How the stimulus is judged: ``work`` (minutes in the band) or ``ceiling`` (stay under it).
+    kind: Literal["work", "ceiling"]
     purpose_zh: str
     target_zone: str
     target_low_w: int | None = None
@@ -81,6 +83,8 @@ class FtpPoint(_Model):
 
     day: dt.date
     ftp_w: float
+    #: ``setting:<origin>`` for an FTP setting, else the estimate's id (e.g. ``icu_eftp``).
+    #: Charts draw settings and estimates as separate series.
     source: str
 
 
@@ -91,6 +95,8 @@ class Goal(_Model):
     target_date: dt.date
     current_ftp_w: float
     current_source: str
+    #: Today's value of the fitted trend; the projection line starts here, not at the setting.
+    trend_level_w: float | None = None
     this_ride_evidence_w: float | None = None
     projected_date: dt.date | None = None
     projected_shift_days: int | None = None
@@ -104,6 +110,7 @@ class OutdoorContext(_Model):
 
     stops_n: int
     stopped_min: float
+    #: Percent of moving time at 0 W, 0-100 (not a fraction).
     coasting_pct: float | None = None
     temp_avg_c: float | None = None
     temp_max_c: float | None = None
@@ -197,6 +204,7 @@ class RideReport(_Model):
     version: str = REPORT_VERSION
     profile: str
     athlete_name: str
+    #: Timezone-aware; renderers convert it to the athlete's local time.
     generated_at: dt.datetime
     ride: RideSummary
     headline: Headline
