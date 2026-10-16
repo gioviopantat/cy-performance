@@ -88,7 +88,7 @@ One procedure, kept in a skill `.claude/skills/research-review/SKILL.md`, whatev
    `reviewed` date (PubMed / journal sites first, never blogs as evidence).
 2. Classify each hit as supports / contradicts / refines. A citation counts only if its
    DOI, PMID or publisher page was opened; otherwise it is listed as 未驗證.
-3. Write `docs/research/YYYY-MM.md` (zh-TW): per claim, the current grade, the proposed grade and
+3. Write `docs/research/<YYYY-MM>.md` (zh-TW): per claim, the current grade, the proposed grade and
    why, new citations, and suggested glossary wording. Nothing else is edited.
 4. Roger approves item by item. Approved items update `core/evidence.py` + the glossary in a
    normal commit; anything that would change a threshold or planner rule becomes a new ADR.

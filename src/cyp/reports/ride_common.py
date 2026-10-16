@@ -44,6 +44,19 @@ METHOD_DOCS: dict[str, str] = {
     "planner": "docs/glossary/workout_library.md",
 }
 
+#: The evidence claim (``core/evidence.py``) behind each model in section 9; ``None`` = not graded.
+METHOD_CLAIMS: dict[str, str | None] = {
+    "coggan_np_if_tss": "coggan_np_if_tss.tss_dose",
+    intent_mod.INTENT_VERSION: "ride_intent.model",
+    goal_mod.GOAL_VERSION: "goal_projection.model",
+    "eftp": "eftp.icu_value",
+    ctx_mod.CONTEXT_VERSION: "outdoor_context.model",
+    "climb_repeats": None,
+    "readiness_v1.1": "readiness_v1.rpe_surprise",
+    "limiters": None,
+    "planner": "workout_library.template_structure",
+}
+
 
 @cache
 def texts() -> dict[str, Any]:

@@ -453,21 +453,21 @@ REGISTRY: tuple[Claim, ...] = (
     ),
     # --- ride report models (docs/specs/ride-report.md); ours, no glossary page yet
     _proposed(
-        "ride_intent_v1.model",
+        "ride_intent.model",
         None,
         "ride_intent_v1: time in the planned power band / counted reps judge the stimulus.",
         "C",
         "Ours (docs/04-analysis-engine.md, ride report models); not validated",
     ),
     _proposed(
-        "outdoor_context_v1.model",
+        "outdoor_context.model",
         None,
         "outdoor_context_v1: heat, stop and coasting cut-offs mark numbers as not comparable.",
         "C",
         "Ours (docs/04-analysis-engine.md, ride report models); not validated",
     ),
     _proposed(
-        "goal_projection_v1.model",
+        "goal_projection.model",
         None,
         "goal_projection_v1: a Theil-Sen trend of FTP estimates projects the goal date.",
         "C",

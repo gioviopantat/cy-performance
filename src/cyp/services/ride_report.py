@@ -19,6 +19,7 @@ from cyp.core.timeutil import iso_utc, now_utc, parse_iso
 from cyp.logging import get_logger
 from cyp.reports.ride_facts import build_ride_report
 from cyp.reports.ride_pdf import render_ride_pdf
+from cyp.services import ride_feedback
 from cyp.services.context import AppContext
 from cyp.services.ride_preview import tomorrow_preview
 from cyp.settings import Settings
@@ -73,6 +74,7 @@ def build(ctx: AppContext, activity_id: int) -> Path:
     day, icu_id, _name = _ride(ctx, activity_id)
     tomorrow = tomorrow_preview(ctx, day + dt.timedelta(days=1))
     rate_url = ICU_ACTIVITY_URL.format(id=icu_id) if icu_id else None
+    fb = ride_feedback.get(ctx, activity_id)
     with ctx.factory() as session:
         report = build_ride_report(
             session,
@@ -82,6 +84,7 @@ def build(ctx: AppContext, activity_id: int) -> Path:
             cfg=ctx.athlete_config_or_none(),
             tomorrow=tomorrow,
             rate_url=rate_url,
+            feedback=(fb.rpe, fb.feel),
         )
     return render_ride_pdf(report, ride_dir(ctx))
 

@@ -26,11 +26,12 @@ from cyp.analysis.longitudinal.run import compute_trends
 from cyp.analysis.ride import context as ctx_mod
 from cyp.analysis.ride import intent as intent_mod
 from cyp.analysis.run import activity_local_date
+from cyp.core import evidence
 from cyp.core.errors import NotFoundError
 from cyp.core.timeutil import now_utc, parse_iso, to_local
 from cyp.dataset import DEFAULT_TZ, load_dataset
 from cyp.reports.facts import ride_fact
-from cyp.reports.ride_common import METHOD_DOCS, RideInputs, is_indoor, text
+from cyp.reports.ride_common import METHOD_CLAIMS, METHOD_DOCS, RideInputs, is_indoor, text
 from cyp.reports.ride_goal import build_goal
 from cyp.reports.ride_intent import build_intent
 from cyp.reports.ride_model import (
@@ -129,7 +130,7 @@ def build_headline(
 
 
 def build_methods(report: RideReport, fact: Mapping[str, Any]) -> list[MethodUsed]:
-    """Section 9: one entry per model a number above came from (grade/claim filled later)."""
+    """Section 9: one entry per model a number above came from, with its evidence grade."""
     ids: list[str] = []
     if fact["np_w"] is not None or fact["tss"] is not None:
         ids.append("coggan_np_if_tss")
@@ -147,7 +148,21 @@ def build_methods(report: RideReport, fact: Mapping[str, Any]) -> list[MethodUse
         ids.append("limiters")
     if report.tomorrow is not None:
         ids.append("planner")
-    return [MethodUsed(model_id=i, doc=METHOD_DOCS[i]) for i in ids]
+    return [_method(i) for i in ids]
+
+
+def _method(model_id: str) -> MethodUsed:
+    claim_id = METHOD_CLAIMS[model_id]
+    if claim_id is None:
+        return MethodUsed(model_id=model_id, doc=METHOD_DOCS[model_id])
+    claim = evidence.get(claim_id)
+    return MethodUsed(
+        model_id=model_id,
+        claim_id=claim_id,
+        grade=claim.grade,
+        citation=claim.citations[0] if claim.citations else None,
+        doc=METHOD_DOCS[model_id],
+    )
 
 
 def build_ride_report(

@@ -138,7 +138,8 @@
      "over_share": 0.0,
      "ceiling_w": 261.2
     },
-    "doc": "docs/specs/ride-report.md"
+    "doc": "docs/specs/ride-report.md",
+    "claim": null
    },
    "confidence": "medium",
    "glossary_terms": [
@@ -268,7 +269,8 @@
      "target_w": 285.0,
      "as_of": "2026-10-14"
     },
-    "doc": "docs/glossary/ftp_target_season.md"
+    "doc": "docs/glossary/ftp_target_season.md",
+    "claim": null
    },
    "confidence": "low",
    "glossary_terms": [
@@ -418,37 +420,37 @@
  "methods": [
   {
    "model_id": "coggan_np_if_tss",
-   "claim_id": null,
-   "grade": null,
-   "citation": null,
+   "claim_id": "coggan_np_if_tss.tss_dose",
+   "grade": "B",
+   "citation": "Sanders D et al. 2017, Int J Sports Physiol Perform 12(5):668-675",
    "doc": "docs/glossary/coggan_np_if_tss.md"
   },
   {
    "model_id": "ride_intent_v1",
-   "claim_id": null,
-   "grade": null,
-   "citation": null,
+   "claim_id": "ride_intent.model",
+   "grade": "C",
+   "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",
    "doc": "docs/specs/ride-report.md"
   },
   {
    "model_id": "goal_projection_v2",
-   "claim_id": null,
-   "grade": null,
-   "citation": null,
+   "claim_id": "goal_projection.model",
+   "grade": "C",
+   "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",
    "doc": "docs/glossary/ftp_target_season.md"
   },
   {
    "model_id": "eftp",
-   "claim_id": null,
-   "grade": null,
-   "citation": null,
+   "claim_id": "eftp.icu_value",
+   "grade": "C",
+   "citation": "Proprietary; no published validation",
    "doc": "docs/glossary/eftp.md"
   },
   {
    "model_id": "outdoor_context_v1",
-   "claim_id": null,
-   "grade": null,
-   "citation": null,
+   "claim_id": "outdoor_context.model",
+   "grade": "C",
+   "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",
    "doc": "docs/specs/ride-report.md"
   },
   {
@@ -460,9 +462,9 @@
   },
   {
    "model_id": "readiness_v1.1",
-   "claim_id": null,
-   "grade": null,
-   "citation": null,
+   "claim_id": "readiness_v1.rpe_surprise",
+   "grade": "C",
+   "citation": "Inoue A et al. 2022, Sports Med Open 8:35 (meta-analysis, very low certainty)",
    "doc": "docs/glossary/readiness_v1.md"
   },
   {
@@ -474,9 +476,9 @@
   },
   {
    "model_id": "planner",
-   "claim_id": null,
-   "grade": null,
-   "citation": null,
+   "claim_id": "workout_library.template_structure",
+   "grade": "C",
+   "citation": "Practitioner design",
    "doc": "docs/glossary/workout_library.md"
   }
  ],
