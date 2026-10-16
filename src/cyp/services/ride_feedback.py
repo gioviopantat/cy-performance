@@ -3,7 +3,8 @@
 Stored per ride under ``data/ride_feedback/<activity_id>.json``; per field, it wins over the
 same field from intervals.icu (as in ``readiness_job._yesterday``) and feeds readiness (flag
 ``readiness.ride_feel``, docs/specs/personalized-planning §8). Answering in intervals.icu works
-too, without this store.
+too, without this store. With ``report.ride`` on, a saved answer starts that profile's ride
+watcher tick in the background, so the rated ride's report goes out at once.
 """
 
 from __future__ import annotations
@@ -13,8 +14,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from cyp.core.errors import ConfigError, NotFoundError
+from cyp.logging import get_logger
 from cyp.services.context import AppContext
 from cyp.store.models import Activity
+
+log = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -75,7 +79,20 @@ def save(ctx: AppContext, activity_id: int, rpe: int | None, feel: int | None) -
     else:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"rpe": rpe, "feel": feel}), encoding="utf-8")
+        _trigger_watch(ctx)
     return get(ctx, activity_id)
+
+
+def _trigger_watch(ctx: AppContext) -> None:
+    """Start a watcher tick without waiting for it; a failure to start only logs."""
+    try:
+        if not ctx.features().enabled("report.ride"):
+            return
+        from cyp.jobs.watch import spawn_tick
+
+        spawn_tick(ctx.settings)
+    except (ConfigError, OSError) as exc:  # the answer is saved; the 10-min agent sends it
+        log.warning("ride_feedback.watch_not_started", error=str(exc))
 
 
 def all_answers(ctx: AppContext) -> dict[int, tuple[float | None, int | None]]:

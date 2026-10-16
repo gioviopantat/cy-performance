@@ -10,6 +10,7 @@ Check a profile: `cyp --profile <name> features`.
 | `analysis.rides` | on | | Per-ride metrics, trends (PMC, CP/W′, FTP evidence, limiters), readiness (`analyze` stage). |
 | `report.daily` | on | `analysis.rides` | Daily zh-TW report in `data/reports/daily/`. |
 | `report.weekly` | on | `analysis.rides` | Weekly review report, built on Mondays. |
+| `report.ride` | off | `analysis.rides` | Build the per-ride PDF for new rides (`cyp watch`). |
 | `plan.horizon` | on | | Replan the rolling horizon (`plan` stage). |
 | `plan.climb_routes` | on | `plan.horizon` | Name a local climb from `location.climbs` in outdoor workout descriptions. |
 | `plan.athlete_rules` | on | `plan.horizon` | `athlete.birth_year` / `athlete.health_flags` set safer defaults (age ≥ 60: 2:1, ramp and intensity caps; any health flag: ≤ 1 hard session, no maximal tests). With `plan.goal_menus` also on, athletes ≥ 60 get the lighter second hard day 48 h after the first. Off: `birth_year` / `health_flags` are dropped from the effective config, so nothing sees them. No effect without those fields. |
@@ -21,6 +22,7 @@ Check a profile: `cyp --profile <name> features`.
 | `api.calendar_write` | on | `publish.calendar` | The web UI's "run and write" button works for this profile (also needs `planner.mode: apply`, a confirmation and the write guard). |
 | `strava.write_description` | off | `sync.strava` | Write a ride's RIDE.LOG into its Strava description (`cyp ride-log push`, the 紀錄 page). Needs the `activity:write` token scope, a confirmation, and the token owner = the ride owner; the athlete's own text is kept. |
 | `notify.macos` | on | | macOS notification when a run fails (no-op on other systems). |
+| `notify.email` | off | `report.ride` | Email the PDF to `CYP_REPORT_EMAIL_TO`. |
 
 ## Setting flags
 

@@ -102,6 +102,16 @@ class Settings(BaseSettings):
         """``CYP_API_CORS_ORIGINS`` split on commas."""
         return [o.strip() for o in self.cyp_api_cors_origins.split(",") if o.strip()]
 
+    # Per-ride report email (feature notify.email); per profile .env only, never inherited
+    cyp_smtp_host: str = ""
+    #: 465 = implicit TLS (SMTP_SSL); anything else = plain connect + STARTTLS.
+    cyp_smtp_port: int = Field(default=587, ge=1, le=65535)
+    cyp_smtp_user: str = ""
+    #: Gmail App Password (or the SMTP account's password).
+    cyp_smtp_password: SecretStr = SecretStr("")
+    #: The one recipient of this profile's ride reports.
+    cyp_report_email_to: str = ""
+
     # Optional LLM (not used yet; a narrator will ship behind a feature flag, ADR-0008)
     anthropic_api_key: SecretStr = SecretStr("")
     cyp_llm_model: str = "claude-sonnet-5-5"

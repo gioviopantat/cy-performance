@@ -32,6 +32,8 @@ CHILD_TIMEOUT_S = 60 * 60
 #: Host whose DNS answer means "the network is up" after the Mac wakes for the 05:30 run.
 NETWORK_PROBE_HOST = "intervals.icu"
 NETWORK_WAIT_S = 15 * 60
+#: How long the morning run waits for a short holder of the lock (a ``cyp watch`` tick).
+LOCK_WAIT_S = 10 * 60
 
 
 class RunLockedError(CypError):
@@ -39,18 +41,31 @@ class RunLockedError(CypError):
 
 
 @contextmanager
-def profile_lock(data_dir: Path) -> Iterator[None]:
-    """Exclusive, non-blocking lock on ``data_dir/.autopilot.lock`` (released on exit/crash).
+def profile_lock(
+    data_dir: Path,
+    *,
+    wait_s: float = 0,
+    sleep: Callable[[float], None] = time.sleep,
+) -> Iterator[None]:
+    """Exclusive lock on ``data_dir/.autopilot.lock`` (released on exit/crash).
+
+    Non-blocking by default; ``wait_s`` retries every 5 s for that long first.
 
     Raises:
-        RunLockedError: another process holds it.
+        RunLockedError: another process still holds it.
     """
     data_dir.mkdir(parents=True, exist_ok=True)
     with (data_dir / LOCK_NAME).open("w") as fh:
-        try:
-            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as exc:
-            raise RunLockedError(f"another run is in progress for {data_dir}") from exc
+        waited = 0.0
+        while True:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError as exc:
+                if waited >= wait_s:
+                    raise RunLockedError(f"another run is in progress for {data_dir}") from exc
+                sleep(5.0)
+                waited += 5.0
         try:
             yield
         finally:
@@ -83,7 +98,7 @@ def run_profile(settings: Settings, *, no_write: bool = False) -> AutopilotRepor
         path.mkdir(parents=True, exist_ok=True)
     profile = settings.cyp_profile or "default"
     try:
-        with profile_lock(settings.cyp_data_dir):
+        with profile_lock(settings.cyp_data_dir, wait_s=LOCK_WAIT_S):
             upgrade_head(settings.cyp_db_url)
             ctx = AppContext.from_settings(settings)
             try:
@@ -181,28 +196,35 @@ def run_all(profiles_dir: Path, slugs: Sequence[str], *, no_write: bool) -> list
     return results
 
 
-def child_command(slug: str, extra: Sequence[str] = ()) -> list[str]:
+def child_command(
+    slug: str, extra: Sequence[str] = (), command: Sequence[str] = ("run", "--json")
+) -> list[str]:
     """Argv for one profile's run (same interpreter, so the same venv)."""
-    return [sys.executable, "-m", "cyp.cli", "--profile", slug, "run", "--json", *extra]
+    return [sys.executable, "-m", "cyp.cli", "--profile", slug, *command, *extra]
 
 
 def run_profiles(
-    slugs: Sequence[str], *, extra: Sequence[str] = (), cwd: Path | None = None
+    slugs: Sequence[str],
+    *,
+    extra: Sequence[str] = (),
+    cwd: Path | None = None,
+    command: Sequence[str] = ("run", "--json"),
+    timeout_s: int = CHILD_TIMEOUT_S,
 ) -> list[ChildResult]:
     """Run each profile sequentially in its own process; never raises for a child failure."""
     results: list[ChildResult] = []
     for slug in slugs:
         try:
             proc = subprocess.run(
-                child_command(slug, extra),
+                child_command(slug, extra, command),
                 cwd=cwd,
                 capture_output=True,
                 text=True,
-                timeout=CHILD_TIMEOUT_S,
+                timeout=timeout_s,
                 check=False,
             )
         except subprocess.TimeoutExpired:
-            results.append(ChildResult(slug, 124, None, f"timed out after {CHILD_TIMEOUT_S}s"))
+            results.append(ChildResult(slug, 124, None, f"timed out after {timeout_s}s"))
             continue
         results.append(
             ChildResult(slug, proc.returncode, _last_json(proc.stdout), proc.stderr[-2000:])

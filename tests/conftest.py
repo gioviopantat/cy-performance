@@ -60,6 +60,10 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setattr(socket.socket, "connect_ex", _guarded(_REAL_CONNECT_EX))
     # DNS is network too: the scheduled run's wait-for-network probe must not resolve real hosts.
     monkeypatch.setattr("cyp.jobs.runner.wait_for_network", lambda *_a, **_k: True)
+    # The morning run waits for a watch tick's lock; a test holding the lock must not wait.
+    monkeypatch.setattr("cyp.jobs.runner.LOCK_WAIT_S", 0)
+    # A web rating save starts a watcher tick process; never from tests.
+    monkeypatch.setattr("cyp.jobs.watch.spawn_tick", lambda *_a, **_k: None)
 
 
 @pytest.fixture

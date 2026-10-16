@@ -11,8 +11,9 @@ The commands live in topic modules and call the service layer (:mod:`cyp.service
 - :mod:`~cyp.cli.dev`: ``dev seed``, ``dev bench``, ``dev openapi``
 - :mod:`~cyp.cli.serve`: ``serve``
 - :mod:`~cyp.cli.profiles`: ``profile list|show|add|adopt|promote|demote|use``, ``features``
-- :mod:`~cyp.cli.autopilot`: ``run [--all]``, ``schedule install|uninstall|status``
+- :mod:`~cyp.cli.autopilot`: ``run [--all]``, ``schedule install [--watch]|uninstall|status``
 - :mod:`~cyp.cli.ridelog`: ``ride-log show|save|push``
+- :mod:`~cyp.cli.watch`: ``watch [--all]``, ``ride-report``
 
 Global ``--profile <name>`` (or ``CYP_PROFILE``) selects an athlete profile (ADR-0006).
 """
@@ -36,6 +37,7 @@ from cyp.cli import (
     ridelog,
     serve,
     sync,
+    watch,
 )
 
 # Re-exported so ``auth strava`` resolves it here at call time (tests stub the browser flow).
@@ -77,5 +79,17 @@ def main(
         os.environ["CYP_PROFILE"] = profile
 
 
-for _module in (core, sync, analysis, planning, reports, dev, serve, profiles, autopilot, ridelog):
+for _module in (
+    core,
+    sync,
+    analysis,
+    planning,
+    reports,
+    dev,
+    serve,
+    profiles,
+    autopilot,
+    ridelog,
+    watch,
+):
     _module.register(app)

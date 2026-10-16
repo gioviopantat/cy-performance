@@ -582,6 +582,27 @@ class JobRun(Base):
     log_path: Mapped[str | None] = mapped_column(String(500))
 
 
+class RideReport(Base):
+    """One per-ride PDF report and its delivery (docs/specs/ride-report.md, ``cyp watch``).
+
+    One row per ride (the primary key is the dedupe); the database is per profile, so no
+    profile column. ``status``: ``pending_feel`` (waiting for the rating or the streams),
+    ``built`` (PDF written, ``notify.email`` off), ``sent``, ``failed`` (retried next tick),
+    ``gave_up`` (no more retries).
+    """
+
+    __tablename__ = "ride_reports"
+
+    activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    pdf_path: Mapped[str | None] = mapped_column(String(500))
+    error: Mapped[str | None] = mapped_column(Text)
+    first_seen_at: Mapped[str] = mapped_column(String(32))
+    sent_at: Mapped[str | None] = mapped_column(String(32))
+    updated_at: Mapped[str | None] = mapped_column(String(32))
+
+
 class SyncCursor(Base):
     __tablename__ = "sync_cursors"
 
