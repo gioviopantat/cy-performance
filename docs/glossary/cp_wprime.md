@@ -37,12 +37,12 @@ W′bal（Skiba 2012 的積分式，icu 的 `wbal` 欄位）：在 CP 以上時 
 - W′ 的日間變異可達 ±15 %，單次數字不要過度解讀。
 
 ## 證據等級
-等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
 
 | 主張 | 等級 | 依據 | 最後審查 |
 |------|------|------|----------|
 | `cp_wprime.cp_boundary` CP 是重度／極重度強度的分界；2–15 分鐘內 P(t) = CP + W′/t 成立 | **A** | Jones et al. 2010 MSSE 回顧；Monod & Scherrer 1965 | 2026-10-16 |
-| `cp_wprime.wbal_prediction` W′bal（Skiba 2012 單指數）能預測間歇第幾趟會爆 | **C** | Chorley et al., EJAP（2021 或 2022，年份待確認）：雙指數恢復更貼近、個體差異大、反覆極重度後恢復更慢（[PMC8854279](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8854279/)）；Skiba & Clarke 2021 模型不一致（二手引用 [arXiv 2108.04510](https://arxiv.org/pdf/2108.04510)，未驗證） | 2026-10-16 |
+| `cp_wprime.wbal_prediction` W′bal（Skiba 2012 單指數）能預測間歇第幾趟會爆 | **C** | Chorley, Bott, Marwood & Lamb 2022 EJAP 122(3):677–689：雙指數恢復更貼近、個體差異大、反覆極重度後恢復更慢（[PMC8854279](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8854279/)）；Skiba & Clarke 2021 IJSPP 16(11):1561–1572（[PMID 34686611](https://pubmed.ncbi.nlm.nih.gov/34686611/)） | 2026-10-16 |
 
 ## 參考文獻
 - Monod H, Scherrer J. "The work capacity of a synergic muscular group." *Ergonomics* 8(3):329–338, 1965.

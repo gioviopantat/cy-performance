@@ -81,14 +81,22 @@ failing rep is **C**.
 | **B** | Group-level support; individual error is material | May drive a verdict; show the uncertainty |
 | **C** | Heuristic, proprietary formula, single small study, team-sport data only, or contested | Context only, badged 參考（證據弱） |
 
-- `REGISTRY` in `src/cyp/core/evidence.py` holds claim id → glossary id, grade, citations and the
-  review date. Every glossary file has a `## 證據等級` table with the same rows
-  (`tests/test_evidence.py`). Grades are data: the monthly review proposes changes, a human
-  approves them, and registry and glossary change in one commit.
+- `REGISTRY` in `src/cyp/core/evidence.py` holds claim id → glossary id, grade, citations, the
+  review date and a `status`. Every glossary file has a `## 證據等級` table with the same rows
+  (`tests/test_evidence.py`). Grades are data: the monthly review (a report under docs/research/)
+  proposes changes, a human approves them, and registry and glossary change in one commit.
+  Claims the review proposes enter as `status="proposed"` (marked （提議） in the glossary)
+  with the recommended grade already in effect; a model without a glossary page yet
+  (`ride_intent_v1`, `outdoor_context_v1`, `goal_projection_v1`) has `glossary=None`.
 - `MethodRef.claim` (optional) names the claim an Explanation rests on; the renderer badges the
-  headline when that claim is grade C. Unknown ids raise.
+  headline when that claim is grade C. Unknown ids raise. Set today on readiness
+  (`readiness_v1.weights`, C), the ride verdict (`decoupling_hr_lag.ride_status_rules`, C), PMC
+  (`banister_pmc.load_history`, B), CP fits (`cp_wprime.cp_boundary`, A), the FTP proposal
+  (`eftp.proposal_3pct`, C) and the durability trend
+  (`decoupling_hr_lag.durability_kj_buckets`, B). Planner / guardrail explanations carry none.
 - **Verdict rule:** a verdict or warning may rest only on A/B claims
   (`evidence.verdict_allowed`). Report warnings carry their `claim`; a grade-C warning is shown
   as 參考（證據弱） context instead of ⚠️, with its numbers kept. Today ACWR, monotony, the CTL
-  ramp cap and the TSB floor are all grade C, so the daily/weekly reports show them as context.
+  ramp cap and the TSB floor are all grade C, so the daily/weekly reports show them as context;
+  the same holds for the readiness, ride-status and FTP-proposal headlines above.
 - A grade change never changes a threshold or planner rule; that needs an ADR (ADR-0004).

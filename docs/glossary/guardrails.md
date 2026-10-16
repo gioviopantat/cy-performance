@@ -35,16 +35,22 @@
 - 守衛不會阻止你自己在 icu 上加課；它只管 `cyp:` 事件，但你的事件會進 PMC 影響接下來的計畫。
 
 ## 證據等級
-等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
 
 | 主張 | 等級 | 依據 | 最後審查 |
 |------|------|------|----------|
-| `guardrails.hit_spacing` 高強度課之間至少隔 48 小時 | **B** | Seiler et al. 2007 MSSE（樣本小） | 2026-10-16 |
+| `guardrails.hit_spacing` 高強度課之間至少隔 48 小時 | **B** | Stanley, Peake & Buchheit 2013 Sports Med（[PMID 23912805](https://pubmed.ncbi.nlm.nih.gov/23912805/)）：高強度後自主神經恢復約 48 小時以上 | 2026-10-16 |
+| `guardrails.long_ride_hit_gap` 長騎 > 150 TSS 的隔天不排高強度 | **C**（提議） | 沒有直接證據；Stanley et al. 2013 | 2026-10-16 |
+| `guardrails.weekly_tss_cap` 週 TSS ≤ 最近 4 週平均 × 1.15 | **C**（提議） | 沒有直接證據；Frandsen et al. 2025 BJSM（跑者，週對週比值與受傷無關） | 2026-10-16 |
+| `guardrails.single_ride_cap` 單趟 ≤ 最近 6 週最長 × 1.6 | **C**（提議） | Frandsen et al. 2025 BJSM（跑者：比 30 天最長多 10 % 以上風險上升） | 2026-10-16 |
+| `guardrails.senior_caps` 60 歲以上降低漲幅與高強度上限 | **C**（提議） | 找不到年齡別負荷上限研究；保守的設計選擇 | 2026-10-16 |
+| `guardrails.tsb_floor` TSB 下限（−30／−25／0，依階段）讓疲勞保持安全 | **C**（提議） | 只是安全網；TSB 沒有個人預測力（Marchal et al. 2025） | 2026-10-16 |
 
 ## 參考文獻
 - `docs/05-training-engine.md` §5、`docs/adr/0004-deterministic-planner.md`、`config/athlete.yaml` 的 `planner` 區段。
 - Gabbett TJ. "The training—injury prevention paradox." *British Journal of Sports Medicine* 50(5):273–280, 2016.（加太快的風險）
 - Foster C. "Monitoring training in athletes with reference to overtraining syndrome." *MSSE* 30(7):1164–1168, 1998.（單調性、休息日）
-- Seiler S, Haugen O, Kuffel E. "Autonomic recovery after exercise in trained athletes: intensity and duration effects." *MSSE* 39(8):1366–1373, 2007.（高強度後自主神經恢復需時，支持 48 h 間隔）
+- Seiler S, Haugen O, Kuffel E. "Autonomic recovery after exercise in trained athletes: intensity and duration effects." *MSSE* 39(8):1366–1373, 2007.（只追蹤運動後 4 小時，不支持 48 h 間隔；見下一筆）
+- Stanley J, Peake JM, Buchheit M. "Cardiac parasympathetic reactivation following exercise: implications for training prescription." *Sports Medicine* 43(12):1259–1277, 2013. PMID 23912805.（高強度後自主神經恢復約 48 h 以上，支持 48 h 間隔）
 - Meeusen R, et al. "Prevention, diagnosis, and treatment of the overtraining syndrome." *MSSE* 45(1):186–205, 2013.
 - intervals.icu API：`POST /athlete/{id}/events/bulk?upsert=true`、`external_id`、`icu_training_load` 回讀（docs/02 §3.3–3.4）。

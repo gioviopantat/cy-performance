@@ -32,13 +32,14 @@ strain    = sum(TSS 最近 7 天) × monotony
 - 所有指標都依賴 TSS 正確（見 `coggan_np_if_tss` 的限制）。
 
 ## 證據等級
-等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
 
 | 主張 | 等級 | 依據 | 最後審查 |
 |------|------|------|----------|
-| `ramp_rate_acwr_monotony.acwr_injury` ACWR > 1.3 代表受傷風險較高 | **C** | Impellizzeri et al. 2020 IJSPP（概念缺陷）；Wik et al. 2020 Sports Med（有關聯、方法差異大）；2025 統合分析（[PubMed 41029871](https://pubmed.ncbi.nlm.nih.gov/41029871/)）有關聯但建議謹慎；全是團隊運動受傷資料，沒有自行車 | 2026-10-16 |
+| `ramp_rate_acwr_monotony.acwr_injury` ACWR > 1.3 代表受傷風險較高 | **C** | Impellizzeri et al. 2020 IJSPP（概念缺陷）；Andrade, Wik et al. 2020 Sports Med（[PMID 32572824](https://pubmed.ncbi.nlm.nih.gov/32572824/)，有關聯、方法差異大）；Qin, Li & Chen 2025（[PMID 41029871](https://pubmed.ncbi.nlm.nih.gov/41029871/)）有關聯但建議謹慎；全是團隊運動受傷資料，沒有自行車 | 2026-10-16 |
 | `ramp_rate_acwr_monotony.monotony_overtraining` 單調性／張力（Foster 1998）能標示過度訓練 | **C** | 只有原始的單一研究；未找到自行車驗證 | 2026-10-16 |
 | `ramp_rate_acwr_monotony.ramp_cap` 每週 CTL 漲幅上限能讓加量保持安全 | **C** | 教練經驗法則 | 2026-10-16 |
+| `ramp_rate_acwr_monotony.acwr_low` ACWR < 0.8 代表負荷明顯下降，非恢復週時值得留意 | **C**（提議） | Gabbett 2016 BJSM（團隊運動的「甜蜜區」0.8–1.3） | 2026-10-16 |
 
 ## 參考文獻
 - Foster C. "Monitoring training in athletes with reference to overtraining syndrome." *Medicine & Science in Sports & Exercise* 30(7):1164–1168, 1998.（單調性、張力）

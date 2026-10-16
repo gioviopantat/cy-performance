@@ -22,24 +22,38 @@ from dataclasses import dataclass
 from typing import Literal
 
 Grade = Literal["A", "B", "C"]
+Status = Literal["accepted", "proposed"]
 
 #: Grades that may drive a verdict or warning on their own.
 VERDICT_GRADES: frozenset[str] = frozenset({"A", "B"})
 
-#: Date of the initial review (docs/specs/research-review.md "Proposed grades").
+#: Date of the initial review (docs/specs/research-review.md "Proposed grades",
+#: docs/research/2026-10.md).
 INITIAL_REVIEW = dt.date(2026, 10, 16)
 
 
 @dataclass(frozen=True)
 class Claim:
-    """One claim we rely on, its grade and the key evidence behind it."""
+    """One claim we rely on, its grade and the key evidence behind it.
+
+    ``glossary`` is ``None`` for a model that has no glossary page yet. ``status`` is
+    ``"proposed"`` until a human approves the claim (the monthly review adds claims that way);
+    a proposed claim is still graded and used, so the badge is honest from day one.
+    """
 
     id: str
-    glossary: str
+    glossary: str | None
     claim: str
     grade: Grade
     citations: tuple[str, ...]
     reviewed: dt.date = INITIAL_REVIEW
+    status: Status = "accepted"
+
+
+def _proposed(
+    claim_id: str, glossary: str | None, claim: str, grade: Grade, *citations: str
+) -> Claim:
+    return Claim(claim_id, glossary, claim, grade, tuple(citations), status="proposed")
 
 
 REGISTRY: tuple[Claim, ...] = (
@@ -60,9 +74,10 @@ REGISTRY: tuple[Claim, ...] = (
         "W'bal (Skiba 2012 single-exponential) predicts which interval rep fails.",
         "C",
         (
-            "Chorley A et al., Eur J Appl Physiol (2021 or 2022, year to confirm): "
-            "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8854279/",
-            "Skiba PF, Clarke DC 2021 (cited via https://arxiv.org/pdf/2108.04510, unverified)",
+            "Chorley A, Bott RP, Marwood S, Lamb KL 2022, Eur J Appl Physiol 122(3):677-689, "
+            "doi:10.1007/s00421-021-04874-3, https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8854279/",
+            "Skiba PF, Clarke DC 2021, Int J Sports Physiol Perform 16(11):1561-1572, "
+            "PMID 34686611",
         ),
     ),
     # --- coggan_np_if_tss
@@ -96,7 +111,10 @@ REGISTRY: tuple[Claim, ...] = (
         "banister_pmc",
         "TSB predicts individual performance on a given day.",
         "C",
-        ("Marchal et al. 2025, Sci Rep (abstract only): https://hal.inrae.fr/hal-04999009v1",),
+        (
+            "Marchal A et al. 2025, Sci Rep 15:3706, doi:10.1038/s41598-025-88153-7, "
+            "PMC11779798 (speed skaters, not cyclists)",
+        ),
     ),
     # --- ramp_rate_acwr_monotony
     Claim(
@@ -106,8 +124,8 @@ REGISTRY: tuple[Claim, ...] = (
         "C",
         (
             "Impellizzeri FM et al. 2020, Int J Sports Physiol Perform 15(6):907-913",
-            "Wik EH et al. 2020, Sports Med",
-            "2025 meta-analysis: https://pubmed.ncbi.nlm.nih.gov/41029871/ (PMID 41029871)",
+            "Andrade R, Wik EH et al. 2020, Sports Med 50(9):1613-1635, PMID 32572824",
+            "Qin W, Li R, Chen L 2025, BMC Sports Sci Med Rehabil 17(1):285, PMID 41029871",
         ),
     ),
     Claim(
@@ -131,8 +149,8 @@ REGISTRY: tuple[Claim, ...] = (
         "FTP approximates MLSS (the threshold our zones hang on).",
         "B",
         (
-            "Borszcz FK et al. 2019, Int J Sports Physiol Perform",
-            "Lillo-Bevia JR et al. 2022, J Strength Cond Res (abstract only)",
+            "Borszcz FK et al. 2019, Int J Sports Physiol Perform 14(8):1029-1035, PMID 30676826",
+            "Lillo-Bevia JR et al. 2022, J Strength Cond Res 36(1):167-173, PMID 31714462",
         ),
     ),
     Claim(
@@ -150,8 +168,8 @@ REGISTRY: tuple[Claim, ...] = (
         "B",
         (
             "Maunder E et al. 2021, Sports Med",
-            "2025 systematic review (abstract only): "
-            "https://link.springer.com/article/10.1007/s00421-025-05885-0",
+            "Sanchez-Jimenez JL et al. 2026 (online 2025), Eur J Appl Physiol 126:163-179, "
+            "doi:10.1007/s00421-025-05885-0, PMID 40613880",
         ),
     ),
     Claim(
@@ -186,9 +204,9 @@ REGISTRY: tuple[Claim, ...] = (
         "Polarised beats pyramidal intensity distribution (evidence points against it).",
         "C",
         (
-            "Oliveira PS et al. 2024, Sports Med (meta-analysis): "
-            "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11329428/",
-            "Second 2024 meta-analysis, 13 studies (secondary summary, unverified)",
+            "Oliveira PS, Boppre G, Fonseca H 2024, Sports Med 54(8):2071-2095, "
+            "doi:10.1007/s40279-024-02034-z, PMC11329428",
+            "Rosenblat MA et al. 2025, Sports Med 55(3):655-673, PMID 39888556",
         ),
     ),
     # --- readiness_v1
@@ -207,7 +225,7 @@ REGISTRY: tuple[Claim, ...] = (
         (
             "Granero-Gallegos A et al. 2020, Int J Environ Res Public Health: "
             "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7663087/",
-            "2021 J Sci Med Sport review, 8 studies (abstract only)",
+            "Duking P et al. 2021, J Sci Med Sport 24(11):1180-1192, PMID 34489178",
         ),
     ),
     Claim(
@@ -245,7 +263,7 @@ REGISTRY: tuple[Claim, ...] = (
         "guardrails",
         "At least 48 h between hard sessions.",
         "B",
-        ("Seiler S et al. 2007, Med Sci Sports Exerc (small n)",),
+        ("Stanley J, Peake JM, Buchheit M 2013, Sports Med 43(12):1259-1277, PMID 23912805",),
     ),
     # --- ftp_target_season
     Claim(
@@ -280,6 +298,165 @@ REGISTRY: tuple[Claim, ...] = (
         "C",
         ("Practitioner design",),
     ),
+    # --- proposed by the 2026-10 review (docs/research/2026-10.md §3), awaiting approval
+    _proposed(
+        "decoupling_hr_lag.durability_kj_buckets",
+        "decoupling_hr_lag",
+        "Efficiency after 1000 kJ of absolute work tracks durability (cut-offs are ours).",
+        "B",
+        "Barsumyan A et al. 2025, BMC Sports Sci Med Rehabil 17:192, PMID 40640875",
+        "Mateo-March M et al. 2024, J Sci Med Sport 27(6):430-434, PMID 38604818",
+    ),
+    _proposed(
+        "decoupling_hr_lag.ride_status_rules",
+        "decoupling_hr_lag",
+        "Same-ride decoupling / TSS cut-offs set the post-ride status and the next day.",
+        "C",
+        "Roete AJ et al. 2021, Int J Sports Physiol Perform 16(8):1065-1073, PMID 34108275 "
+        "(overreaching lowers HR at a given power: the OVERREACHED direction is contested)",
+    ),
+    _proposed(
+        "decoupling_hr_lag.hr_lag_blunted",
+        "decoupling_hr_lag",
+        "An HR lag of 90 s or more means a blunted (fatigued) autonomic response.",
+        "C",
+        "Bellenger CR et al. 2016, Sports Med 46(10):1461-1486, PMID 26888648 (no lag cut-off)",
+    ),
+    _proposed(
+        "readiness_v1.hrv_single_day",
+        "readiness_v1",
+        "A single-day ln rMSSD z-score reflects readiness.",
+        "C",
+        "Plews DJ et al. 2013, Int J Sports Physiol Perform 8(6):688-691, PMID 23479420 "
+        "(7-day mean r=.72, single day r=-.06)",
+    ),
+    _proposed(
+        "readiness_v1.overreached_rule",
+        "readiness_v1",
+        "HRV z < -1.5 and RHR z > +1.5 together mean overreaching.",
+        "C",
+        "Bellenger CR et al. 2016, Sports Med 46(10):1461-1486, PMID 26888648",
+    ),
+    _proposed(
+        "readiness_v1.sleep",
+        "readiness_v1",
+        "Poor sleep lowers next-day endurance performance.",
+        "B",
+        "Craven J et al. 2022, Sports Med 52(11):2669-2690, PMID 35708888",
+    ),
+    _proposed(
+        "readiness_v1.rpe_surprise",
+        "readiness_v1",
+        "An RPE 3 or more above expected caps the next day at EASY.",
+        "C",
+        "Inoue A et al. 2022, Sports Med Open 8:35 (meta-analysis, very low certainty)",
+    ),
+    _proposed(
+        "guardrails.long_ride_hit_gap",
+        "guardrails",
+        "No hard session the day after a long ride over 150 TSS.",
+        "C",
+        "No direct evidence; Stanley J et al. 2013, Sports Med, PMID 23912805",
+    ),
+    _proposed(
+        "guardrails.weekly_tss_cap",
+        "guardrails",
+        "Weekly TSS at most 1.15 x the 4-week mean.",
+        "C",
+        "No direct evidence; Frandsen J et al. 2025, Br J Sports Med 59(17):1203-1210, "
+        "doi:10.1136/bjsports-2024-109380 (runners: week-to-week ratio unrelated to injury)",
+    ),
+    _proposed(
+        "guardrails.single_ride_cap",
+        "guardrails",
+        "A single ride at most 1.6 x the longest of the last 6 weeks.",
+        "C",
+        "Frandsen J et al. 2025, Br J Sports Med 59(17):1203-1210, "
+        "doi:10.1136/bjsports-2024-109380 (runners: > 10 % over the 30-day longest raises risk)",
+    ),
+    _proposed(
+        "guardrails.senior_caps",
+        "guardrails",
+        "Lower ramp and hard-session caps for athletes 60+.",
+        "C",
+        "No age-specific load-cap study found; conservative design choice",
+    ),
+    _proposed(
+        "guardrails.tsb_floor",
+        "guardrails",
+        "A TSB floor (-30 / -25 / 0 by phase) keeps fatigue safe.",
+        "C",
+        "Safety net only; TSB has no individual predictive value (Marchal A et al. 2025, "
+        "Sci Rep 15:3706, doi:10.1038/s41598-025-88153-7)",
+    ),
+    _proposed(
+        "periodization_3_1.recovery_week_cut",
+        "periodization_3_1",
+        "Mid-block recovery weeks cut TSS to 0.6x, long ride 0.7x, one hard session fewer.",
+        "C",
+        "Extrapolated from taper studies (Bosquet L et al. 2007, Med Sci Sports Exerc, "
+        "PMID 17762369), which keep frequency and intensity",
+    ),
+    _proposed(
+        "eftp.cp_to_ftp",
+        "eftp",
+        "FTP = 0.97 x CP.",
+        "C",
+        "Karsten B et al. 2021, Front Physiol 11:613151, PMC7862708 (n=17)",
+    ),
+    _proposed(
+        "eftp.proposal_3pct",
+        "eftp",
+        "An estimate 3 % above FTP for 14 days justifies an FTP change proposal.",
+        "C",
+        "Lillo-Bevia JR et al. 2022, J Strength Cond Res 36(1):167-173, PMID 31714462 "
+        "(smallest detectable change about 3 %: 3 % sits at the noise edge)",
+    ),
+    _proposed(
+        "time_in_zone_tid.phase_targets",
+        "time_in_zone_tid",
+        "Phase TID targets 80/15/5, 75/15/10, 75/5/20 by time.",
+        "C",
+        "Mateo-March M et al. 2026, Biol Sport 43(4):933-940, doi:10.5114/biolsport.2026.156234 "
+        "(WorldTour time above CP 4-7 %)",
+    ),
+    _proposed(
+        "eftp.ramp_075",
+        "eftp",
+        "Ramp-test FTP = 0.75 x best 1-minute power.",
+        "C",
+        "No peer-reviewed validation found",
+    ),
+    # --- proposed with the evidence mechanism (report wording), awaiting approval
+    _proposed(
+        "ramp_rate_acwr_monotony.acwr_low",
+        "ramp_rate_acwr_monotony",
+        "ACWR < 0.8 marks a load drop worth noting outside a recovery week.",
+        "C",
+        "Gabbett TJ 2016, Br J Sports Med 50(5):273-280 (team-sport sweet spot 0.8-1.3)",
+    ),
+    # --- ride report models (docs/specs/ride-report.md); ours, no glossary page yet
+    _proposed(
+        "ride_intent_v1.model",
+        None,
+        "ride_intent_v1: time in the planned power band / counted reps judge the stimulus.",
+        "C",
+        "Ours (docs/04-analysis-engine.md, ride report models); not validated",
+    ),
+    _proposed(
+        "outdoor_context_v1.model",
+        None,
+        "outdoor_context_v1: heat, stop and coasting cut-offs mark numbers as not comparable.",
+        "C",
+        "Ours (docs/04-analysis-engine.md, ride report models); not validated",
+    ),
+    _proposed(
+        "goal_projection_v1.model",
+        None,
+        "goal_projection_v1: a Theil-Sen trend of FTP estimates projects the goal date.",
+        "C",
+        "Ours (docs/04-analysis-engine.md, ride report models); not validated",
+    ),
 )
 
 CLAIMS: dict[str, Claim] = {c.id: c for c in REGISTRY}
@@ -306,7 +483,7 @@ def is_weak(claim_id: str | None) -> bool:
     return claim_id is not None and grade(claim_id) not in VERDICT_GRADES
 
 
-def for_glossary(glossary_id: str) -> tuple[Claim, ...]:
+def for_glossary(glossary_id: str | None) -> tuple[Claim, ...]:
     """Claims documented in ``docs/glossary/<glossary_id>.md``, registry order."""
     return tuple(c for c in REGISTRY if c.glossary == glossary_id)
 

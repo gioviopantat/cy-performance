@@ -183,7 +183,7 @@ def _warnings(fit: dict[str, Any] | None, cfg: AthleteConfig | None) -> list[dic
             _warning(
                 f"ACWR {fit['acwr']:.2f} < {ACWR_LOW}：最近一週的負荷比過去一個月低"
                 "（減量週屬正常）",
-                "ramp_rate_acwr_monotony.acwr_injury",
+                "ramp_rate_acwr_monotony.acwr_low",
             )
         )
     if fit.get("ramp_rate") is not None and fit["ramp_rate"] > ramp_cap:
@@ -194,9 +194,7 @@ def _warnings(fit: dict[str, Any] | None, cfg: AthleteConfig | None) -> list[dic
             )
         )
     if fit.get("tsb") is not None and fit["tsb"] < floor:
-        out.append(
-            _warning(f"TSB {fit['tsb']:.1f} 低於下限 {floor:g}", "banister_pmc.tsb_performance")
-        )
+        out.append(_warning(f"TSB {fit['tsb']:.1f} 低於下限 {floor:g}", "guardrails.tsb_floor"))
     if fit.get("monotony") is not None and fit["monotony"] > MONOTONY_HIGH:
         out.append(
             _warning(

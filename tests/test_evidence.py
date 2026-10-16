@@ -1,7 +1,8 @@
 """Evidence grades (docs/07 §6, docs/specs/research-review.md).
 
 The registry and the glossary evidence-grade tables agree; every claim id used in code exists;
-no report warning rests only on grade-C claims; ACWR / monotony read as context, not risk.
+a verdict (explanation headline or report warning) resting on a grade-C claim is always shown
+as weak-evidence context, never as a plain verdict; ACWR / monotony read as context, not risk.
 """
 
 from __future__ import annotations
@@ -13,6 +14,8 @@ from typing import Any
 
 import pytest
 
+from cyp.analysis import readiness as rd
+from cyp.analysis.longitudinal import pdc, pmc
 from cyp.core import evidence
 from cyp.core.explain import Explanation, MethodRef
 from cyp.reports import facts as facts_mod
@@ -20,9 +23,13 @@ from cyp.reports.render import WEAK_BADGE_ZH, render
 
 ROOT = Path(__file__).resolve().parents[1]
 GLOSSARY = ROOT / "docs" / "glossary"
-ROW = re.compile(r"^\| `([\w.]+)` .+ \| \*\*([ABC])\*\* \| .+ \| (\d{4}-\d{2}-\d{2}) \|$", re.M)
-#: Glossary section heading (athlete-facing, zh-TW).
+#: Glossary section heading and the proposed-claim marker (athlete-facing, zh-TW).
 SECTION_ZH = "證據等級"
+PROPOSED_ZH = "（提議）"
+ROW = re.compile(
+    rf"^\| `([\w.]+)` .+ \| \*\*([ABC])\*\*({PROPOSED_ZH})? \| .+ \| (\d{{4}}-\d{{2}}-\d{{2}}) \|$",
+    re.M,
+)
 #: Fitness values that trip every report warning.
 HOT = {"acwr": 1.62, "ramp_rate": 7.4, "tsb": -34.0, "monotony": 2.41}
 
@@ -40,18 +47,22 @@ def test_registry_ids_unique_and_well_formed() -> None:
     ids = [c.id for c in evidence.REGISTRY]
     assert len(ids) == len(set(ids))
     for c in evidence.REGISTRY:
-        assert c.id.startswith(c.glossary + "."), c.id
-        assert c.grade in ("A", "B", "C")
+        assert c.glossary is None or c.id.startswith(c.glossary + "."), c.id
+        assert c.grade in ("A", "B", "C") and c.status in ("accepted", "proposed")
+        assert c.glossary is not None or c.status == "proposed", c.id
         assert c.citations and all(s.strip() for s in c.citations), c.id
         assert c.claim.strip() and c.reviewed <= dt.date.today()
 
 
 def test_every_glossary_file_has_a_matching_grade_table() -> None:
     files = sorted(p for p in GLOSSARY.glob("*.md") if p.name != "README.md")
-    assert {p.stem for p in files} == {c.glossary for c in evidence.REGISTRY}
+    assert {p.stem for p in files} == {c.glossary for c in evidence.REGISTRY if c.glossary}
     for p in files:
         rows = ROW.findall(_section(p.read_text(encoding="utf-8")))
-        want = [(c.id, c.grade, c.reviewed.isoformat()) for c in evidence.for_glossary(p.stem)]
+        want = [
+            (c.id, c.grade, PROPOSED_ZH if c.status == "proposed" else "", c.reviewed.isoformat())
+            for c in evidence.for_glossary(p.stem)
+        ]
         assert rows == want, f"{p.name}: evidence-grade table and core/evidence.py disagree"
 
 
@@ -67,8 +78,8 @@ def test_lookup_helpers() -> None:
 
 
 def test_every_claim_id_used_in_src_exists() -> None:
-    glossary_ids = "|".join(sorted({c.glossary for c in evidence.REGISTRY}))
-    used = re.compile(rf"""["']((?:{glossary_ids})\.[a-z][a-z0-9_]*)["']""")
+    prefixes = "|".join(sorted({c.id.split(".")[0] for c in evidence.REGISTRY}))
+    used = re.compile(rf"""["']((?:{prefixes})\.[a-z][a-z0-9_]*)["']""")
     found: set[str] = set()
     for p in (ROOT / "src" / "cyp").rglob("*"):
         if p.suffix in (".py", ".j2") and p.name != "evidence.py":
@@ -111,13 +122,59 @@ def test_explanation_headline_badged_when_claim_is_weak() -> None:
 # ----------------------------------------------------------------------------- warnings
 
 
-def test_no_warning_rests_only_on_grade_c() -> None:
+def _real_explanations() -> list[Explanation]:
+    """Explanations built by the real analysis code from synthetic inputs."""
+    day = dt.date(2026, 10, 2)
+    hist = [
+        rd.WellnessPoint(day - dt.timedelta(days=30 - i), hrv=60.0 + (i % 2), resting_hr=48)
+        for i in range(30)
+    ]
+    readiness = rd.compute_readiness(
+        rd.ReadinessInputs(day, rd.WellnessPoint(day, hrv=60.0, resting_hr=48), hist, tsb=0.0)
+    )
+    loads = {day - dt.timedelta(days=i): 60.0 for i in range(20)}
+    series = pmc.replay(pmc.PMCState(day - dt.timedelta(days=20), 40, 40), loads, day)
+    fit = pdc.fit_cp_2p({t: 270.0 + 20000.0 / t for t in (120, 180, 300, 600, 1200)})
+    assert fit is not None
+    est = {day - dt.timedelta(days=i): 278.0 for i in range(20)}
+    prop = pdc.ftp_proposal(265.0, est, as_of=day, sources=["icu_eftp"])
+    out = [
+        readiness.explanation,
+        pmc.explain_pmc(series[-1], None),
+        pdc.explain_fit(fit, pdc.compare_with_icu(fit, None), as_of=day),
+        prop.explanation,
+    ]
+    return [e for e in out if e is not None]
+
+
+def test_real_explanations_name_known_claims_and_weak_ones_are_badged() -> None:
+    expls = _real_explanations()
+    assert len(expls) == 4
+    seen = set()
+    for e in expls:
+        assert e.method is not None and e.method.claim in evidence.CLAIMS, e.key
+        seen.add(evidence.is_weak(e.method.claim))
+        md = render(
+            "daily",
+            _daily({"ftp_proposal": {"x": 1}, "ftp_proposal_explanation": e.to_json_dict()}),
+        )
+        headline = next(line for line in md.splitlines() if e.headline_zh in line)
+        # A verdict resting on a grade-C claim must never read as a plain verdict.
+        assert (WEAK_BADGE_ZH in headline) == evidence.is_weak(e.method.claim), e.key
+    assert seen == {True, False}  # both paths exercised
+
+
+def test_report_warnings_name_known_claims_and_weak_ones_are_not_verdicts() -> None:
     warnings = facts_mod._warnings(HOT, None)
     assert len(warnings) == 4
+    md = render("daily", _daily())
     for w in warnings:
         assert w["claim"] in evidence.CLAIMS
-        # A warning shown as a verdict (not weak) must rest on an A/B claim.
-        assert w["weak"] == (not evidence.verdict_allowed([w["claim"]]))
+        line = next(x for x in md.splitlines() if w["text_zh"] in x)
+        if evidence.is_weak(w["claim"]):
+            assert line.startswith(f"- {WEAK_BADGE_ZH}：") and "⚠️" not in line
+        else:
+            assert line.startswith("- ⚠️ ")
 
 
 def test_acwr_warning_no_longer_claims_injury_risk() -> None:
@@ -125,9 +182,12 @@ def test_acwr_warning_no_longer_claims_injury_risk() -> None:
     low = facts_mod._warnings({"acwr": 0.61}, None)
     assert "ACWR 1.62 > 1.3" in high[0]["text_zh"]
     assert "ACWR 0.61 < 0.8" in low[0]["text_zh"]
+    assert high[0]["claim"] == "ramp_rate_acwr_monotony.acwr_injury"
+    assert low[0]["claim"] == "ramp_rate_acwr_monotony.acwr_low"
     for w in high + low:
         assert "受傷風險上升" not in w["text_zh"] and "體能會掉" not in w["text_zh"]
         assert w["weak"]
+    assert facts_mod._warnings({"tsb": -40.0}, None)[0]["claim"] == "guardrails.tsb_floor"
     mono = facts_mod._warnings({"monotony": 2.41}, None)
     assert "單調度 2.41 > 2.0" in mono[0]["text_zh"] and mono[0]["weak"]
 

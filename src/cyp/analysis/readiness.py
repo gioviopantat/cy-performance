@@ -515,6 +515,7 @@ def _explain(
                 "weighted_sum": round(s, 4),
             },
             doc="docs/glossary/readiness_v1.md",
+            claim="readiness_v1.weights",
         ),
         confidence=confidence,
         glossary_terms=["readiness_v1", "banister_pmc", "decoupling_hr_lag"],
