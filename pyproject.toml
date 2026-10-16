@@ -20,6 +20,8 @@ dependencies = [
     "typer>=0.12",
     "structlog>=24.4",
     "python-dotenv>=1.0",
+    "matplotlib>=3.11.2",
+    "weasyprint>=70.0",
 ]
 
 [project.optional-dependencies]
@@ -40,6 +42,7 @@ dev = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
     "poethepoet>=0.48.0",
+    "pypdf>=6.21.0",
 ]
 
 [build-system]
@@ -86,3 +89,8 @@ mypy_path = "src"
 strict = true
 warn_unused_ignores = false
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# WeasyPrint ships no type information; only cyp.reports.ride_pdf imports it.
+module = ["weasyprint", "weasyprint.*"]
+ignore_missing_imports = true

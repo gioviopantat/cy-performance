@@ -1,0 +1,14 @@
+# zh-TW strings tests/test_ride_pdf.py expects in the rendered ride report (invented data).
+sections: [一句話結論, 目的達成度, 還有多遠, 外騎情境卡, 同一條坡比一比, 感受 vs 數據, 弱點帳本, 明天會怎麼排, 方法與證據]
+optional_sections: [目的達成度, 還有多遠, 外騎情境卡, 同一條坡比一比, 弱點帳本, 明天會怎麼排, 方法與證據]
+always_sections: [一句話結論, 感受 vs 數據]
+climb_name: 林口長坡
+grades: [A 級, B 級, C 級]
+weak_grade: 參考（證據弱）
+no_grade: 未分級
+minimal:
+  athlete_name: 測試騎士
+  ride_name: 晨間輕鬆騎
+  headline: 沒有排課的輕鬆騎。
+  purpose: 測試
+  climb: 無名坡

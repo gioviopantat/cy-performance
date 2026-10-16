@@ -1,0 +1,218 @@
+{#- Per-ride PDF (docs/specs/ride-report.md). Input: r = RideReport, charts = report_charts(r).
+    Every number is a RideReport field; this template only formats. -#}
+{% set VERDICT = {
+  "achieved": ("good", "✓ 達成"),
+  "partial": ("warning", "◐ 部分達成"),
+  "missed": ("critical", "✕ 未達成"),
+  "unplanned": ("", "○ 計畫外"),
+  "no_data": ("", "– 資料不足"),
+} %}
+{% macro verdict_badge(v) %}<span class="badge {{ VERDICT[v][0] }}">{{ VERDICT[v][1] }}</span>{% endmacro %}
+{% macro stat(label, value, unit="") %}
+<div class="stat"><span class="label">{{ label }}</span><span class="value">{{ value }}</span>{% if unit %}<span class="unit">{{ unit }}</span>{% endif %}</div>
+{% endmacro %}
+{% macro explain(e) %}
+{% if e %}
+<div class="explain">
+  <p><strong>為什麼</strong>　{{ e.get("headline_zh", "") }}</p>
+  {% if e.get("because") %}
+  <ul>
+    {% for b in e["because"] %}
+    <li>{{ b.get("text_zh", "") }}{% if b.get("weight") is not none %}（權重 {{ (b["weight"] * 100) | num }} %）{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if e.get("method") %}
+  <p class="note">模型 <code>{{ e["method"].get("model_id", "") }}</code>{% if e.get("confidence") %} · 信心 {{ {"high": "高", "medium": "中", "low": "低"}.get(e["confidence"], e["confidence"]) }}{% endif %}{% if e.get("key") %} · <code>cyp explain {{ e["key"] }}</code>{% endif %}</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endmacro %}
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<title>{{ r.ride.name }} · {{ r.ride.start_local.strftime("%Y-%m-%d") }}</title>
+<meta name="author" content="cy-performance">
+<meta name="generator" content="{{ r.version }}">
+<style>
+{% include "ride.css" %}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="kicker">騎乘報告 · {{ r.athlete_name }} · {{ r.ride.start_local.strftime("%Y-%m-%d") }}（{{ r.ride.start_local | weekday }}）{{ r.ride.start_local.strftime("%H:%M") }} · {{ "室內" if r.ride.indoor else "戶外" }}</div>
+  <h1>{{ r.ride.name }}</h1>
+  <div class="stats">
+    {{ stat("移動時間", r.ride.moving_min, "分") }}
+    {% if r.ride.distance_km is not none %}{{ stat("距離", r.ride.distance_km | num(".1f"), "km") }}{% endif %}
+    {% if r.ride.elev_gain_m is not none %}{{ stat("爬升", r.ride.elev_gain_m, "m") }}{% endif %}
+    {% if r.ride.np_w is not none %}{{ stat("NP", r.ride.np_w, "W") }}{% endif %}
+    {% if r.ride.if_ is not none %}{{ stat("IF", r.ride.if_ | num(".2f")) }}{% endif %}
+    {% if r.ride.tss is not none %}{{ stat("TSS", r.ride.tss, r.ride.tss_source or "") }}{% endif %}
+  </div>
+</header>
+
+{# 1 #}
+<section class="headline">
+  <h2><span class="no">1</span>一句話結論 {{ verdict_badge(r.headline.verdict) }}</h2>
+  <p class="lead">{{ r.headline.text_zh }}</p>
+</section>
+
+{# 2 #}
+{% if r.intent %}
+{% set i = r.intent %}
+<section class="intent">
+  <h2><span class="no">2</span>目的達成度 {{ verdict_badge(i.verdict) }}</h2>
+  <p><strong>{{ i.planned_name }}</strong>　{{ i.purpose_zh }}</p>
+  <div class="figures">
+    {{ stat("目標區間 " ~ i.target_zone, i.achieved_min | num(".1f") ~ " / " ~ i.target_min | num(".0f"), "分鐘") }}
+    {% if i.reps_planned is not none %}{{ stat("有效組數", (i.reps_counted if i.reps_counted is not none else "–") ~ " / " ~ i.reps_planned, "組") }}{% endif %}
+    {% if i.load_ratio is not none %}{{ stat("負荷比（實際／計畫）", i.load_ratio | num(".2f")) }}{% endif %}
+    {% if i.load_planned is not none and i.load_actual is not none %}{{ stat("負荷", i.load_planned | num ~ " → " ~ i.load_actual | num, "TSS") }}{% endif %}
+  </div>
+  <div class="figure"><img src="{{ charts.intent }}" alt="功率時間軸：目標區間、計入與排除的區段"></div>
+  {% if i.excused %}
+  <p class="note">排除不計：{% for s in i.excused %}{{ s.label_zh or "干擾" }} {{ (s.start_s / 60) | num }}–{{ (s.end_s / 60) | num }} 分{% if not loop.last %}、{% endif %}{% endfor %}</p>
+  {% endif %}
+  {{ explain(i.explanation) }}
+</section>
+{% endif %}
+
+{# 3 #}
+{% if r.goal %}
+{% set g = r.goal %}
+<section class="goal">
+  <h2><span class="no">3</span>離 {{ g.target_w | num }}W 還有多遠
+    {% if g.on_track is true %}<span class="badge good">✓ 進度正常</span>{% elif g.on_track is false %}<span class="badge warning">△ 落後目標日</span>{% endif %}</h2>
+  <div class="figures">
+    {{ stat("現在 FTP（" ~ g.current_source ~ "）", g.current_ftp_w | num, "W") }}
+    {% if g.this_ride_evidence_w is not none %}{{ stat("本次騎乘證據", g.this_ride_evidence_w | num, "W") }}{% endif %}
+    {{ stat("賽季目標", g.target_w | num ~ " W", "· " ~ g.target_date.isoformat()) }}
+    {% if g.projected_date %}{{ stat("預估達成日", g.projected_date.isoformat()) }}{% endif %}
+  </div>
+  {% if g.projected_shift_days is not none %}
+  <p>這次騎乘讓預估達成日{% if g.projected_shift_days < 0 %}<strong>提前 {{ g.projected_shift_days | abs }} 天</strong>{% elif g.projected_shift_days > 0 %}<strong>延後 {{ g.projected_shift_days }} 天</strong>{% else %}維持不變{% endif %}。</p>
+  {% endif %}
+  <div class="figure"><img src="{{ charts.goal }}" alt="FTP 歷史、賽季目標與預估軌跡"></div>
+  {{ explain(g.explanation) }}
+</section>
+{% endif %}
+
+{# 4 #}
+{% if r.outdoor %}
+{% set o = r.outdoor %}
+<section class="outdoor">
+  <h2><span class="no">4</span>外騎情境卡</h2>
+  <div class="figures">
+    {{ stat("停車", o.stops_n ~ " 次 · " ~ o.stopped_min | num(".1f"), "分") }}
+    {% if o.coasting_pct is not none %}{{ stat("滑行", o.coasting_pct | pct) }}{% endif %}
+    {% if o.temp_avg_c is not none %}{{ stat("平均氣溫", o.temp_avg_c | num(".1f"), "°C") }}{% endif %}
+    {% if o.temp_max_c is not none %}{{ stat("最高氣溫", o.temp_max_c | num(".1f"), "°C") }}{% endif %}
+  </div>
+  <div class="figure"><img src="{{ charts.outdoor }}" alt="停車與氣溫時間軸"></div>
+  {% if o.caveats_zh %}
+  <h3>今天哪些數字要打折</h3>
+  <ul>{% for c in o.caveats_zh %}<li>{{ c }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endif %}
+
+{# 5 #}
+{% if r.climbs %}
+<section class="climbs">
+  <h2><span class="no">5</span>同一條坡比一比</h2>
+  {% for c in r.climbs %}
+  <div class="keep">
+  <h3>{{ c.name }}{% if c.rank is not none and c.of_n is not none %}　<span class="badge">第 {{ c.rank }} / {{ c.of_n }} 次</span>{% endif %}</h3>
+  {% if c.note_zh %}<p>{{ c.note_zh }}</p>{% endif %}
+  <div class="figure"><img src="{{ charts.climbs[loop.index0] }}" alt="{{ c.name }} 歷次功率：點大小為已騎 kJ，顏色為氣溫"></div>
+  <table>
+    <thead><tr><th>日期</th><th class="n">功率 W</th><th class="n">W/kg</th><th class="n">時間（分:秒）</th><th class="n">已騎 kJ</th><th class="n">氣溫 °C</th></tr></thead>
+    <tbody>
+    {% for e in [c.this] + c.history %}
+    <tr class="{{ 'this' if loop.first }}"><td>{{ e.day.isoformat() }}{% if loop.first %}（今天）{% endif %}</td><td class="n">{{ e.power_w | num }}</td><td class="n">{{ e.w_kg | num(".2f") }}</td><td class="n">{{ e.time_s | mmss }}</td><td class="n">{{ e.kj_before | num }}</td><td class="n">{{ e.temp_c | num(".1f") }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{# 6 #}
+{% set f = r.feel %}
+<section class="feel">
+  <h2><span class="no">6</span>感受 vs 數據</h2>
+  {% if f.rated %}
+  <div class="figures">
+    {% if f.rpe is not none %}{{ stat("你的 RPE", f.rpe | num(".0f")) }}{% endif %}
+    {% if f.expected_rpe is not none %}{{ stat("這類騎乘預期", f.expected_rpe | num(".0f")) }}{% endif %}
+    {% if f.gap is not none %}{{ stat("差距", f.gap | signed) }}{% endif %}
+    {% if f.feel is not none %}{{ stat("感受（1–5）", f.feel) }}{% endif %}
+  </div>
+  {% if f.text_zh %}<p>{{ f.text_zh }}</p>{% endif %}
+  {% else %}
+  <p>{{ f.text_zh or "還沒有替這次騎乘評分，所以這一段先空著。" }}</p>
+  {% if f.rate_url %}<p><a href="{{ f.rate_url }}">去評分 → {{ f.rate_url }}</a></p>{% endif %}
+  {% endif %}
+</section>
+
+{# 7 #}
+{% if r.limiters %}
+<section class="limiters">
+  <h2><span class="no">7</span>弱點帳本</h2>
+  {% if r.limiters.lines %}
+  <table>
+    <thead><tr><th>弱點</th><th class="n">這次訓練（分）</th><th class="n">本週累積（分）</th></tr></thead>
+    <tbody>
+    {% for l in r.limiters.lines %}
+    <tr><td>{{ l.name_zh }}</td><td class="n">{{ l.trained_min | num(".1f") }}</td><td class="n">{{ l.week_min | num(".1f") }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% if r.limiters.text_zh %}<p>{{ r.limiters.text_zh }}</p>{% endif %}
+</section>
+{% endif %}
+
+{# 8 #}
+{% if r.tomorrow %}
+{% set t = r.tomorrow %}
+<section class="tomorrow keep">
+  <h2><span class="no">8</span>明天會怎麼排 {% if t.changed %}<span class="badge warning">△ 已調整</span>{% else %}<span class="badge">○ 不變</span>{% endif %}</h2>
+  <p class="lead">{{ t.day.isoformat() }}（{{ t.day | weekday }}）　{% if t.changed and t.before_name %}{{ t.before_name }}<span class="arrow">→</span>{% endif %}{{ t.after_name or "休息" }}</p>
+  {% if t.reasons_zh %}<ul>{% for x in t.reasons_zh %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+  <p class="note">這是預覽，還沒寫進行事曆；明天 05:30 的自動排程會做正式決定。</p>
+</section>
+{% endif %}
+
+{# 9 #}
+{% if r.methods %}
+<section class="methods keep">
+  <h2><span class="no">9</span>方法與證據</h2>
+  <table>
+    <thead><tr><th>模型</th><th>主張</th><th>證據等級</th><th>出處</th><th>文件</th></tr></thead>
+    <tbody>
+    {% for m in r.methods %}
+    <tr>
+      <td><code>{{ m.model_id }}</code></td>
+      <td>{{ m.claim_id or "–" }}</td>
+      <td>{% if m.grade %}<span class="badge grade">{{ m.grade }} 級</span>{% if m.grade == "C" %} <span class="note">參考（證據弱）</span>{% endif %}{% else %}<span class="note">未分級</span>{% endif %}</td>
+      <td>{{ m.citation or "–" }}</td>
+      <td><code>{{ m.doc }}</code></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">證據等級（docs/specs/research-review.md）：A 統合分析或多項對照研究一致，可單獨支撐結論 · B 群體層級有支持、個人誤差不小 · C 經驗法則、專有公式或單一小型研究，只當參考。</p>
+</section>
+{% endif %}
+
+<footer class="colophon">
+  cy-performance · {{ r.version }} · 產生於 {{ r.generated_at.strftime("%Y-%m-%d %H:%M") }} · 活動 {{ r.ride.activity_id }} · profile {{ r.profile }}<br>
+  所有數字都來自同一份 facts（旁邊的 .json）；文字敘述不會自己計算數字。
+</footer>
+</body>
+</html>
