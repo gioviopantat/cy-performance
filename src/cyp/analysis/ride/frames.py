@@ -75,6 +75,15 @@ def rolling_mean(x: FloatArray, window: int) -> FloatArray:
     return out
 
 
+def runs(mask: BoolArray) -> list[tuple[int, int]]:
+    """``[start, end)`` index runs where ``mask`` is True."""
+    if mask.size == 0:
+        return []
+    padded = np.concatenate(([False], mask, [False])).astype(np.int8)
+    edges = np.flatnonzero(np.diff(padded))
+    return [(int(s), int(e)) for s, e in zip(edges[::2], edges[1::2], strict=True)]
+
+
 def smooth_altitude(alt: FloatArray, window: int = ALT_SMOOTH_WINDOW) -> FloatArray:
     """Gap-fill then rolling-median + rolling-mean an altitude series (GPS/baro noise reject)."""
     if alt.size == 0:

@@ -23,7 +23,8 @@ from sqlalchemy.orm import Session
 
 from cyp.core.errors import NotFoundError
 from cyp.services.context import AppContext
-from cyp.store.models import Activity, ActivityMetrics, IcuEvent, PlannedWorkout, WellnessDaily
+from cyp.store.models import Activity, ActivityMetrics, IcuEvent, WellnessDaily
+from cyp.store.repo.planned import PlannedWorkoutRepo
 
 
 @dataclass(frozen=True)
@@ -115,15 +116,7 @@ def _planned(s: Session, day: dt.date) -> tuple[str, float | None] | None:
     if events:
         e = events[0]
         return (e.name or "", e.icu_training_load)
-    p = s.scalars(
-        select(PlannedWorkout)
-        .where(
-            PlannedWorkout.date_local == day,
-            PlannedWorkout.status.not_in(("cancelled", "superseded")),
-        )
-        .order_by(PlannedWorkout.slot)
-        .limit(1)
-    ).first()
+    p = PlannedWorkoutRepo(s).first_live_on(day)
     return (p.name, p.target_tss) if p is not None else None
 
 
