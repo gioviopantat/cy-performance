@@ -75,3 +75,21 @@ def test_different_workout_stored_is_a_change_with_a_reason(ctx: AppContext) -> 
 
 def test_day_outside_the_horizon(ctx: AppContext) -> None:
     assert tomorrow_preview(ctx, TODAY + dt.timedelta(days=400)) is None
+
+
+def test_preview_reasons_never_say_yesterday(ctx: AppContext) -> None:
+    import json
+    from pathlib import Path
+
+    forbidden = json.loads(
+        (
+            Path(__file__).resolve().parents[1] / "fixtures" / "ride_report.tomorrow_forbidden.json"
+        ).read_text("utf-8")
+    )["phrases"]
+    pick = next(d for d in preview(ctx).days if d.date == TOMORROW)
+    other = "recovery_spin" if pick.template_id != "recovery_spin" else "z2_endurance_60"
+    _store(ctx, other, {"total_min": 45} if other == "recovery_spin" else {}, "stored")
+    t = tomorrow_preview(ctx, TOMORROW)
+    assert t is not None
+    for reason in t.reasons_zh:
+        assert not any(p in reason for p in forbidden), reason

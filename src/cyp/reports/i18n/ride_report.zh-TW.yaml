@@ -129,7 +129,8 @@ limiter_names:
   aerobic_volume: "有氧基礎量"
 
 # Planner explanations are written for the day they plan ("today"); in the per-ride report that
-# day is tomorrow, so the words are shifted one day (applied in one pass).
+# day is tomorrow and the ride just done is "today's ride", so the words are shifted one day
+# (applied in one pass).
 tomorrow_shift:
-  "昨天": "今天"
+  "昨天": "今天這趟"
   "今天": "明天"

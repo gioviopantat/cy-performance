@@ -333,3 +333,19 @@ def test_planner_sentences_are_shifted_to_tomorrow() -> None:
     words = texts()["tomorrow_shift"]
     yesterday, today = list(words)
     assert shift_to_tomorrow(f"{yesterday} 1 {today} 2") == f"{words[yesterday]} 1 {words[today]} 2"
+
+
+FORBIDDEN = json.loads((FIXTURES / "ride_report.tomorrow_forbidden.json").read_text("utf-8"))
+
+
+def test_tomorrow_reasons_read_for_tomorrow() -> None:
+    """Section 8 speaks about tomorrow; the ride just done is today's ride, never yesterday."""
+    golden = RideReport.model_validate_json(GOLDEN.read_text(encoding="utf-8"))
+    assert golden.tomorrow is not None and golden.tomorrow.reasons_zh
+    for reason in golden.tomorrow.reasons_zh:
+        assert not any(p in reason for p in FORBIDDEN["phrases"]), reason
+    words = texts()["tomorrow_shift"]
+    yesterday, today = list(words)
+    planner = f"{yesterday} 132 %, {today} -> x"
+    shifted = shift_to_tomorrow(planner)
+    assert not any(p in shifted for p in FORBIDDEN["phrases"]), shifted
