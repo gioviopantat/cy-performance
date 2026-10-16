@@ -1,7 +1,7 @@
 # Chart text for the per-ride PDF (cyp.reports.charts). Placeholders use str.format.
 power: 功率
 target_band: "目標區間 {low}–{high} W"
-ceiling: "上限 {high} W"
+ceiling: "區間上限 {high} W"
 counted: 計入刺激
 excused: 外騎干擾（不計）
 no_power: 沒有功率資料
