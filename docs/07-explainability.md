@@ -92,8 +92,9 @@ failing rep is **C**.
   headline when that claim is grade C. Unknown ids raise. Set today on readiness
   (`readiness_v1.weights`, C), the ride verdict (`decoupling_hr_lag.ride_status_rules`, C), PMC
   (`banister_pmc.load_history`, B), CP fits (`cp_wprime.cp_boundary`, A), the FTP proposal
-  (`eftp.proposal_3pct`, C) and the durability trend
-  (`decoupling_hr_lag.durability_kj_buckets`, B). Planner / guardrail explanations carry none.
+  (`eftp.proposal_3pct`, C), the durability trend
+  (`decoupling_hr_lag.durability_kj_buckets`, B) and the weekly TID vs phase target
+  (`time_in_zone_tid.phase_targets`, C). Planner / guardrail explanations carry none.
 - **Verdict rule:** a verdict or warning may rest only on A/B claims
   (`evidence.verdict_allowed`). Report warnings carry their `claim`; a grade-C warning is shown
   as 參考（證據弱） context instead of ⚠️, with its numbers kept. Today ACWR, monotony, the CTL

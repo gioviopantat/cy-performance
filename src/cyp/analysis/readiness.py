@@ -1,4 +1,4 @@
-"""Daily readiness v1: hard rules, then a weighted z-score (docs/04 §4, glossary readiness_v1).
+"""Daily readiness v2: hard rules, then a weighted z-score (docs/04 §4, glossary readiness_v1).
 
 This module is the authority; the glossary page mirrors it.
 
@@ -6,25 +6,37 @@ This module is the authority; the glossary page mirrors it.
 
 1. Sick / injured: an icu calendar event of category ``SICK`` / ``INJURED`` covering the day,
    or wellness ``injury`` ≥ :data:`INJURY_REST_MIN` → ``REST`` (status ``SICK``).
-2. HRV z < −1.5 **and** resting-HR z > +1.5 → ``REST`` (status ``OVERREACHED``).
-3. Yesterday's ride status ``BLUNTED`` → at most ``EASY``.
+2. HRV component ≤ :data:`HRV_REST_COMPONENT` (the 7-day mean ≥ 1.25 SD below baseline)
+   **and** resting-HR z > +1.5 → ``REST`` (status ``OVERREACHED``).
+3. Yesterday's post-ride feel 5/5 or RPE ≥ :data:`RPE_SURPRISE` above the session's intent
+   (flag ``readiness.ride_feel``) → at most ``EASY``.
 4. Yesterday's load > 130 % of its plan → at most ``EASY``.
 
+**HRV (v2, ADR-0013)**: the mean of ln(rMSSD) over the :data:`HRV_WINDOW_DAYS` days ending
+today (today included, missing nights skipped, ≥ :data:`MIN_HRV_WINDOW_N` nights required,
+Plews 2014) is compared with the daily ln(rMSSD) values of the baseline window:
+``z7 = (mean7 − mean_base) / sd_base``. Inside ±:data:`HRV_SWC_SD` SD (the smallest worthwhile
+change band of the HRV-guided trials) the component is 0; outside it each further 0.5 SD is
+one unit: ``hrv = sign(z7)·(|z7| − 0.5)/0.5``, clipped ±2. v1 used the single-day z.
+
 **Score**: each available component is a direction-normalised z (positive = good), clipped to
-±2; ``S = Σ wᵢ·zᵢ / Σ wᵢ`` over *present* components (missing → dropped, weights
-renormalised); ``score = clamp(50 + 25·S, 0, 100)``.
+±2; ``S = Σ wᵢ·zᵢ / max(Σ wᵢ, MIN_TOTAL_WEIGHT)`` over *present* components (missing →
+dropped, weights renormalised, but when the present weights sum to less than
+:data:`MIN_TOTAL_WEIGHT` the shortfall counts as a neutral 0, ADR-0016);
+``score = clamp(50 + 25·S, 0, 100)``.
 
 | component | z | weight |
 |-----------|---|--------|
-| ``hrv`` | z of ln(rMSSD) vs trailing baseline | 0.30 |
+| ``hrv`` | 7-day ln(rMSSD) mean vs baseline, ±0.5 SD dead band (above) | 0.30 |
 | ``rhr`` | −z of resting HR | 0.15 |
 | ``sleep`` | mean of z(sleep hours), z(sleep score) | 0.20 |
 | ``tsb`` | piecewise: −30 → −1, 0 → 0, +10 → +1 | 0.15 |
-| ``ride`` | mean of yesterday's decoupling / load-vs-plan / HR-lag signals | 0.20 |
+| ``ride`` | mean of yesterday's load-vs-plan / feel / RPE signals | 0.20 |
 | ``subjective`` | −mean z of soreness, fatigue, stress, mood (icu 1–4, 1 = best) | 0.20 |
 
 Baselines: the :data:`BASELINE_DAYS` days before the day (the day itself excluded); a component
-needs ≥ :data:`MIN_BASELINE_N` baseline values and a non-zero sd.
+needs ≥ :data:`MIN_BASELINE_N` baseline values and a non-zero sd. Yesterday's decoupling and HR
+lag are not inputs (v2, ADR-0012): they describe durability, not tomorrow's readiness.
 
 **Verdict**: ≥ 65 → ``UPGRADE`` if TSB > −10 and yesterday was not a hard day, else
 ``AS_PLANNED``; 45–64 → ``AS_PLANNED``; 30–44 → ``EASY``; < 30 → ``REST``. Then rule caps.
@@ -42,11 +54,23 @@ from typing import Any, Literal
 from cyp.core.explain import Explanation, MethodRef, Reason
 from cyp.core.load import Readiness, ReadinessStatus, Recommendation
 
-ALGO_VERSION = "readiness_v1"
+ALGO_VERSION = "readiness_v2"
 #: Same algorithm, with post-ride RPE / feel among the inputs (flag ``readiness.ride_feel``).
-ALGO_VERSION_FEEL = "readiness_v1.1"
+ALGO_VERSION_FEEL = "readiness_v2.1"
 BASELINE_DAYS = 60
 MIN_BASELINE_N = 14
+#: HRV is read as the rolling mean of ln(rMSSD) over this many days (Plews 2013).
+HRV_WINDOW_DAYS = 7
+#: Valid nights needed inside the window (Plews 2014: three per week suffice).
+MIN_HRV_WINDOW_N = 3
+#: Half-width of the normal band, in baseline SDs (Javaloyes 2019, Vesterinen 2016).
+HRV_SWC_SD = 0.5
+#: Rule 2 fires at or below this HRV component (= the 7-day mean 1.25 SD under baseline).
+HRV_REST_COMPONENT = -1.5
+#: Below this total weight of present components the rest counts as neutral (ADR-0016), so a
+#: day with only TSB (0.15) is not scored as if TSB were the whole picture.
+MIN_TOTAL_WEIGHT = 0.5
+RHR_REST_Z = 1.5
 Z_CLIP = 2.0
 INJURY_REST_MIN = 3
 WEIGHTS: dict[str, float] = {
@@ -109,11 +133,7 @@ class WellnessPoint:
 class YesterdayRide:
     """Yesterday's training response (aggregated over the day's rides)."""
 
-    status: str | None = None
     classification: str | None = None
-    decoupling_pct: float | None = None
-    decoupling_reliable: bool = False
-    hr_lag_s: float | None = None
     load: float | None = None
     planned_load: float | None = None
     #: Post-ride RPE 1–10 and feel 1 (strong) … 5 (weak), from intervals.icu or the web UI.
@@ -192,17 +212,9 @@ def ride_component(y: YesterdayRide | None) -> tuple[float | None, dict[str, flo
     if y is None:
         return None, {}
     parts: dict[str, float] = {}
-    if y.decoupling_pct is not None and y.decoupling_reliable:
-        # ≤ 5 % is normal aerobic drift; every 3 % beyond costs one "z".
-        parts["decoupling"] = clip(-max(y.decoupling_pct - 5.0, 0.0) / 3.0)
     if y.load is not None and y.planned_load:
         ratio = y.load / y.planned_load
         parts["load_vs_plan"] = clip(-max(ratio - 1.1, 0.0) / 0.2)
-    if y.hr_lag_s is not None:
-        # Ride analysis calls ≤ 45 s fresh and ≥ 90 s BLUNTED; −1 at the BLUNTED line.
-        parts["hr_lag"] = clip(-max(y.hr_lag_s - 45.0, 0.0) / 45.0)
-    if y.status == "BLUNTED":
-        parts["blunted"] = -1.0
     if y.feel is not None:
         # icu feel: 1 strong … 3 normal … 5 weak -> +1 … 0 … −1.
         parts["feel"] = clip((3 - y.feel) / 2.0)
@@ -213,6 +225,51 @@ def ride_component(y: YesterdayRide | None) -> tuple[float | None, dict[str, flo
     if not parts:
         return None, {}
     return sum(parts.values()) / len(parts), parts
+
+
+@dataclass
+class HrvWindow:
+    """The 7-day ln(rMSSD) mean against the baseline (see the module docstring)."""
+
+    z7: float
+    mean7_ln: float
+    n_days: int
+    baseline_ln: float
+    baseline_sd: float
+
+    @property
+    def component(self) -> float:
+        """0 inside ±:data:`HRV_SWC_SD`; one unit per further 0.5 SD outside, clipped ±2."""
+        excess = max(abs(self.z7) - HRV_SWC_SD, 0.0) / 0.5
+        return clip(math.copysign(excess, self.z7))
+
+    @property
+    def band(self) -> Literal["below", "within", "above"]:
+        """Where the 7-day mean sits relative to the ±0.5 SD band."""
+        if self.z7 < -HRV_SWC_SD:
+            return "below"
+        return "above" if self.z7 > HRV_SWC_SD else "within"
+
+
+def _ln(v: float | None) -> float | None:
+    return math.log(v) if v is not None and v > 0 else None
+
+
+def hrv_window(
+    day: dt.date, today: float | None, history: Sequence[WellnessPoint]
+) -> HrvWindow | None:
+    """7-day ln(rMSSD) mean vs the history's daily values; ``None`` when either is too thin."""
+    lo = day - dt.timedelta(days=HRV_WINDOW_DAYS - 1)
+    window = [_ln(h.hrv) for h in history if lo <= h.date < day] + [_ln(today)]
+    vals = [v for v in window if v is not None]
+    base = [v for v in (_ln(h.hrv) for h in history) if v is not None]
+    if len(vals) < MIN_HRV_WINDOW_N or len(base) < MIN_BASELINE_N:
+        return None
+    sd = statistics.pstdev(base)
+    if sd <= 1e-9:
+        return None
+    mean7, mean_base = statistics.fmean(vals), statistics.fmean(base)
+    return HrvWindow((mean7 - mean_base) / sd, mean7, len(vals), mean_base, sd)
 
 
 @dataclass
@@ -232,13 +289,25 @@ def components(inp: ReadinessInputs) -> tuple[list[Component], dict[str, float |
     out: list[Component] = []
     zs: dict[str, float | None] = {}
 
-    def ln(v: float | None) -> float | None:
-        return math.log(v) if v is not None and v > 0 else None
-
-    z_hrv = zscore(ln(t.hrv), [ln(h.hrv) for h in hist])
-    zs["hrv"] = z_hrv
-    if z_hrv is not None:
-        out.append(Component("hrv", clip(z_hrv), WEIGHTS["hrv"], {"hrv": t.hrv, "raw_z": z_hrv}))
+    hw = hrv_window(inp.date, t.hrv, hist)
+    zs["hrv"] = hw.component if hw is not None else None
+    if hw is not None:
+        out.append(
+            Component(
+                "hrv",
+                hw.component,
+                WEIGHTS["hrv"],
+                {
+                    "hrv": t.hrv,
+                    "raw_z": hw.z7,
+                    "mean7_ln": hw.mean7_ln,
+                    "n_days": hw.n_days,
+                    "baseline_ln": hw.baseline_ln,
+                    "baseline_sd": hw.baseline_sd,
+                    "band": hw.band,
+                },
+            )
+        )
     z_rhr = zscore(t.resting_hr, [h.resting_hr for h in hist])
     zs["rhr"] = z_rhr
     if z_rhr is not None:
@@ -302,14 +371,15 @@ def _cap(rec: Recommendation, cap: Recommendation) -> Recommendation:
 
 
 def aggregate(comps: Sequence[Component]) -> tuple[float, float]:
-    """``(S, score)``: renormalised weighted mean of the present components and its 0–100 map.
+    """``(S, score)``: weighted mean of the present components and its 0–100 map.
 
-    No components -> ``(0, 50)`` (neutral, confidence low).
+    The divisor is at least :data:`MIN_TOTAL_WEIGHT`: missing weight beyond what the present
+    components cover is shrunk to a neutral 0. No components -> ``(0, 50)``.
     """
     total_w = sum(c.weight for c in comps)
     if total_w <= 0:
         return 0.0, 50.0
-    s = sum(c.weight * c.z for c in comps) / total_w
+    s = sum(c.weight * c.z for c in comps) / max(total_w, MIN_TOTAL_WEIGHT)
     return s, max(0.0, min(100.0, 50.0 + 25.0 * s))
 
 
@@ -357,28 +427,20 @@ def compute_readiness(inp: ReadinessInputs) -> Readiness:
     elif (
         (hz := zs.get("hrv")) is not None
         and (rz := zs.get("rhr")) is not None
-        and (hz < -1.5 and rz > 1.5)
+        and (hz <= HRV_REST_COMPONENT and rz > RHR_REST_Z)
     ):
         rec, status = "REST", "OVERREACHED"
+        z7 = next(c.raw["raw_z"] for c in comps if c.name == "hrv")
         rules.append(
             Reason(
                 text_zh=(
-                    f"HRV 低於基準 {abs(hz):.1f} 個標準差且安靜心率高 {rz:.1f} 個標準差 → 休息"
+                    f"HRV 7 日平均低於基準 {abs(z7):.1f} 個標準差，"
+                    f"且安靜心率高 {rz:.1f} 個標準差 → 休息"
                 ),
-                evidence={"hrv_z": round(hz, 2), "rhr_z": round(rz, 2)},
+                evidence={"hrv_z7": round(z7, 2), "rhr_z": round(rz, 2)},
             )
         )
     else:
-        if y and y.status == "BLUNTED":
-            if _ORDER.index(rec) > _ORDER.index("EASY"):
-                rec = "EASY"
-            status = "BLUNTED"
-            rules.append(
-                Reason(
-                    text_zh="昨天騎乘判定心率鈍化（BLUNTED）→ 今天最多輕鬆騎",
-                    evidence={"yesterday_status": "BLUNTED"},
-                )
-            )
         surprise = y.rpe - expected_rpe(y) if y and y.rpe is not None else None
         rpe_hit = surprise is not None and surprise >= RPE_SURPRISE
         if y and ((y.feel is not None and y.feel >= FEEL_WEAK) or rpe_hit):
@@ -451,19 +513,21 @@ def _component_text(c: Component) -> str:
     """One readable line per component; ``c.z`` is already direction-normalised (+ = good)."""
     effect = "有利" if c.z > 0.05 else "不利" if c.z < -0.05 else "中性"
     raw_z = c.raw.get("raw_z")
-    if c.name in {"hrv", "rhr", "sleep"} and isinstance(raw_z, float | int):
+    if c.name == "hrv" and isinstance(raw_z, float | int):
+        band = {"below": "低於", "within": "在", "above": "高於"}[c.raw.get("band", "within")]
+        side = "高" if raw_z >= 0 else "低"
+        return (
+            f"HRV 7 日平均（{c.raw.get('n_days')} 晚）比你的基準{side} {abs(raw_z):.1f} 個標準差，"
+            f"{band}正常範圍（±{HRV_SWC_SD}）（{effect}）"
+        )
+    if c.name in {"rhr", "sleep"} and isinstance(raw_z, float | int):
         side = "高" if raw_z >= 0 else "低"
         return f"{COMPONENT_ZH[c.name]}比你的基準{side} {abs(raw_z):.1f} 個標準差（{effect}）"
     if c.name == "tsb":
         return f"進入今天的 TSB {c.raw.get('tsb'):+.1f}，換算 {c.z:+.2f}（{effect}）"
     if c.name == "ride":
         parts = c.raw.get("parts") or {}
-        names = {
-            "decoupling": "解耦",
-            "load_vs_plan": "負荷對計畫",
-            "hr_lag": "心率延遲",
-            "blunted": "鈍化",
-        }
+        names = {"load_vs_plan": "負荷對計畫", "feel": "騎完感覺", "rpe": "RPE"}
         detail = "、".join(f"{names.get(k, k)} {v:+.1f}" for k, v in parts.items())
         return f"昨天騎乘反應 {c.z:+.2f}（{detail}；{effect}）"
     return f"{COMPONENT_ZH[c.name]} {c.z:+.2f}（主觀分數相對基準；{effect}）"
@@ -480,8 +544,9 @@ def _explain(
     rules: list[Reason],
 ) -> Explanation:
     because: list[Reason] = list(rules)
+    divisor = max(total_w, MIN_TOTAL_WEIGHT)
     for c in sorted(comps, key=lambda c: -abs(c.weight * c.z)):
-        share = c.weight / total_w if total_w else 0.0
+        share = c.weight / divisor if total_w else 0.0
         because.append(
             Reason(
                 text_zh=_component_text(c),
@@ -495,6 +560,22 @@ def _explain(
             Reason(
                 text_zh="缺少資料、權重已重新分配：" + "、".join(missing),
                 evidence={"missing": missing},
+            )
+        )
+    if 0 < total_w < MIN_TOTAL_WEIGHT:
+        neutral = 1.0 - total_w / MIN_TOTAL_WEIGHT
+        because.append(
+            Reason(
+                text_zh=(
+                    f"有資料的輸入權重只有 {total_w:.2f}（< {MIN_TOTAL_WEIGHT}），"
+                    f"不足的 {neutral * 100:.0f} % 當成中性 0，避免單一輸入決定今天"
+                ),
+                evidence={
+                    "present_weight": round(total_w, 2),
+                    "min_total_weight": MIN_TOTAL_WEIGHT,
+                    "neutral_share_pct": round(neutral * 100),
+                },
+                weight=round(neutral, 3),
             )
         )
     n_obj = sum(1 for c in comps if c.name in {"hrv", "rhr", "sleep"})
@@ -512,13 +593,17 @@ def _explain(
                 "weights": WEIGHTS,
                 "baseline_days": BASELINE_DAYS,
                 "min_baseline_n": MIN_BASELINE_N,
+                "min_total_weight": MIN_TOTAL_WEIGHT,
+                "hrv_window_days": HRV_WINDOW_DAYS,
+                "min_hrv_window_n": MIN_HRV_WINDOW_N,
+                "hrv_swc_sd": HRV_SWC_SD,
                 "weighted_sum": round(s, 4),
             },
             doc="docs/glossary/readiness_v1.md",
             claim="readiness_v1.weights",
         ),
         confidence=confidence,
-        glossary_terms=["readiness_v1", "banister_pmc", "decoupling_hr_lag"],
+        glossary_terms=["readiness_v1", "banister_pmc"],
     )
 
 

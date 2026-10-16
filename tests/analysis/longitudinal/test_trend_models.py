@@ -88,6 +88,66 @@ def test_weekly_tid_and_polarization() -> None:
     assert e.key == "tid.2026-09-14" and "base 期目標" in e.because[-1].text_zh
 
 
+def test_tid_counts_sessions_for_targets() -> None:
+    """ADR-0014: targets compare session fractions; time fractions stay as reference."""
+    mon = dt.date(2026, 9, 14)
+    vo2 = {"Z1": 900, "Z2": 2400, "Z3": 300, "Z4": 300, "Z5": 960}  # 4x4 min: 20 % of time
+    easy = {"Z1": 600, "Z2": 6600}
+    hilly = {"Z2": 9000, "Z3": 600, "Z5": 700}  # 11+ min Z5+ from climb spikes
+    rides = [
+        tid.RideTiz(mon, vo2, planned_intent="vo2"),
+        tid.RideTiz(mon + dt.timedelta(days=1), easy, planned_intent="endurance"),
+        tid.RideTiz(mon + dt.timedelta(days=2), easy),
+        tid.RideTiz(mon + dt.timedelta(days=3), easy, planned_intent="recovery"),
+        tid.RideTiz(mon + dt.timedelta(days=5), hilly, z5_bouts=1),
+        tid.RideTiz(mon + dt.timedelta(days=6), hilly, z5_bouts=4),
+    ]
+    w = tid.weekly_tid(rides)[0]
+    assert (w.low_n, w.mid_n, w.high_n) == (4, 0, 2)
+    assert w.session_fractions() == pytest.approx((4 / 6, 0.0, 2 / 6))
+    assert w.fractions()[2] < 0.1  # by time the same week is under 10 % high
+    e = tid.explain_week(w, "threshold")
+    assert e.because[0].evidence["high_n"] == 2
+    assert e.because[-1].evidence["high_delta_pp"] == pytest.approx(100 / 3 - 20, abs=0.1)
+    assert e.method is not None and e.method.claim == "time_in_zone_tid.phase_targets"
+
+
+@pytest.mark.parametrize(
+    ("intent", "three", "bouts", "zone"),
+    [
+        ("endurance", {"high": 900.0}, 5, "low"),  # the plan wins over what was ridden
+        ("sweetspot", {}, None, "mid"),
+        ("threshold", {}, None, "high"),
+        ("anaerobic", {}, None, "high"),
+        ("opener", {}, None, "low"),
+        (None, {"high": 600.0}, 3, "high"),
+        (None, {"high": 900.0}, 2, "low"),  # scattered spikes, not sustained bouts
+        (None, {"high": 900.0, "mid": 1200.0}, None, "mid"),  # no power: bouts unknown
+        (None, {"high": 599.0, "mid": 1200.0}, 5, "mid"),
+        (None, {"high": 300.0, "mid": 600.0}, 0, "low"),
+    ],
+)
+def test_session_zone(
+    intent: str | None, three: dict[str, float], bouts: int | None, zone: str
+) -> None:
+    assert tid.session_zone(intent, three, bouts) == zone
+
+
+def test_every_planner_intent_has_a_session_zone() -> None:
+    from cyp.planning.templates import INTENTS
+
+    assert set(tid.INTENT_ZONE) == INTENTS
+
+
+def test_sustained_bouts_ignore_short_spikes() -> None:
+    import numpy as np
+
+    from cyp.analysis.ride.power import sustained_bouts
+
+    p30 = np.array([200.0] * 100 + [320.0] * 59 + [200.0] * 50 + [320.0] * 60 + [np.nan] * 5)
+    assert sustained_bouts(p30, 300.0) == 1  # the 59 s spike does not count
+
+
 def test_tiz_source_priority() -> None:
     assert tid.tiz_from_metrics({"Z1": 5}, {"Z1": 9}, [1, 2]) == ({"Z1": 5.0}, "power")
     assert tid.tiz_from_metrics(None, {"Z1": 9}, [1, 2]) == ({"Z1": 1.0, "Z2": 2.0}, "power_icu")

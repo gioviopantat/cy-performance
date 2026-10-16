@@ -21,6 +21,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from cyp.analysis import readiness as readiness_mod
 from cyp.analysis.longitudinal import goal as goal_mod
 from cyp.analysis.longitudinal.run import compute_trends
 from cyp.analysis.ride import context as ctx_mod
@@ -143,7 +144,7 @@ def build_methods(report: RideReport, fact: Mapping[str, Any]) -> list[MethodUse
     if report.climbs:
         ids.append("climb_repeats")
     if report.feel.rated:
-        ids.append("readiness_v1.1")
+        ids.append(readiness_mod.ALGO_VERSION_FEEL)
     if report.limiters is not None:
         ids.append("limiters")
     if report.tomorrow is not None:

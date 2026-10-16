@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import inspect
+
 import numpy as np
 import polars as pl
 import pytest
 
 from cyp.analysis.ride import durability as d
-from cyp.analysis.ride.durability import Decoupling, HrLag, Thresholds, classify_status
+from cyp.analysis.ride.durability import Thresholds, classify_status
 from tests.analysis.conftest import frame, hr_zones, make_ride
 
 
@@ -92,54 +94,31 @@ def test_hr_lag_none_without_signal(steady_ride: pl.DataFrame) -> None:
     assert d.hr_lag(short) is None  # under lag_min_samples
 
 
-def _dec(pct: float, reliable: bool = True) -> Decoupling:
-    return Decoupling(
-        pct=pct,
-        basis="power",
-        ef_first=1.5,
-        ef_second=1.4,
-        power_first=200,
-        power_second=200,
-        hr_first=133,
-        hr_second=143,
-        n_first_s=1500,
-        n_second_s=1500,
-        excluded_warmup_s=600,
-        reliable=reliable,
-    )
-
-
-def _lag(s: int) -> HrLag:
-    return HrLag(lag_s=s, corr=0.8, n_samples=3000)
-
-
 @pytest.mark.parametrize(
-    ("dec", "lag", "tss", "moving", "expected"),
+    ("tss", "expected"),
     [
-        (_dec(1.0), _lag(30), 60.0, 3600, ("FRESH", "UPGRADE")),
-        (_dec(1.0), _lag(30), 120.0, 3600, ("FRESH", "AS_PLANNED")),
-        (_dec(1.0), _lag(30), 60.0, 1800, ("NORMAL", "AS_PLANNED")),  # too short for FRESH
-        (_dec(1.0, reliable=False), _lag(30), 60.0, 3600, ("NORMAL", "AS_PLANNED")),
-        (None, None, 100.0, 7200, ("NORMAL", "AS_PLANNED")),
-        (_dec(3.0), _lag(50), 160.0, 7200, ("NORMAL", "EASY")),  # TSS >= 150
-        (_dec(6.0), _lag(50), 90.0, 7200, ("NORMAL", "EASY")),  # decoupling >= 5
-        (_dec(3.0), _lag(95), 90.0, 7200, ("BLUNTED", "EASY")),
-        (_dec(12.0), _lag(30), 90.0, 7200, ("OVERREACHED", "EASY")),
-        (_dec(3.0), _lag(30), 260.0, 10800, ("OVERREACHED", "EASY")),
-        (_dec(3.0), _lag(30), 320.0, 14400, ("OVERREACHED", "REST")),
-        (_dec(12.0), _lag(95), 320.0, 14400, ("OVERREACHED", "REST")),  # overreach wins
+        (None, ("NORMAL", "AS_PLANNED")),
+        (60.0, ("NORMAL", "AS_PLANNED")),
+        (149.0, ("NORMAL", "AS_PLANNED")),
+        (160.0, ("NORMAL", "EASY")),  # TSS >= 150
+        (260.0, ("OVERREACHED", "EASY")),
+        (320.0, ("OVERREACHED", "REST")),
     ],
 )
-def test_classify_status(dec, lag, tss, moving, expected) -> None:  # type: ignore[no-untyped-def]
-    assert classify_status(decoupling_result=dec, lag=lag, tss=tss, moving_s=moving) == expected
+def test_classify_status(tss: float | None, expected: tuple[str, str]) -> None:
+    assert classify_status(tss=tss) == expected
+
+
+def test_status_ignores_decoupling_and_hr_lag() -> None:
+    """ADR-0012: decoupling and HR lag never decide the status or tomorrow's session."""
+    params = inspect.signature(classify_status).parameters
+    assert set(params) == {"tss", "thresholds"}
+    keys = Thresholds().as_dict()
+    assert not [k for k in keys if k.startswith(("fresh_", "blunted_", "upgrade_"))]
+    assert "overreached_min_decoupling" not in keys and "easy_min_decoupling" not in keys
 
 
 def test_thresholds_are_one_dataclass() -> None:
-    th = Thresholds(blunted_min_lag_s=60.0)
-    assert classify_status(
-        decoupling_result=None, lag=_lag(70), tss=50.0, moving_s=3600, thresholds=th
-    ) == (
-        "BLUNTED",
-        "EASY",
-    )
-    assert th.as_dict()["blunted_min_lag_s"] == 60.0
+    th = Thresholds(easy_min_tss=40.0)
+    assert classify_status(tss=50.0, thresholds=th) == ("NORMAL", "EASY")
+    assert th.as_dict()["easy_min_tss"] == 40.0

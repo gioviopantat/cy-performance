@@ -260,19 +260,28 @@ def compute_trends(ds: Dataset, as_of: dt.date, *, phase: str | None = None) -> 
     tid_lo = week_start(as_of) - dt.timedelta(weeks=TID_WEEKS - 1)
     tiz_rides = []
     for a in ds.rides(tid_lo, as_of):
+        bouts = a.z5_bouts
         if a.power_unreliable is None:
             picked = tid_mod.tiz_from_metrics(a.tiz_power, a.tiz_hr, a.icu_zone_times)
-        else:  # power zones (ours and icu's) come from the unreliable meter: use HR
+        else:  # power zones and bouts come from the unreliable meter: use HR
             picked = tid_mod.tiz_from_metrics(None, a.tiz_hr, None)
+            bouts = None
         if picked:
-            tiz_rides.append(tid_mod.RideTiz(a.date, picked[0], picked[1]))
+            tiz_rides.append(
+                tid_mod.RideTiz(a.date, picked[0], picked[1], ds.planned_intent(a), bouts)
+            )
     weeks = tid_mod.weekly_tid(tiz_rides)
     for w in weeks:
         low, mid, high = w.fractions()
+        s_low, s_mid, s_high = w.session_fractions()
         report.tid_weeks.append(
             {
                 "week_start": w.week_start,
                 "hours": round(w.total_s / 3600, 2),
+                "sessions": {"low": w.low_n, "mid": w.mid_n, "high": w.high_n},
+                "session_low": round(s_low, 3),
+                "session_mid": round(s_mid, 3),
+                "session_high": round(s_high, 3),
                 "low": round(low, 3),
                 "mid": round(mid, 3),
                 "high": round(high, 3),

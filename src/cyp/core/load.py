@@ -56,4 +56,4 @@ class Readiness(BaseModel):
     recommendation: Recommendation
     inputs: dict[str, Any] = Field(default_factory=dict)
     explanation: Explanation | None = None
-    algo_version: str = "readiness_v1"
+    algo_version: str = "readiness_v2"
