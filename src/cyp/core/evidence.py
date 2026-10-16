@@ -165,11 +165,13 @@ REGISTRY: tuple[Claim, ...] = (
         "decoupling_hr_lag.durability",
         "decoupling_hr_lag",
         "Durability (power/HR decay with accumulated work) matters for performance.",
-        "B",
+        "A",
         (
-            "Maunder E et al. 2021, Sports Med",
+            "Maunder E et al. 2021, Sports Med 51(8):1619-1628, PMID 33886100",
             "Sanchez-Jimenez JL et al. 2026 (online 2025), Eur J Appl Physiol 126:163-179, "
             "doi:10.1007/s00421-025-05885-0, PMID 40613880",
+            "Mateo-March M et al. 2024, J Sci Med Sport 27(6):430-434, PMID 38604818",
+            "Grade reviewed in docs/research/2026-10.md, approved 2026-10-16",
         ),
     ),
     Claim(
@@ -220,12 +222,15 @@ REGISTRY: tuple[Claim, ...] = (
     Claim(
         "readiness_v1.hrv_guided",
         "readiness_v1",
-        "HRV-guided training beats a fixed plan (mixed evidence).",
-        "B",
+        "HRV-guided training beats a fixed plan (meta-analyses: no significant advantage).",
+        "C",
         (
             "Granero-Gallegos A et al. 2020, Int J Environ Res Public Health: "
             "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7663087/",
             "Duking P et al. 2021, J Sci Med Sport 24(11):1180-1192, PMID 34489178",
+            "Manresa-Rocamora A et al. 2021, Int J Environ Res Public Health 18(19):10299, "
+            "PMC8507742",
+            "Grade reviewed in docs/research/2026-10.md, approved 2026-10-16",
         ),
     ),
     Claim(
@@ -240,8 +245,12 @@ REGISTRY: tuple[Claim, ...] = (
         "periodization_3_1.block",
         "periodization_3_1",
         "Block organisation beats traditional organisation.",
-        "B",
-        ("Molmen KS et al. 2019, Open Access J Sports Med (meta-analysis)",),
+        "C",
+        (
+            "Molmen KS et al. 2019, Open Access J Sports Med 10:145-160, PMID 31802956 "
+            "(6 studies pooled, low quality)",
+            "Grade reviewed in docs/research/2026-10.md, approved 2026-10-16",
+        ),
     ),
     Claim(
         "periodization_3_1.ratio_3_1",
@@ -253,9 +262,24 @@ REGISTRY: tuple[Claim, ...] = (
     Claim(
         "periodization_3_1.taper_volume",
         "periodization_3_1",
-        "Recovery weeks / tapers cut volume 40-60 % and keep intensity.",
+        "A pre-race taper cuts volume 41-60 % and keeps intensity and frequency.",
         "A",
-        ("Bosquet L et al. 2007, Med Sci Sports Exerc (meta-analysis)",),
+        (
+            "Bosquet L et al. 2007, Med Sci Sports Exerc 39(8):1358-1365, PMID 17762369",
+            "Wang Z et al. 2023, PLoS One 18(5):e0282838, PMC10171681",
+            "Grade reviewed in docs/research/2026-10.md, approved 2026-10-16",
+        ),
+    ),
+    Claim(
+        "periodization_3_1.recovery_week_cut",
+        "periodization_3_1",
+        "Mid-block recovery weeks cut TSS to 0.6x, long ride 0.7x, one hard session fewer.",
+        "C",
+        (
+            "Extrapolated from taper studies (Bosquet L et al. 2007, Med Sci Sports Exerc, "
+            "PMID 17762369), which keep frequency and intensity",
+            "Grade reviewed in docs/research/2026-10.md, approved 2026-10-16",
+        ),
     ),
     # --- guardrails
     Claim(
@@ -388,14 +412,6 @@ REGISTRY: tuple[Claim, ...] = (
         "C",
         "Safety net only; TSB has no individual predictive value (Marchal A et al. 2025, "
         "Sci Rep 15:3706, doi:10.1038/s41598-025-88153-7)",
-    ),
-    _proposed(
-        "periodization_3_1.recovery_week_cut",
-        "periodization_3_1",
-        "Mid-block recovery weeks cut TSS to 0.6x, long ride 0.7x, one hard session fewer.",
-        "C",
-        "Extrapolated from taper studies (Bosquet L et al. 2007, Med Sci Sports Exerc, "
-        "PMID 17762369), which keep frequency and intensity",
     ),
     _proposed(
         "eftp.cp_to_ftp",

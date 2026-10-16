@@ -62,7 +62,7 @@ HRV z −0.6、安靜心率 z +0.4（→ −0.4）、睡眠 z +0.5、TSB −14�
 | 主張 | 等級 | 依據 | 最後審查 |
 |------|------|------|----------|
 | `readiness_v1.subjective_wellness` 主觀身心狀態能追蹤訓練反應 | **B** | Saw et al. 2016 BJSM 系統性回顧 | 2026-10-16 |
-| `readiness_v1.hrv_guided` HRV 引導訓練優於固定計畫（證據不一致） | **B** | Granero-Gallegos et al. 2020 IJERPH 統合分析：VO2max 小幅正效果（[PMC7663087](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7663087/)）；Düking et al. 2021 JSAMS（8 篇，[PMID 34489178](https://pubmed.ncbi.nlm.nih.gov/34489178/)）：VO2peak 效果不顯著 | 2026-10-16 |
+| `readiness_v1.hrv_guided` HRV 引導訓練優於固定計畫（統合分析：沒有顯著優勢） | **C** | Granero-Gallegos et al. 2020 IJERPH 統合分析：VO2max 小幅正效果（[PMC7663087](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7663087/)）；Düking et al. 2021 JSAMS（8 篇，[PMID 34489178](https://pubmed.ncbi.nlm.nih.gov/34489178/)）：VO2peak 效果不顯著；Manresa-Rocamora et al. 2021 IJERPH（[PMC8507742](https://pmc.ncbi.nlm.nih.gov/articles/PMC8507742/)）：VO2max 與表現都不顯著；等級依 2026-10 文獻月報，2026-10-16 核准 | 2026-10-16 |
 | `readiness_v1.weights` 我們 v1 的權重與切點 | **C** | 自訂，只是起點 | 2026-10-16 |
 | `readiness_v1.hrv_single_day` 單日 ln rMSSD 的 z 值反映準備度 | **C**（提議） | Plews et al. 2013（[PMID 23479420](https://pubmed.ncbi.nlm.nih.gov/23479420/)）：7 日平均 r = .72，單日只有 −.06 | 2026-10-16 |
 | `readiness_v1.overreached_rule` HRV z < −1.5 且安靜心率 z > +1.5 ＝過度訓練 | **C**（提議） | Bellenger et al. 2016（[PMID 26888648](https://pubmed.ncbi.nlm.nih.gov/26888648/)）：耐力選手過度訓練常見 HRV 上升 | 2026-10-16 |

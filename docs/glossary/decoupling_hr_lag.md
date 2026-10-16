@@ -37,7 +37,7 @@ decoupling % = (EF_前半 − EF_後半) / EF_前半 × 100
 
 | 主張 | 等級 | 依據 | 最後審查 |
 |------|------|------|----------|
-| `decoupling_hr_lag.durability` 耐久力（累積做功後功率／心率衰退）影響表現 | **B** | Maunder et al. 2021 Sports Med；Sánchez-Jiménez et al. 2026（2025 線上）EJAP 系統性回顧（21 篇，[PMID 40613880](https://pubmed.ncbi.nlm.nih.gov/40613880/)）：2.5–15 kJ/kg 後功率降 10–20 %；只看 kJ 不夠，強度也有影響 | 2026-10-16 |
+| `decoupling_hr_lag.durability` 耐久力（累積做功後功率／心率衰退）影響表現 | **A** | Maunder et al. 2021 Sports Med（[PMID 33886100](https://pubmed.ncbi.nlm.nih.gov/33886100/)）；Sánchez-Jiménez et al. 2026（2025 線上）EJAP 系統性回顧（21 篇，[PMID 40613880](https://pubmed.ncbi.nlm.nih.gov/40613880/)）：2.5–15 kJ/kg 後功率降 10–20 %；只看 kJ 不夠，強度也有影響；Mateo-March et al. 2024（[PMID 38604818](https://pubmed.ncbi.nlm.nih.gov/38604818/)）；等級依 2026-10 文獻月報，2026-10-16 核准 | 2026-10-16 |
 | `decoupling_hr_lag.pwhr_5pct` Pw:Hr 解耦 < 5 % ＝有氧準備好了 | **C** | Friel 的經驗法則（書／部落格） | 2026-10-16 |
 | `decoupling_hr_lag.durability_kj_buckets` 騎完 1000 kJ 後的效率反映耐久力（分桶切點是我們定的） | **B**（提議） | Barsumyan et al. 2025（[PMID 40640875](https://pubmed.ncbi.nlm.nih.gov/40640875/)）；Mateo-March et al. 2024（[PMID 38604818](https://pubmed.ncbi.nlm.nih.gov/38604818/)） | 2026-10-16 |
 | `decoupling_hr_lag.ride_status_rules` 當趟解耦／TSS 切點決定騎後狀態與隔天建議 | **C**（提議） | Roete et al. 2021（[PMID 34108275](https://pubmed.ncbi.nlm.nih.gov/34108275/)）：過度訓練時同功率心率反而較低，OVERREACHED 的方向有爭議 | 2026-10-16 |

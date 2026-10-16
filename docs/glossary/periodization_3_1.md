@@ -35,10 +35,10 @@
 
 | 主張 | 等級 | 依據 | 最後審查 |
 |------|------|------|----------|
-| `periodization_3_1.block` 區塊式優於傳統式安排 | **B** | Mølmen et al. 2019 OAJSM 統合分析：VO2max SMD 0.40、Wmax 0.28（6 篇合併） | 2026-10-16 |
+| `periodization_3_1.block` 區塊式優於傳統式安排 | **C** | Mølmen et al. 2019 OAJSM 統合分析（[PMID 31802956](https://pubmed.ncbi.nlm.nih.gov/31802956/)）：VO2max SMD 0.40、Wmax 0.28，只合併 6 篇、品質低，之後的試驗不一致；等級依 2026-10 文獻月報，2026-10-16 核准 | 2026-10-16 |
 | `periodization_3_1.ratio_3_1` 特別是 3:1（而不是 2:1） | **C** | 慣例（Friel）；未找到比較試驗 | 2026-10-16 |
-| `periodization_3_1.taper_volume` 恢復週／減量期減少 40–60 % 訓練量、保留強度 | **A** | Bosquet et al. 2007 MSSE 統合分析 | 2026-10-16 |
-| `periodization_3_1.recovery_week_cut` 訓練中段恢復週 TSS × 0.6、長騎 × 0.7、少一次高強度 | **C**（提議） | 數字借自賽前減量研究（Bosquet 2007），那些研究維持頻率與強度 | 2026-10-16 |
+| `periodization_3_1.taper_volume` 賽前減量減少 41–60 % 訓練量、保留強度與頻率 | **A** | Bosquet et al. 2007 MSSE 統合分析（[PMID 17762369](https://pubmed.ncbi.nlm.nih.gov/17762369/)）；Wang et al. 2023 PLoS One（[PMC10171681](https://pmc.ncbi.nlm.nih.gov/articles/PMC10171681/)，耐力選手重現）；等級依 2026-10 文獻月報，2026-10-16 核准 | 2026-10-16 |
+| `periodization_3_1.recovery_week_cut` 訓練中段恢復週 TSS × 0.6、長騎 × 0.7、少一次高強度 | **C** | 數字借自賽前減量研究（Bosquet 2007），那些研究維持頻率與強度，恢復週是外推；等級依 2026-10 文獻月報，2026-10-16 核准 | 2026-10-16 |
 
 ## 參考文獻
 - Bompa TO, Buzzichelli C. *Periodization: Theory and Methodology of Training*, 6th ed. Human Kinetics, 2018.
