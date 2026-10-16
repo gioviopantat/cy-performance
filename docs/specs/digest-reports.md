@@ -1,5 +1,5 @@
 # digest-reports
-Status: draft · 2026-10-17
+Status: accepted · 2026-10-17
 
 ## Goal
 Every athlete (Roger and his dad, same level of detail) gets by email:
@@ -79,8 +79,13 @@ per kind + period, so a digest is sent once; tests stub SMTP.
 - The launch agent sends nothing twice; a missed Monday is sent on wake.
 - `uv run poe check` green; architecture docs, LikeC4, flags doc, README, CLAUDE.md, runbook.
 
-## Open questions
-1. Backfill on launch: send the weekly for 10/5–10/11 and the monthly for September to both
-   athletes once it works? (Recommended: yes, as the first real check.)
-2. Dad's trip week digests (10/19, 10/26): send the short "break" version (recommended) or
-   skip while he is away?
+## Decisions (Roger, 2026-10-17)
+1. Backfill once it works: the weekly for 2026-10-05..10-11 and the September monthly, to both
+   athletes (dad's copies cc Roger via `CYP_REPORT_EMAIL_CC`).
+2. Break weeks (dad in Japan 10/16-10/25): send the short break version, not skip.
+3. Same level of detail for both athletes.
+
+## Contract
+`src/cyp/reports/digest_model.py` (`WeeklyDigest`, `MonthlyDigest` and their sections) plus
+the stub signatures `reports.digest_facts.build_weekly` / `build_monthly` and
+`reports.digest_pdf.render_digest_pdf`. Builders, renderer and the job meet only there.
