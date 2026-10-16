@@ -20,7 +20,14 @@ from typing import Any
 import yaml
 
 from cyp.planning.adapt import OVERDONE_FACTOR
-from cyp.reports.digest_model import MonthlyDigest, WeeklyDigest
+from cyp.reports.digest_model import (
+    DigestHeadline,
+    Load,
+    MonthlyDigest,
+    NextPlan,
+    Period,
+    WeeklyDigest,
+)
 from cyp.reports.ride_model import RideReport
 
 COPY_PATH = Path(__file__).resolve().parent / "i18n" / "email.zh-TW.yaml"
@@ -201,18 +208,142 @@ def compose_ride(
     return EmailContent(subject=subject, text=_text(body), html=_html(subject, body))
 
 
+#: At most this many upcoming sessions are listed in a digest email.
+MAX_NEXT_SESSIONS = 3
+
+
 def compose_weekly(
     digest: WeeklyDigest, *, to_name: str, cc_names: Sequence[str] = (), today: dt.date
 ) -> EmailContent:
     """The email for a weekly digest (docs/specs/digest-reports.md)."""
-    raise NotImplementedError
+    d = digest
+    highlights: list[str] = []
+    c = _copy()["digest"]
+    h = c["highlight"]
+    planned = [x for x in d.sessions if x.planned_name]
+    if planned:
+        done = sum(1 for x in planned if x.verdict == "achieved")
+        over = sum(1 for x in planned if x.verdict == "overdone")
+        extra = h["sessions_overdone"].format(n=over) if over else ""
+        highlights.append(h["sessions"].format(done=done, planned=len(planned), extra=extra))
+    if d.load is not None:
+        highlights.append(_load_line(d.load, h))
+    if d.distribution is not None:
+        verdict = c["distribution_verdict"][d.distribution.verdict]
+        highlights.append(h["distribution"].format(verdict=verdict))
+    if d.goal is not None and d.goal.projected_date is not None:
+        highlights.append(
+            h["goal"].format(target=_num(d.goal.target_w), date=d.goal.projected_date.isoformat())
+        )
+    rides = d.load.rides if d.load is not None else 0
+    hours = _num(d.load.hours, 1) if d.load is not None else "0"
+    return _digest(
+        "weekly",
+        d.period,
+        d.headline,
+        d.athlete_name,
+        highlights,
+        d.next_week,
+        to_name=to_name,
+        cc_names=cc_names,
+        fmt={"rides": rides, "hours": hours},
+    )
 
 
 def compose_monthly(
     digest: MonthlyDigest, *, to_name: str, cc_names: Sequence[str] = (), today: dt.date
 ) -> EmailContent:
     """The email for a monthly digest (docs/specs/digest-reports.md)."""
-    raise NotImplementedError
+    d = digest
+    c = _copy()["digest"]
+    h = c["highlight"]
+    highlights: list[str] = []
+    if d.consistency is not None:
+        k = d.consistency
+        highlights.append(
+            h["consistency"].format(planned=k.planned, done=k.done, achieved=k.achieved)
+        )
+    if d.load is not None:
+        highlights.append(_load_line(d.load, h))
+    f = d.fitness
+    if f is not None and f.ftp_start_w is not None and f.ftp_end_w is not None:
+        highlights.append(h["ftp"].format(start=_num(f.ftp_start_w), end=_num(f.ftp_end_w)))
+    if d.power_curve is not None and d.power_curve.text_zh:
+        highlights.append(h["power_curve"].format(text=d.power_curve.text_zh))
+    if d.research is not None and d.research.grade_changes:
+        highlights.append(h["research"].format(n=len(d.research.grade_changes)))
+    return _digest(
+        "monthly",
+        d.period,
+        d.headline,
+        d.athlete_name,
+        highlights,
+        d.next_month,
+        to_name=to_name,
+        cc_names=cc_names,
+        fmt={},
+    )
+
+
+def _load_line(load: Load, h: dict[str, Any]) -> str:
+    start = _num(load.ctl_start, 1) if load.ctl_start is not None else "–"
+    end = _num(load.ctl_end, 1) if load.ctl_end is not None else "–"
+    return str(h["load"]).format(
+        actual=_num(load.actual_tss), planned=_num(load.planned_tss), start=start, end=end
+    )
+
+
+def _digest(
+    kind: str,
+    period: Period,
+    headline: DigestHeadline,
+    athlete_name: str,
+    highlights: list[str],
+    nxt: NextPlan | None,
+    *,
+    to_name: str,
+    cc_names: Sequence[str],
+    fmt: dict[str, Any],
+) -> EmailContent:
+    c = _copy()["digest"]
+    verdict = headline.verdict
+    subject = c["subject"][kind][verdict].format(
+        label=period.label_zh, name=_first_name(athlete_name), **fmt
+    )
+    body = _Body(hello=_copy()["ride"]["hello"].format(to=to_name))
+    body.paragraphs.append(c["opener"][kind].format(label=period.label_zh))
+    unit = c["unit"][kind]
+    if period.is_break:
+        reason = period.break_reason_zh or headline.text_zh
+        body.paragraphs.append(c["break"].format(unit=unit, reason=reason.rstrip("。")))
+    else:
+        body.paragraphs.append(c["conclusion"].format(text=headline.text_zh))
+        if headline.change_zh:
+            body.paragraphs.append(c["change"].format(unit=unit, change=headline.change_zh))
+        if highlights:
+            body.bullets_title = c["highlights_title"][kind]
+            body.bullets = highlights[: MAX_HIGHLIGHTS + (1 if kind == "monthly" else 0)]
+    if nxt is not None and (nxt.sessions or nxt.text_zh):
+        lines = [
+            c["next_session"].format(day=_day_label(s.day, c), name=s.name)
+            for s in nxt.sessions[:MAX_NEXT_SESSIONS]
+        ]
+        if len(nxt.sessions) > MAX_NEXT_SESSIONS:
+            lines.append(c["next_more"].format(n=len(nxt.sessions) - MAX_NEXT_SESSIONS))
+        text = "\n".join([*((nxt.text_zh and [nxt.text_zh]) or []), *lines])
+        body.sections.append((c["next_title"][kind], text))
+    body.closing = [c["attachment"], "", _copy()["ride"]["signoff"], _copy()["ride"]["team"]]
+    cc = _copy()["ride"]["footer_cc"].format(names="、".join(cc_names)) if cc_names else ""
+    body.footer = c["footer"].format(to=to_name, cc=cc)
+    return EmailContent(subject=subject, text=_text(body), html=_html(subject, body))
+
+
+def _first_name(name: str) -> str:
+    return name.split()[0] if name.strip() else ""
+
+
+def _day_label(day: dt.date, c: dict[str, Any]) -> str:
+    return f"{day.month}/{day.day}（{c['weekday'][day.weekday()]}）"
 
 
 def _text(b: _Body) -> str:
@@ -244,7 +375,7 @@ def _html(subject: str, b: _Body) -> str:
     for title, text in b.sections:
         parts.append(
             f"<h3 style='margin:20px 0 8px;font-size:16px'>{e(title)}</h3>"
-            f"<p style='margin:0'>{e(text)}</p>"
+            f"<p style='margin:0'>{e(text).replace(chr(10), '<br>')}</p>"
         )
     if b.cta:
         parts.append(

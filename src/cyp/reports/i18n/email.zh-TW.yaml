@@ -64,3 +64,53 @@ ride:
     noon: "中午"
     afternoon: "下午"
     evening: "晚上"
+
+digest:
+  subject:
+    weekly:
+      on_track: "【週報】{label} {name}：計畫照走，{rides} 趟、{hours} 小時 ✅"
+      partly: "【週報】{label} {name}：完成大部分，下週微調一下"
+      off_track: "【週報】{label} {name}：這週有點脫軌，下週重新出發 💪"
+      break: "【週報】{label} {name}：休息週，充電中 🔋"
+      no_data: "【週報】{label} {name}"
+    monthly:
+      on_track: "【月報】{label} {name}：這個月穩穩往目標前進 📈"
+      partly: "【月報】{label} {name}：大方向對了，細節還能更好"
+      off_track: "【月報】{label} {name}：這個月有點亂，下個月一起拉回來"
+      break: "【月報】{label} {name}：休息的一個月，準備好再出發"
+      no_data: "【月報】{label} {name}"
+  opener:
+    weekly: "{label} 這一週的週報出爐了。"
+    monthly: "{label} 這個月的月報出爐了。"
+  conclusion: "先說結論：{text}"
+  change: "下{unit}只改一件事：{change}"
+  unit:
+    weekly: "週"
+    monthly: "個月"
+  break: "這{unit}是休息期：{reason}。好好放鬆，體能的變化我們都幫你記著。"
+  highlights_title:
+    weekly: "這週三個重點"
+    monthly: "這個月的重點"
+  highlight:
+    sessions: "課表完成度：{done}/{planned} 堂達成{extra}"
+    sessions_overdone: "（其中 {n} 堂騎過頭）"
+    load: "負荷：實際 {actual} TSS，計畫 {planned}；CTL {start} → {end}"
+    distribution: "強度分布（以課次計）：{verdict}"
+    goal: "{target} W 目標：預估 {date} 達成"
+    consistency: "一致性：計畫 {planned} 堂、騎了 {done} 堂、達成 {achieved} 堂"
+    ftp: "FTP：{start} → {end} W"
+    power_curve: "功率曲線：{text}"
+    research: "文獻月報：{n} 項證據等級更新"
+  distribution_verdict:
+    under: "高強度比目標少"
+    "on": "符合本階段目標"
+    over: "高強度比目標多"
+    no_target: "本階段沒有目標比例"
+  next_title:
+    weekly: "下週課表"
+    monthly: "下個月"
+  next_session: "{day}：{name}"
+  next_more: "還有 {n} 堂，詳見 PDF。"
+  attachment: "完整分析在附件 PDF，每個數字都附上出處與證據等級。"
+  footer: "這封信寄給 {to}{cc}。數字來自 intervals.icu 與你的訓練計畫；課表以每天早上 05:30 的自動排課為準。"
+  weekday: ["週一", "週二", "週三", "週四", "週五", "週六", "週日"]
