@@ -98,6 +98,17 @@ def test_cc_copies_go_in_the_cc_header(monkeypatch: pytest.MonkeyPatch) -> None:
     assert without["Cc"] is None
 
 
+def test_html_part_and_named_cc(monkeypatch: pytest.MonkeyPatch) -> None:
+    FakeSmtp.instances = []
+    monkeypatch.setattr(notify.smtplib, "SMTP", FakeSmtp)
+    s = _settings(cyp_report_email_cc="Roger <owner@example.test>")
+    assert notify.cc_recipients(s) == [("Roger", "owner@example.test")]
+    send_email(s, "s", "plain", html="<p>hi</p>")
+    msg = FakeSmtp.instances[0].sent[0]
+    assert msg["Cc"] == "Roger <owner@example.test>"
+    assert msg.get_body(("html",)) is not None and msg.get_body(("plain",)) is not None
+
+
 def test_tls_mode_follows_the_port(monkeypatch: pytest.MonkeyPatch) -> None:
     FakeSmtp.instances = []
     monkeypatch.setattr(notify.smtplib, "SMTP", FakeSmtp)

@@ -103,7 +103,7 @@ Strava and Garmin do not show (stimulus reached with outdoor stops excused, dist
 target, climbs vs history at the same fatigue and heat, feel vs expectation, tomorrow's plan,
 evidence grade of every model). `brew install pango` once (WeasyPrint); put `CYP_SMTP_HOST`,
 `CYP_SMTP_PORT`, `CYP_SMTP_USER`, `CYP_SMTP_PASSWORD` (a Gmail App Password) and
-`CYP_REPORT_EMAIL_TO` in the profile's `.env`, turn both flags on in its `athlete.yaml`, then:
+`CYP_REPORT_EMAIL_TO` (optional `CYP_REPORT_EMAIL_CC`, `CYP_REPORT_EMAIL_NAME`) in the profile's `.env`, turn both flags on in its `athlete.yaml`, then:
 
 ```bash
 uv run cyp --profile me ride-report          # newest ride's PDF under data/reports/ride (no email)

@@ -1,0 +1,66 @@
+# Report email copy (cyp.reports.email_copy). Voice: cy-performance's coach team, warm and
+# lively, short sentences, numbers only from the report facts. Lists rotate deterministically
+# by activity id, so the same ride always gets the same email.
+
+ride:
+  subject:
+    overdone: "【騎完報告】{md} {name}：說好的「{planned}」，你騎成了 {tss} TSS 😅"
+    achieved: "【騎完報告】{md} {name}：「{planned}」達成 ✅"
+    partial: "【騎完報告】{md} {name}：「{planned}」完成了一部分"
+    missed: "【騎完報告】{md} {name}：「{planned}」這次沒對上，明天再來 💪"
+    unplanned: "【騎完報告】{md} {name}：{km} km 自由騎，數據幫你整理好了 🚴"
+    no_data: "【騎完報告】{md} {name}"
+  hello: "{to} 你好，"
+  opener: "{when}那趟 {facts}的騎乘，報告出爐了。"
+  conclusion:
+    overdone:
+      - "先說結論：計畫是「{planned}」，重點在不要騎太硬，結果負荷是計畫的 {ratio}。腿很誠實，但這堂課的目的沒達到。"
+      - "先說結論：「{planned}」本來是讓身體穩穩累積、不要透支的，結果負荷是計畫的 {ratio}。精神可嘉，目的打折。"
+    achieved:
+      - "先說結論：「{planned}」目標達成！{why}"
+      - "先說結論：「{planned}」穩穩到手。{why}"
+    partial:
+      - "先說結論：「{planned}」完成了一部分。{why}"
+    missed:
+      - "先說結論：「{planned}」這次沒對上。{why}"
+    unplanned:
+      - "先說結論：今天沒有排課，這是一趟自由騎。數據一樣幫你算清楚了。"
+    no_data:
+      - "這趟沒有足夠的功率資料可以判斷，但距離、時間和外騎情境都整理在附件裡。"
+  highlights_title: "這趟三個重點"
+  highlight:
+    intent: "目的達成度：{verdict}"
+    outdoor: "外騎情境：停車 {stops} 次{temp}{caveat}"
+    outdoor_temp: "、平均 {temp} °C"
+    outdoor_caveat: "，有些數字要打個折（PDF 第 4 段）"
+    climb: "{climb}：{of_n} 次裡第 {rank} 快{temp}"
+    climb_temp: "，而且是在 {temp} °C 下"
+    feel_high: "感受：RPE {rpe}，比這類騎乘預期的高 {gap}，明天會幫你放輕一點"
+    feel_low: "感受：RPE {rpe}，比預期輕鬆 {gap}，狀態不錯"
+    goal: "{target} W 目標：照目前趨勢預估 {date} 達成"
+  verdict:
+    achieved: "達成"
+    partial: "部分達成"
+    missed: "未達成"
+    overdone: "未達成（騎過頭）"
+    unplanned: "自由騎（沒有排課）"
+    no_data: "資料不足"
+  tomorrow_title: "明天怎麼排"
+  tomorrow_changed: "{reason}，明天的「{before}」會改成「{after}」。"
+  tomorrow_changed_no_reason: "明天的「{before}」會改成「{after}」。"
+  tomorrow_easy: "這次，真的輕鬆踩就好 🙂"
+  tomorrow_same: "明天照計畫：「{after}」。"
+  rate: "👉 還沒評分？花 10 秒填一下 RPE，明天的課會更準：{url}"
+  attachment: "完整分析在附件 PDF，每個數字都附上出處與證據等級。"
+  signoff: "騎得開心，"
+  team: "cy-performance 訓練團隊"
+  footer: "這封信寄給 {to}{cc}。數字來自 intervals.icu 與你的訓練計畫。"
+  footer_tomorrow: "明天的課表以早上 05:30 的自動排課為準。"
+  footer_cc: "（副本：{names}）"
+  when_today: "今天{part}"
+  when_day: "{md} {part}"
+  part:
+    morning: "早上"
+    noon: "中午"
+    afternoon: "下午"
+    evening: "晚上"
