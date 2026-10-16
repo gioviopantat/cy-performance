@@ -56,6 +56,15 @@ HRV z −0.6、安靜心率 z +0.4（→ −0.4）、睡眠 z +0.5、TSB −14�
 - z 分數假設常態分布；HRV 已取對數改善這點，主觀分數（1–4）則很粗。
 - 它不是醫療判斷。連續多日 REST、或安靜心率持續上升卻沒有訓練負荷解釋，應該看醫生而不是看課表。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `readiness_v1.subjective_wellness` 主觀身心狀態能追蹤訓練反應 | **B** | Saw et al. 2016 BJSM 系統性回顧 | 2026-10-16 |
+| `readiness_v1.hrv_guided` HRV 引導訓練優於固定計畫（證據不一致） | **B** | Granero-Gallegos et al. 2020 IJERPH 統合分析：VO2max 小幅正效果（[PMC7663087](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7663087/)）；2021 JSAMS 回顧（8 篇）：VO2peak 效果不顯著（摘要） | 2026-10-16 |
+| `readiness_v1.weights` 我們 v1 的權重與切點 | **C** | 自訂，只是起點 | 2026-10-16 |
+
 ## 參考文獻
 - Plews DJ, Laursen PB, Stanley J, Kilding AE, Buchheit M. "Training adaptation and heart rate variability in elite endurance athletes: opening the door to effective monitoring." *Sports Medicine* 43(9):773–781, 2013.
 - Buchheit M. "Monitoring training status with HR measures: do all roads lead to Rome?" *Frontiers in Physiology* 5:73, 2014.

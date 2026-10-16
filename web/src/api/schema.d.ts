@@ -1300,6 +1300,8 @@ export interface components {
             };
             /** Doc */
             doc: string;
+            /** Claim */
+            claim?: string | null;
         };
         /**
          * PlanOut

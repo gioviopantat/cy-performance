@@ -1,7 +1,7 @@
 {% macro explain(e, indent="") -%}
 {% if e %}
 
-{{ indent }}**為什麼**：{{ e.headline_zh }}
+{{ indent }}**為什麼**：{{ e.headline_zh }}{% if e.method %}{{ e.method.get("claim") | weak_badge("（{}）") }}{% endif %}
 
 {% for r in e.because %}
 {{ indent }}- {{ r.text_zh }}{% if r.weight is not none %}（權重 {{ (r.weight * 100) | num }} %）{% endif %}

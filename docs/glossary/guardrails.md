@@ -34,6 +34,13 @@
 - 「可用分鐘」是你填的；它不知道你那天其實很累。這一塊交給 readiness。
 - 守衛不會阻止你自己在 icu 上加課；它只管 `cyp:` 事件，但你的事件會進 PMC 影響接下來的計畫。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `guardrails.hit_spacing` 高強度課之間至少隔 48 小時 | **B** | Seiler et al. 2007 MSSE（樣本小） | 2026-10-16 |
+
 ## 參考文獻
 - `docs/05-training-engine.md` §5、`docs/adr/0004-deterministic-planner.md`、`config/athlete.yaml` 的 `planner` 區段。
 - Gabbett TJ. "The training—injury prevention paradox." *British Journal of Sports Medicine* 50(5):273–280, 2016.（加太快的風險）

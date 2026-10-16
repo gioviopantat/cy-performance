@@ -25,6 +25,14 @@ icu 的做法（依論壇說明；沒有公開的封閉公式）：
 - 模型對短努力（衝刺、1 分鐘）敏感；一次順風衝刺可能讓 Pmax 跳動並連帶影響 eFTP 幾瓦。
 - eFTP、CP、20 分鐘 × 0.95、Ramp × 0.75 是四種不同的估法，彼此差 3–5 % 是常態。報告會四個並列，不會把其中一個當真理。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `eftp.ftp_mlss` FTP ≈ MLSS（區間所依據的閾值） | **B** | Borszcz et al. 2019 IJSPP：偏差 1.4 % ± 9.2 %（一致性界限），訓練程度越低越差；Lillo-Beviá et al. 2022 JSCR：20 分 × 0.95 仍與 MLSS 差約 12 W（摘要） | 2026-10-16 |
+| `eftp.icu_value` intervals.icu 的 eFTP 數值能估計 FTP | **C** | 專有演算法，沒有公開驗證 | 2026-10-16 |
+
 ## 參考文獻
 - intervals.icu 論壇（David Tinker）："eFTP and power curve models"、"How is eFTP calculated?" 等討論串（forum.intervals.icu）；Settings → Power → "Estimate FTP" 說明。
 - intervals.icu API：activity 欄位 `icu_eftp`, `icu_ftp`, `icu_pm_cp`, `icu_pm_w_prime`, `icu_pm_p_max`；`GET /athlete/{id}/mmp-model`；事件類別 `SET_EFTP`。

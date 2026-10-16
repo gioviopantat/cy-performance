@@ -32,6 +32,14 @@ decoupling % = (EF_前半 − EF_後半) / EF_前半 × 100
 - HR lag 需要乾淨的功率階躍，自由起伏的戶外騎乘常常找不到合格的階躍，那天就沒有值（缺值不算壞值）。
 - 光學心率（手錶）在高迴轉、流汗時會漂，盡量用胸帶。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `decoupling_hr_lag.durability` 耐久力（累積做功後功率／心率衰退）影響表現 | **B** | Maunder et al. 2021 Sports Med；2025 系統性回顧（21 篇，[EJAP](https://link.springer.com/article/10.1007/s00421-025-05885-0)，摘要）：2.5–15 kJ/kg 後功率降 10–20 %；只看 kJ 不夠，強度也有影響 | 2026-10-16 |
+| `decoupling_hr_lag.pwhr_5pct` Pw:Hr 解耦 < 5 % ＝有氧準備好了 | **C** | Friel 的經驗法則（書／部落格） | 2026-10-16 |
+
 ## 參考文獻
 - Friel J. "Aerobic Endurance and Decoupling." joefrieltraining.com 部落格，2009；以及 *The Cyclist's Training Bible*, 5th ed., VeloPress 2018（Pw:Hr 5 % 準則）。
 - Maunder E, Seiler S, Mildenhall MJ, Kilding AE, Plews DJ. "The importance of 'durability' in the physiological profiling of endurance athletes." *Sports Medicine* 51:1619–1628, 2021.

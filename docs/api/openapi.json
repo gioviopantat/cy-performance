@@ -3431,6 +3431,17 @@
           "doc": {
             "type": "string",
             "title": "Doc"
+          },
+          "claim": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim"
           }
         },
         "additionalProperties": false,
