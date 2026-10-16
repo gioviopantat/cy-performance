@@ -30,8 +30,43 @@ def test_too_few_weeks_gives_no_date() -> None:
 def test_single_step_is_not_a_trend() -> None:
     # Real-data shape: flat for six weeks, then one step up.
     p = goal.project_goal(series(lambda i: 199.0 if i < 42 else 216.0), as_of=AS_OF, target_w=300)
+    assert p.projected_date is None and len(p.raw) == 2
+    assert p.reason == "too_few_points"
+
+
+def test_mid_window_step_is_not_progression() -> None:
+    # Review case: 4 weeks at 250 W, 4 weeks at 270 W used to pass tau (0.571).
+    p = goal.project_goal(series(lambda i: 250.0 if i < 28 else 270.0), as_of=AS_OF, target_w=300)
+    assert p.projected_date is None and p.reason in {"too_few_points", "no_progression"}
+    # Even with noise around each level (many raw points) a step is still not progression.
+    noisy = series(lambda i: (250.0 if i < 28 else 270.0) + (0.4 if i % 2 else -0.4))
+    p = goal.project_goal(noisy, as_of=AS_OF, target_w=300)
     assert p.projected_date is None
-    assert p.reason in {"inconsistent", "flat_or_falling"}
+    assert p.reason in {"no_progression", "stalled"}
+
+
+def test_two_weeks_of_data() -> None:
+    p = goal.project_goal(series(lambda i: 240 + i, days=14), as_of=AS_OF, target_w=285)
+    assert p.projected_date is None and p.reason == "too_few_weeks"
+
+
+def test_rise_that_stopped_is_stalled() -> None:
+    p = goal.project_goal(
+        series(lambda i: 240 + 0.6 * min(i, 27) + (0.1 if i % 2 else 0.0)),
+        as_of=AS_OF,
+        target_w=285,
+    )
+    assert p.projected_date is None and p.reason == "stalled"
+
+
+def test_far_after_the_target_date_reports_after_target() -> None:
+    p = goal.project_goal(
+        series(lambda i: 240 + 0.06 * i),
+        as_of=AS_OF,
+        target_w=285,
+        target_date=dt.date(2027, 4, 2),
+    )
+    assert p.projected_date is None and p.after_target and p.reason == "after_target"
 
 
 def test_flat_or_falling() -> None:
@@ -44,7 +79,7 @@ def test_estimates_far_below_the_setting_give_no_date() -> None:
     assert p.projected_date is None and p.reason == "below_setting"
 
 
-def test_too_far_away() -> None:
+def test_too_far_away_without_a_goal_date() -> None:
     p = goal.project_goal(series(lambda i: 200 + 0.05 * i), as_of=AS_OF, target_w=300)
     assert p.projected_date is None and p.reason == "too_far"
 

@@ -103,24 +103,34 @@ FTP or ≥ 98 % LTHR. Sweet spot does not count. Without it the limiter reports
 
 ## 8. Per-ride report models (docs/specs/ride-report.md)
 
-Pure models behind the per-ride PDF; `reports/ride_facts.py` fills `reports/ride_model.py` from
-persisted results with them. Every threshold is a named constant quoted, with its value, in the
-section's Explanation; athlete-facing text lives in `reports/i18n/ride_report.zh-TW.yaml`.
+Pure models behind the per-ride PDF. `reports/ride_facts.py` assembles `reports/ride_model.py`
+from persisted results; the sections live in `reports/ride_intent.py` (2), `ride_goal.py` (3)
+and `ride_sections.py` (4-7, series), sharing `ride_common.py`. Every threshold is a named
+constant quoted, with its value, in the section's Explanation; athlete-facing text lives in
+`reports/i18n/ride_report.zh-TW.yaml`. The planned stimulus comes from
+`ResolvedWorkout.stimulus()` (`planning/templates.py`).
 
-- **Intent v1** (`analysis/ride/intent.py`, `ride_intent_v1`): the planned workout (resolved
-  from its template by the caller; analysis does not import planning) becomes a power target.
-  *Band* intents (tempo … VO2): minutes of 30 s-smoothed power in `[lo, hi × 1.10]`; reps are
-  blocks of power ≥ `lo` that survive dips (≤ smoothing window, or ≤ 120 s at ≥ 80 % of `lo`)
-  and *excused* interruptions (≤ 120 s, mostly stopped / coasting / descending ≤ −2 %); a block
-  counts when its mean is ≥ `lo` and it holds 80 % of the rep length. Score = max(minutes ratio,
-  reps ratio); ≥ 0.9 achieved, ≥ 0.5 partial. *Ceiling* intents (recovery, endurance): moving
-  time above `hi × 1.10` > 10 % → partial, > 25 % → missed. No power band → load ratio decides;
-  no trusted power → `no_data`.
+- **Intent v1** (`analysis/ride/intent.py`, `ride_intent_v1`). *Work* intents (tempo … VO2):
+  minutes of 30 s power in `[lo, hi × 1.10]` (band = the work band with the most planned time);
+  reps are blocks of power ≥ `lo` that survive dips (≤ smoothing window, or ≤ 120 s at ≥ 80 %
+  of `lo`) and *excused* interruptions (≤ 120 s, mostly stopped / coasting / descending
+  ≤ −2 %), bridged only while the block is short of one counted rep so planned rests are never
+  excused; a block counts when its mean is ≥ `lo` and it holds 80 % of the rep length. Score =
+  max(minutes ratio, reps ratio); ≥ 0.9 achieved, ≥ 0.5 partial. *Ceiling* intents (recovery,
+  endurance) on 90 s power: time above `hi × 1.10` > 10 % → partial, > 25 % → missed; endurance
+  with NP below the band floor is at most partial. No power band → load ratio decides; no
+  trusted power → `no_data`.
 - **Outdoor context** (`analysis/ride/context.py`, `outdoor_context_v1`): stops (not moving
   ≥ 15 s inside the ride), coasting % (moving seconds at 0 W), `temp_c` average / max, and
-  caveats: heat ≥ 25 °C (HR-based numbers not comparable), ≥ 4 stops/h or ≥ 15 stopped min
-  (interval structure, VI unreliable), coasting ≥ 25 % (average power understates the work).
-- **Goal projection** (`analysis/longitudinal/goal.py`, `goal_projection_v1`): weekly medians
-  of the FTP-estimate series (8 weeks), Theil–Sen slope, Kendall τ ≥ 0.5, ≥ 4 weeks, slope
-  ≥ 0.25 W/week, estimate level not > 5 % below the FTP setting, date ≤ 730 days away;
-  otherwise no date. The shift is the date change since the previous ride's projection.
+  caveats: heat ≥ 25 °C *and* ≥ 3 °C above the athlete's median of the last 28 days' outdoor
+  rides (absolute floor only with < 3 such rides); ≥ 4 stops/h or ≥ 15 stopped min (interval
+  structure, VI unreliable); coasting ≥ 25 % (average power understates the work).
+- **Goal projection** (`analysis/longitudinal/goal.py`, `goal_projection_v2`): Theil–Sen line
+  through the days the FTP estimate changed (last 8 weeks, not the forward-filled series); a
+  date only with ≥ 4 weekly medians, ≥ 3 raw points, ≥ 3 week-over-week rises, a rising last
+  half-window, Kendall τ ≥ 0.5, slope ≥ 0.25 W/week and the estimate level ≤ 5 % below the FTP
+  setting. A date more than 26 weeks after the goal date is reported as "after the target date"
+  without a date. The shift is the date change since the previous ride's projection.
+- **Limiter minutes** (`reports/ride_sections.py`): 30 s power in % FTP per limiter (VO2
+  ≥ 106 %, sustained 88-105 %, aerobic volume 56-76 %, grey zone 76-88 % where fewer is
+  better), durability = moving minutes after 1 000 kJ.

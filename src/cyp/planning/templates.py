@@ -17,6 +17,7 @@ from __future__ import annotations
 import itertools
 import math
 import re
+import statistics
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from fractions import Fraction
@@ -155,6 +156,82 @@ class ResolvedWorkout:
     if_: float
     note_zh: str | None
     note: str | None = field(default=None)
+
+    def leaves(self) -> list[tuple[Step, int]]:
+        """Every leaf step with how many times it is ridden (repeat count)."""
+        out: list[tuple[Step, int]] = []
+        for it in self.items:
+            if isinstance(it, Repeat):
+                out += [(s, it.count) for s in it.steps]
+            else:
+                out.append((it, 1))
+        return out
+
+    def rep_lengths(self) -> list[int]:
+        """Planned rep lengths (s).
+
+        A repeat made only of work steps (e.g. tempo with surges) is one continuous rep;
+        otherwise each work step of each repetition is a rep.
+        """
+        out: list[int] = []
+        for it in self.items:
+            if isinstance(it, Repeat):
+                works = [st.duration_s for st in it.steps if st.kind == "work"]
+                if works and len(works) == len(it.steps):
+                    out.append(it.count * sum(works))
+                else:
+                    out += works * it.count
+            elif it.kind == "work":
+                out.append(it.duration_s)
+        return out
+
+    def stimulus(self, intent: str) -> Stimulus | None:
+        """The planned stimulus in % FTP (``None`` without a power band).
+
+        ``work`` intents use the work steps: band = the work band holding the most planned time
+        (surges above it still count as on target), reps from :meth:`rep_lengths`, rep length =
+        their median. Without work steps, the longest targeted step. :data:`CEILING_INTENTS` are
+        judged against the longest step's top over the whole planned duration; endurance also
+        gets that step's bottom as a floor.
+        """
+        leaves = [(s, c) for s, c in self.leaves() if s.lo is not None and s.hi is not None]
+        works = [(s, c) for s, c in leaves if s.kind == "work"]
+        if intent in CEILING_INTENTS or not works:
+            steady = [(s, c) for s, c in leaves if s.kind in ("steady", "work")]
+            if not steady:
+                return None
+            main, count = max(steady, key=lambda sc: sc[0].duration_s * sc[1])
+            assert main.lo is not None and main.hi is not None
+            if intent in CEILING_INTENTS:
+                floor = main.lo if intent == "endurance" else None
+                return Stimulus("ceiling", main.lo, main.hi, self.duration_s, floor_pct=floor)
+            return Stimulus("work", main.lo, main.hi, main.duration_s * count)
+        by_band: dict[tuple[float, float], int] = {}
+        for st, c in works:
+            assert st.lo is not None and st.hi is not None
+            by_band[(st.lo, st.hi)] = by_band.get((st.lo, st.hi), 0) + st.duration_s * c
+        lo, hi = max(by_band, key=lambda b: by_band[b])
+        reps = self.rep_lengths()
+        return Stimulus(
+            "work", lo, hi, sum(reps), rep_s=int(statistics.median(reps)), reps=len(reps)
+        )
+
+
+#: Intents whose point is to stay easy: judged by a power ceiling, not by time in a band.
+CEILING_INTENTS = frozenset({"recovery", "endurance"})
+
+
+@dataclass(frozen=True)
+class Stimulus:
+    """What a workout asks for, in % FTP: ``work`` = time in a band, ``ceiling`` = stay under."""
+
+    kind: Literal["work", "ceiling"]
+    lo_pct: float
+    hi_pct: float
+    target_s: int
+    rep_s: int | None = None
+    reps: int | None = None
+    floor_pct: float | None = None
 
 
 # --------------------------------------------------------------------------------------------

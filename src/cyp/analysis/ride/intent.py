@@ -5,18 +5,22 @@ an :class:`IntentTarget` in watts. Outdoor interruptions are *excused*, not fail
 
 Two kinds of target:
 
-- ``band`` (tempo, sweet spot, threshold, VO2, …): the work steps' power band. Achieved
+- ``work`` (tempo, sweet spot, threshold, VO2, …): the work steps' power band. Achieved
   minutes are moving seconds whose smoothed power lies in ``[lo, hi × OVERSHOOT_FRAC]``.
   A *rep* is a block of runs of smoothed power ≥ ``lo``. Two runs belong to one block when the
   gap between them is a *dip* (shorter than the smoothing window, or ≤ :data:`EXCUSE_MAX_S` at
   ≥ :data:`DIP_FLOOR_FRAC` × ``lo`` on average: still pedalling hard, e.g. a steeper ramp or a
   shift on a climb) or an *excused* interruption (≤ :data:`EXCUSE_MAX_S`, mostly stopped,
-  coasting or descending; listed, and not counted as rep time). A block counts when its mean
+  coasting or descending; listed, and not counted as rep time). Long dips and interruptions
+  are only bridged while the block is still short of one planned rep, so planned rests never
+  become "excused" gaps. A block counts when its mean
   power over the rep time is ≥ ``lo`` and the rep time holds :data:`REP_COUNT_FRAC` of the
   planned rep length (a 24-min block counts as two 12-min reps).
 - ``ceiling`` (recovery, endurance): the point is to stay easy for the planned time. Achieved
-  minutes are moving seconds at or below ``hi × OVERSHOOT_FRAC`` (coasting counts: descents
-  are part of an easy road ride); time above the ceiling is what fails it.
+  minutes are moving seconds whose 90 s power (:data:`CEILING_SMOOTH_S`) is at or below
+  ``hi × OVERSHOOT_FRAC`` (coasting counts: descents are part of an easy road ride); time above
+  the ceiling is what fails it. With a ``floor_w`` (endurance), an NP under it is too easy to
+  be the planned ride and caps the verdict at partial.
 
 Score: achieved / planned minutes in the band (the spec's v1 measure); for rep workouts the
 larger of that and reps counted / planned, because a counted rep already has its mean power in
@@ -34,11 +38,11 @@ from typing import Literal
 
 import numpy as np
 
-from cyp.analysis.ride.frames import BoolArray, FloatArray
+from cyp.analysis.ride.frames import BoolArray, FloatArray, runs
 
 INTENT_VERSION = "ride_intent_v1"
 
-IntentKind = Literal["band", "ceiling"]
+IntentKind = Literal["work", "ceiling"]
 IntentVerdict = Literal["achieved", "partial", "missed", "no_data"]
 
 #: Smoothing window (s) for power, as for NP: one-second spikes and dips are not the stimulus.
@@ -62,6 +66,9 @@ DESCENT_GRADE_PCT = -2.0
 ACHIEVED_FRAC = 0.90
 #: Score from which it counts as partly reached; below is missed.
 PARTIAL_FRAC = 0.50
+#: Ceiling targets are judged on 90 s power: a 30-60 s rise on rolling roads is terrain, a
+#: climb held above the cap for minutes is the ride getting harder than planned.
+CEILING_SMOOTH_S = 90
 #: Ceiling targets: share of moving time above the ceiling tolerated as achieved / as partial.
 CEILING_OVER_OK = 0.10
 CEILING_OVER_MAX = 0.25
@@ -77,6 +84,8 @@ class IntentTarget:
     target_s: int
     rep_s: int | None = None
     reps: int | None = None
+    #: Endurance floor: an NP below it is too easy to be the planned ride (at most partial).
+    floor_w: float | None = None
 
 
 @dataclass
@@ -99,6 +108,8 @@ class IntentFacts:
     counted: list[Span] = field(default_factory=list)
     excused: list[Span] = field(default_factory=list)
     score: float | None = None
+    #: NP under ``target.floor_w`` (ceiling targets with a floor).
+    too_easy: bool = False
     verdict: IntentVerdict = "no_data"
 
 
@@ -110,10 +121,13 @@ def smooth(watts: FloatArray, window: int) -> FloatArray:
     return np.asarray(np.convolve(x, kernel, mode="same"), dtype=np.float64)
 
 
-def _runs(mask: BoolArray) -> list[tuple[int, int]]:
-    padded = np.concatenate(([False], mask, [False])).astype(np.int8)
-    edges = np.flatnonzero(np.diff(padded))
-    return [(int(s), int(e)) for s, e in zip(edges[::2], edges[1::2], strict=True)]
+def smoothing_window(target: IntentTarget) -> int:
+    """Power smoothing (s) used for ``target`` (see :data:`SMOOTH_REP_FRACTION`)."""
+    if target.kind == "ceiling":
+        return CEILING_SMOOTH_S
+    if target.rep_s:
+        return max(3, min(SMOOTH_S, int(target.rep_s * SMOOTH_REP_FRACTION)))
+    return SMOOTH_S
 
 
 def _gap_reason(
@@ -143,25 +157,35 @@ def _blocks(
     grade: FloatArray | None,
     lo_w: float,
     window: int,
+    rep_s: int,
 ) -> list[tuple[list[tuple[int, int]], list[Span]]]:
     """Runs of ``p ≥ lo_w`` merged across dips and excused gaps (indices, not seconds).
 
+    A gap shorter than the smoothing window is noise and always merges. Longer dips and excused
+    interruptions merge only while the block is still short of one counted rep: after that
+    rep the gap is the planned rest (30/15, over-under recoveries), not an interruption.
     Returns ``(runs, excused gaps)`` per block; gap spans hold grid indices.
     """
     blocks: list[tuple[list[tuple[int, int]], list[Span]]] = []
-    for r in _runs(p >= lo_w):
+    for r in runs(p >= lo_w):
         if blocks:
-            prev_end = blocks[-1][0][-1][1]
+            parts, gaps = blocks[-1]
+            prev_end = parts[-1][1]
             gap = r[0] - prev_end
-            reason = _gap_reason(prev_end, r[0], moving, watts, grade)
-            if reason is not None:
-                blocks[-1][0].append(r)
-                blocks[-1][1].append(Span(prev_end, r[0], reason))
+            on_s = parts[-1][1] - parts[0][0] - sum(g.end_s - g.start_s for g in gaps)
+            if gap <= window:
+                parts.append(r)
                 continue
-            dip_mean = float(np.nan_to_num(watts[prev_end : r[0]], nan=0.0).mean())
-            if gap <= window or (gap <= EXCUSE_MAX_S and dip_mean >= DIP_FLOOR_FRAC * lo_w):
-                blocks[-1][0].append(r)
-                continue
+            if on_s < REP_COUNT_FRAC * rep_s:
+                reason = _gap_reason(prev_end, r[0], moving, watts, grade)
+                if reason is not None:
+                    parts.append(r)
+                    gaps.append(Span(prev_end, r[0], reason))
+                    continue
+                dip_mean = float(np.nan_to_num(watts[prev_end : r[0]], nan=0.0).mean())
+                if gap <= EXCUSE_MAX_S and dip_mean >= DIP_FLOOR_FRAC * lo_w:
+                    parts.append(r)
+                    continue
         blocks.append(([r], []))
     return blocks
 
@@ -180,6 +204,27 @@ def verdict_from_score(score: float) -> IntentVerdict:
     return "missed"
 
 
+def _ceiling(
+    target: IntentTarget, p: FloatArray, moving: BoolArray, np_w: float | None, out: IntentFacts
+) -> IntentFacts:
+    ceiling = target.hi_w * OVERSHOOT_FRAC
+    out.achieved_s = int(np.count_nonzero(moving & (p <= ceiling)))
+    out.above_s = int(np.count_nonzero(moving & (p > ceiling)))
+    over = out.above_s / out.moving_s if out.moving_s else 0.0
+    out.score = round(min(out.achieved_s / target.target_s, 1.0), 3)
+    if over > CEILING_OVER_MAX:
+        out.verdict = "missed"
+    elif over > CEILING_OVER_OK:
+        out.verdict = "partial" if out.score >= PARTIAL_FRAC else "missed"
+    else:
+        out.verdict = verdict_from_score(out.score)
+    if target.floor_w is not None and np_w is not None and np_w < target.floor_w:
+        out.too_easy = True
+        if out.verdict == "achieved":
+            out.verdict = "partial"
+    return out
+
+
 def assess_intent(
     target: IntentTarget,
     watts: FloatArray | None,
@@ -187,38 +232,29 @@ def assess_intent(
     *,
     t_s: FloatArray | None = None,
     grade: FloatArray | None = None,
+    np_w: float | None = None,
 ) -> IntentFacts:
-    """Assess one ride against ``target`` (1 Hz arrays on the same grid)."""
+    """Assess one ride against ``target`` (1 Hz arrays on the same grid).
+
+    ``np_w`` (the ride's NP) is needed only for a ceiling target's floor.
+    """
     out = IntentFacts(moving_s=int(moving.sum()))
     if watts is None or not np.isfinite(watts).any() or target.target_s <= 0:
         return out
     t = np.arange(watts.size) if t_s is None else np.asarray(t_s)
-    window = SMOOTH_S
-    if target.rep_s:
-        window = max(3, min(SMOOTH_S, int(target.rep_s * SMOOTH_REP_FRACTION)))
+    window = smoothing_window(target)
     p = smooth(watts, window)
-    ceiling = target.hi_w * OVERSHOOT_FRAC
-
     if target.kind == "ceiling":
-        out.achieved_s = int(np.count_nonzero(moving & (p <= ceiling)))
-        out.above_s = int(np.count_nonzero(moving & (p > ceiling)))
-        over = out.above_s / out.moving_s if out.moving_s else 0.0
-        out.score = round(min(out.achieved_s / target.target_s, 1.0), 3)
-        if over > CEILING_OVER_MAX:
-            out.verdict = "missed"
-        elif over > CEILING_OVER_OK:
-            out.verdict = "partial" if out.score >= PARTIAL_FRAC else "missed"
-        else:
-            out.verdict = verdict_from_score(out.score)
-        return out
+        return _ceiling(target, p, moving, np_w, out)
 
+    ceiling = target.hi_w * OVERSHOOT_FRAC
     in_band = moving & (p >= target.lo_w) & (p <= ceiling)
     out.achieved_s = int(np.count_nonzero(in_band))
     out.above_s = int(np.count_nonzero(moving & (p > ceiling)))
     score = out.achieved_s / target.target_s
     if target.rep_s and target.reps:
         reps = 0
-        for parts, gaps in _blocks(p, watts, moving, grade, target.lo_w, window):
+        for parts, gaps in _blocks(p, watts, moving, grade, target.lo_w, window, target.rep_s):
             excused = sum(g.end_s - g.start_s for g in gaps)
             first, last = parts[0][0], parts[-1][1]
             rep_mask = np.ones(last - first, dtype=bool)

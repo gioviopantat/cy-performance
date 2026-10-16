@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from cyp.analysis.ride.frames import BoolArray, RideFrame
+from cyp.analysis.ride.frames import RideFrame, runs
 
 CONTEXT_VERSION = "outdoor_context_v1"
 
@@ -26,9 +26,13 @@ CONTEXT_VERSION = "outdoor_context_v1"
 STOP_MIN_S = 15
 #: Coasting = a moving second at or below this power (a reading of exactly 0 W).
 COAST_MAX_W = 0.0
-#: Average temperature from which heat raises HR at the same power (cardiovascular drift), so
-#: HR-based numbers (decoupling, EF, HR lag) are not comparable with cool days.
+#: Absolute floor: below this average temperature heat is not what drives HR (thermoregulatory
+#: load at the same power becomes material above roughly 25 °C).
 HEAT_AVG_C = 25.0
+#: Heat is named only when it is also this much above the athlete's usual (recent median ride
+#: temperature): in a hot climate every ride is warm, and only *hotter than usual* makes today's
+#: HR-based numbers (decoupling, EF, HR lag) incomparable with the athlete's own history.
+HEAT_MARGIN_C = 3.0
 #: Stops per moving hour from which interval structure and VI are dominated by traffic lights.
 MANY_STOPS_PER_H = 4.0
 #: Stopped minutes from which the same is true however few the stops were.
@@ -69,15 +73,6 @@ class OutdoorFacts:
         return len(self.stops) / (self.moving_s / 3600) if self.moving_s else 0.0
 
 
-def _runs(mask: BoolArray) -> list[tuple[int, int]]:
-    """``[start, end)`` index runs where ``mask`` is True."""
-    if mask.size == 0:
-        return []
-    padded = np.concatenate(([False], mask, [False])).astype(np.int8)
-    edges = np.flatnonzero(np.diff(padded))
-    return [(int(s), int(e)) for s, e in zip(edges[::2], edges[1::2], strict=True)]
-
-
 def find_stops(frame: RideFrame, *, min_s: int = STOP_MIN_S) -> list[Stop]:
     """Not-moving runs of at least ``min_s`` strictly inside the ride (start/end excluded)."""
     moving = frame.moving
@@ -87,7 +82,7 @@ def find_stops(frame: RideFrame, *, min_s: int = STOP_MIN_S) -> list[Stop]:
     first, last = int(idx[0]), int(idx[-1])
     t = frame.t_s
     out = []
-    for s, e in _runs(~moving[first : last + 1]):
+    for s, e in runs(~moving[first : last + 1]):
         lo, hi = first + s, first + e
         if hi - lo >= min_s:
             out.append(Stop(int(t[lo]), int(t[hi - 1]) + 1))
@@ -129,11 +124,29 @@ class Caveat:
     evidence: dict[str, float | int]
 
 
-def caveats(f: OutdoorFacts) -> list[Caveat]:
-    """Caveats that fire, each with the measured value and its threshold."""
+def caveats(f: OutdoorFacts, baseline_temp_c: float | None = None) -> list[Caveat]:
+    """Caveats that fire, each with the measured value and its threshold.
+
+    ``baseline_temp_c`` is the athlete's usual ride temperature; without one only the absolute
+    floor applies.
+    """
     out: list[Caveat] = []
-    if f.temp_avg_c is not None and f.temp_avg_c >= HEAT_AVG_C:
-        out.append(Caveat("heat", {"temp_avg_c": round(f.temp_avg_c, 1), "limit_c": HEAT_AVG_C}))
+    t = f.temp_avg_c
+    if t is not None and t >= HEAT_AVG_C:
+        if baseline_temp_c is None:
+            out.append(Caveat("heat", {"temp_avg_c": round(t, 1), "limit_c": HEAT_AVG_C}))
+        elif t >= baseline_temp_c + HEAT_MARGIN_C:
+            out.append(
+                Caveat(
+                    "heat_vs_usual",
+                    {
+                        "temp_avg_c": round(t, 1),
+                        "usual_c": round(baseline_temp_c, 1),
+                        "diff_c": round(t - baseline_temp_c, 1),
+                        "margin_c": HEAT_MARGIN_C,
+                    },
+                )
+            )
     stopped_min = f.stopped_s / 60
     if f.stops_per_h >= MANY_STOPS_PER_H or stopped_min >= MANY_STOPPED_MIN:
         out.append(
@@ -157,7 +170,7 @@ def caveats(f: OutdoorFacts) -> list[Caveat]:
     return out
 
 
-def outdoor_context(frame: RideFrame) -> OutdoorFacts:
+def outdoor_context(frame: RideFrame, baseline_temp_c: float | None = None) -> OutdoorFacts:
     """Stops, coasting, temperature and caveats of one outdoor ride."""
     stops = find_stops(frame)
     t_avg, t_max = temperature(frame)
@@ -169,5 +182,5 @@ def outdoor_context(frame: RideFrame) -> OutdoorFacts:
         temp_avg_c=t_avg,
         temp_max_c=t_max,
     )
-    f.caveats = caveats(f)
+    f.caveats = caveats(f, baseline_temp_c)
     return f

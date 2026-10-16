@@ -41,6 +41,7 @@ from cyp.store.models import (
     ReadinessDaily,
     WellnessDaily,
 )
+from cyp.store.repo.planned import is_live
 
 DEFAULT_TZ = "Asia/Taipei"
 
@@ -727,7 +728,7 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
         )
         .where(
             PlannedWorkout.athlete_id == athlete_id,
-            PlannedWorkout.status.not_in(("cancelled", "superseded")),
+            is_live(),
         )
         .order_by(PlannedWorkout.date_local, PlannedWorkout.slot)
     ):

@@ -18,17 +18,18 @@
   "tss_source": "cyp"
  },
  "headline": {
-  "text_zh": "目的達成：甜蜜點 3x10 分。3/3 組有效，28/30 分鐘在目標區間。285 W 預估 2027-01-06 達成（和上一趟一樣）。明天改成：恢復騎 45 分。",
+  "text_zh": "目的達成：甜蜜點 3x10 分。3/3 組有效、28/30 分鐘在 212–238 W。285 W 預估 2027-01-03 達成（和上一趟一樣）。明天改成：恢復騎 45 分。",
   "verdict": "achieved"
  },
  "intent": {
   "planned_name": "甜蜜點 3x10 分",
+  "kind": "work",
   "purpose_zh": "FTP 以下 10 % 的高產出/低疲勞比間歇，基礎期與建構期的主要 FTP 刺激。",
   "target_zone": "甜蜜點 85–95 % FTP",
   "target_low_w": 212,
   "target_high_w": 238,
   "target_min": 30.0,
-  "achieved_min": 27.6,
+  "achieved_min": 28.0,
   "reps_planned": 3,
   "reps_counted": 3,
   "load_planned": 75.0,
@@ -61,7 +62,7 @@
   "verdict": "achieved",
   "explanation": {
    "key": "ride.intent",
-   "headline_zh": "3/3 組有效、28/30 分鐘在 212–238 W，達成",
+   "headline_zh": "3/3 組有效、28/30 分鐘在 212–238 W",
    "because": [
     {
      "text_zh": "分數 = max(區間分鐘 / 計畫分鐘, 有效組數 / 計畫組數) = 100%（每組已要求平均功率在區間內，所以爬坡時的短暫掉功率不會被重複扣分）；≥ 90% 達成，≥ 50% 部分達成",
@@ -124,14 +125,15 @@
     "inputs": {
      "achieved_frac": 0.9,
      "partial_frac": 0.5,
+     "kind": "work",
      "lo_w": 212.5,
      "hi_w": 237.5,
+     "floor_w": null,
      "ftp": 250.0,
      "overshoot_frac": 1.1,
      "smooth_s": 30,
      "target_s": 1800,
      "score": 1.0,
-     "kind": "band",
      "above_s": 0,
      "over_share": 0.0,
      "ceiling_w": 261.2
@@ -150,8 +152,9 @@
   "target_date": "2027-04-02",
   "current_ftp_w": 250.0,
   "current_source": "icu_sport_settings",
+  "trend_level_w": 261.0,
   "this_ride_evidence_w": null,
-  "projected_date": "2027-01-06",
+  "projected_date": "2027-01-03",
   "projected_shift_days": 0,
   "on_track": true,
   "history": [
@@ -198,7 +201,7 @@
   ],
   "explanation": {
    "key": "ride.goal",
-   "headline_zh": "以近 8 週趨勢，預估 2027-01-06 達到 285 W",
+   "headline_zh": "以近 8 週趨勢，預估 2027-01-03 達到 285 W",
    "because": [
     {
      "text_zh": "FTP 估計來源：icu_eftp",
@@ -208,12 +211,15 @@
      "weight": null
     },
     {
-     "text_zh": "近 8 週 FTP 估計（每週中位數）趨勢每週 +2.1 W、一致性 τ = 1.00，今天的趨勢值 260 W",
+     "text_zh": "近 8 週 FTP 估計（56 個實際變動點）趨勢每週 +2.1 W、後半段每週 +2.1 W、7 週比前一週高、一致性 τ = 1.00，今天的趨勢值 261 W",
      "evidence": {
       "weeks": 8,
+      "raw_points": 56,
       "slope_w_per_week": 2.1,
+      "recent_slope_w_per_week": 2.1,
+      "weekly_increases": 7,
       "kendall_tau": 1.0,
-      "level_w": 259.8
+      "level_w": 261.0
      },
      "weight": null
     },
@@ -225,15 +231,15 @@
      "weight": null
     },
     {
-     "text_zh": "預估日期 2027-01-06 在目標日 2027-04-02 之前：進度符合",
+     "text_zh": "預估日期 2027-01-03 在目標日 2027-04-02 之前：進度符合",
      "evidence": {
-      "projected_date": "2027-01-06",
+      "projected_date": "2027-01-03",
       "target_date": "2027-04-02"
      },
      "weight": null
     },
     {
-     "text_zh": "上一趟（2026-10-13）預估 2027-01-06，這趟後預估 2027-01-06：不變",
+     "text_zh": "上一趟（2026-10-13）預估 2027-01-03，這趟後預估 2027-01-03：不變",
      "evidence": {
       "prev_day": "2026-10-13",
       "shift_days": 0
@@ -241,20 +247,23 @@
      "weight": null
     },
     {
-     "text_zh": "用 Theil–Sen 穩健直線（成對斜率的中位數），單一週的異常值影響很小；至少 4 週資料、Kendall τ ≥ 0.5（大部分週與週的比較是往上）、估計不低於 FTP 設定 5% 以上、每週至少 +0.25 W、預估在 730 天內才給日期",
+     "text_zh": "用 Theil–Sen 穩健直線（成對斜率的中位數），單一週的異常值影響很小；只用估計值實際變動的那幾天（不重複計算沿用的值）；至少 4 週資料、3 個變動點、3 週比前一週高、後半段仍往上、Kendall τ ≥ 0.5、估計不低於 FTP 設定 5% 以上、每週至少 +0.25 W 才給日期；晚於目標日 26 週以上只說「晚於目標日」",
      "evidence": {},
      "weight": null
     }
    ],
    "method": {
-    "model_id": "goal_projection_v1",
-    "version": "goal_projection_v1",
+    "model_id": "goal_projection_v2",
+    "version": "goal_projection_v2",
     "inputs": {
      "trend_weeks": 8,
      "min_weeks": 4,
+     "min_raw_points": 3,
+     "min_weekly_increases": 3,
      "min_slope_w_per_week": 0.25,
      "min_kendall_tau": 0.5,
      "max_below_setting": 0.05,
+     "after_target_weeks": 26,
      "max_projection_days": 730,
      "target_w": 285.0,
      "as_of": "2026-10-14"
@@ -270,8 +279,8 @@
  },
  "outdoor": {
   "stops_n": 9,
-  "stopped_min": 6.1,
-  "coasting_pct": 3.5,
+  "stopped_min": 6.0,
+  "coasting_pct": 4.0,
   "temp_avg_c": 32.0,
   "temp_max_c": 33.0,
   "stops": [
@@ -322,8 +331,8 @@
    }
   ],
   "caveats_zh": [
-   "平均氣溫 32 °C（≥ 25 °C）：高溫讓同樣功率的心率偏高，今天的心率漂移（decoupling）、效率因子（EF）和心率延遲不和涼爽天比較",
-   "停車 9 次、共 6 分鐘（每小時 4.8 次；門檻每小時 4 次或共 15 分鐘）：間歇被路口切開，間歇結構和變異指數（VI）不可靠；被停車打斷的組數已另外寬列"
+   "平均氣溫 32 °C，比你最近常騎的 23 °C 高 9 °C（≥ 3 °C）：同樣功率心率會偏高，今天的心率漂移（decoupling）、效率因子（EF）和心率延遲不和平常比較",
+   "停車 9 次、共 6 分鐘（每小時 4.8 次；門檻每小時 4 次或共 15 分鐘）：路口把騎乘切開，間歇結構和變異指數（VI）不可靠；被停車打斷的組數已另外寬列"
   ]
  },
  "climbs": [
@@ -331,43 +340,43 @@
    "name": "2.3 km · 5.7 % 爬坡",
    "this": {
     "day": "2026-10-14",
-    "power_w": 223.6,
+    "power_w": 224.0,
     "w_kg": 3.19,
     "time_s": 600,
-    "kj_before": 133.3,
+    "kj_before": 133.0,
     "temp_c": 31.0
    },
    "history": [
     {
      "day": "2026-09-16",
-     "power_w": 208.9,
+     "power_w": 209.0,
      "w_kg": 2.98,
      "time_s": 616,
-     "kj_before": 133.3,
+     "kj_before": 133.0,
      "temp_c": 22.0
     },
     {
      "day": "2026-09-23",
-     "power_w": 228.5,
+     "power_w": 228.0,
      "w_kg": 3.26,
      "time_s": 600,
-     "kj_before": 133.3,
+     "kj_before": 133.0,
      "temp_c": 22.0
     },
     {
      "day": "2026-09-30",
-     "power_w": 218.7,
+     "power_w": 219.0,
      "w_kg": 3.12,
      "time_s": 584,
-     "kj_before": 133.3,
+     "kj_before": 133.0,
      "temp_c": 22.0
     },
     {
      "day": "2026-10-07",
-     "power_w": 238.3,
+     "power_w": 238.0,
      "w_kg": 3.4,
      "time_s": 569,
-     "kj_before": 133.3,
+     "kj_before": 133.0,
      "temp_c": 22.0
     }
    ],
@@ -389,12 +398,12 @@
   "lines": [
    {
     "limiter_id": "aerobic_volume",
-    "name_zh": "有氧基礎量（CTL）不足",
-    "trained_min": 76.0,
-    "week_min": 126.0
+    "name_zh": "有氧基礎量",
+    "trained_min": 73.0,
+    "week_min": 123.0
    }
   ],
-  "text_zh": "這趟練到「有氧基礎量（CTL）不足」76 分鐘，本週累計 126 分鐘"
+  "text_zh": "這趟練到「有氧基礎量」73 分鐘，本週累計 123 分鐘"
  },
  "tomorrow": {
   "day": "2026-10-15",
@@ -422,7 +431,7 @@
    "doc": "docs/specs/ride-report.md"
   },
   {
-   "model_id": "goal_projection_v1",
+   "model_id": "goal_projection_v2",
    "claim_id": null,
    "grade": null,
    "citation": null,

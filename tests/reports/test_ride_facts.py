@@ -11,6 +11,7 @@ import datetime as dt
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
@@ -20,8 +21,11 @@ from cyp.analysis.readiness import RPE_SURPRISE
 from cyp.analysis.ride import context as ctx_mod
 from cyp.core.errors import NotFoundError
 from cyp.reports import ride_facts
-from cyp.reports.ride_facts import build_ride_report, text
+from cyp.reports.ride_common import texts
+from cyp.reports.ride_facts import _start_local, build_ride_report, text
+from cyp.reports.ride_goal import FTP_FROM_20MIN, ride_evidence
 from cyp.reports.ride_model import RideReport, Tomorrow
+from cyp.services.ride_preview import shift_to_tomorrow
 from cyp.settings import AthleteConfig, load_athlete_config
 from cyp.store.models import Activity, PlannedWorkout
 from cyp.store.streams import StreamStore
@@ -119,7 +123,7 @@ def test_outdoor_ride_with_stops_and_heat(
     assert r.limiters.lines[0].week_min > r.limiters.lines[0].trained_min > 0
     assert r.tomorrow is not None and r.tomorrow.changed
     ids = [m.model_id for m in r.methods]
-    assert ids[:3] == ["coggan_np_if_tss", "ride_intent_v1", "goal_projection_v1"]
+    assert ids[:3] == ["coggan_np_if_tss", "ride_intent_v1", "goal_projection_v2"]
     assert all(m.grade is None and m.claim_id is None for m in r.methods)
     assert all((Path(__file__).resolve().parents[2] / m.doc).is_file() for m in r.methods)
 
@@ -203,10 +207,10 @@ def test_recovery_plan_is_judged_by_its_ceiling(
     assert r.intent.target_high_w == 150  # (55 % + 5 % outdoor widening) of 250 W
     assert r.intent.verdict == "missed"  # sweet spot on a recovery day
     inputs = (r.intent.explanation or {})["method"]["inputs"]
-    assert inputs["kind"] == "ceiling" and inputs["over_share"] > 0.25
-    assert text("headline.ceiling", over=inputs["over_share"], ceiling=inputs["ceiling_w"]) in (
-        r.headline.text_zh
-    )
+    assert r.intent.kind == "ceiling" and inputs["over_share"] > 0.25
+    assert inputs["smooth_s"] == 90
+    # The report headline quotes the intent section's own headline (same numbers).
+    assert (r.intent.explanation or {})["headline_zh"] in r.headline.text_zh
 
 
 def test_without_power_the_intent_is_no_data(
@@ -277,3 +281,55 @@ def test_second_ride_of_the_day_does_not_take_the_plan(
 def test_unknown_activity(factory: sessionmaker[Session], store: StreamStore) -> None:
     with factory() as s, pytest.raises(NotFoundError):
         build_ride_report(s, store, 404, profile="test", cfg=None)
+
+
+def test_heat_is_judged_against_the_usual_temperature(
+    factory: sessionmaker[Session], store: StreamStore, world: dict[str, int], cfg: AthleteConfig
+) -> None:
+    r = report(factory, store, world["ride"], cfg)
+    assert r.outdoor is not None
+    heat = r.outdoor.caveats_zh[0]
+    # 32 °C today vs ~23 °C on the four cooler rides of the last 28 days.
+    assert "32 °C" in heat and "23 °C" in heat and "9 °C" in heat
+
+
+def test_unplanned_outdoor_ride_does_not_mention_excused_reps(
+    factory: sessionmaker[Session], store: StreamStore, world: dict[str, int], cfg: AthleteConfig
+) -> None:
+    with factory() as s:
+        s.query(PlannedWorkout).delete()
+        s.commit()
+    r = report(factory, store, world["ride"], cfg)
+    assert r.intent is None and r.outdoor is not None
+    stops = [c for c in r.outdoor.caveats_zh if f"{r.outdoor.stops_n} " in c]
+    assert stops and not stops[0].endswith(text("outdoor.stops_reps"))
+
+
+def test_ride_ftp_evidence_reuses_max_effort_evidence() -> None:
+    row = SimpleNamespace(id=7, power_ok=True, power_curve={1200: 270.0})
+    status = SimpleNamespace(
+        current_ftp=250.0,
+        max_efforts=SimpleNamespace(
+            sustained=[
+                {"activity_id": 7, "kind": "power_20min", "watts": 262, "label_zh": "a"},
+                {"activity_id": 7, "kind": "test", "label_zh": "b"},
+                {"activity_id": 8, "kind": "power_20min", "watts": 300, "label_zh": "c"},
+            ]
+        ),
+    )
+    inp = SimpleNamespace(row=row)
+    ev = ride_evidence(inp, status)  # type: ignore[arg-type]
+    assert ev == (round(270.0 * FTP_FROM_20MIN, 1), "b")  # the test's 20-min power wins
+    status.max_efforts.sustained = []
+    assert ride_evidence(inp, status) is None  # type: ignore[arg-type]
+
+
+def test_start_falls_back_to_utc_in_the_ride_timezone() -> None:
+    a = Activity(start_utc="2026-10-13T23:00:00Z", start_local=None, tz="Asia/Taipei")
+    assert _start_local(a) == dt.datetime(2026, 10, 14, 7, 0)
+
+
+def test_planner_sentences_are_shifted_to_tomorrow() -> None:
+    words = texts()["tomorrow_shift"]
+    yesterday, today = list(words)
+    assert shift_to_tomorrow(f"{yesterday} 1 {today} 2") == f"{words[yesterday]} 1 {words[today]} 2"

@@ -20,8 +20,17 @@ def frame(segs: list[Seg], temp_c: float | None = None) -> RideFrame:
 
 
 def test_stops_inside_the_ride_only() -> None:
-    f = frame([Seg(30, 0.0, stop=True), Seg(600, 200.0), Seg(40, 0.0, stop=True), Seg(600, 200.0),
-               Seg(10, 0.0, stop=True), Seg(300, 200.0), Seg(60, 0.0, stop=True)])  # fmt: skip
+    f = frame(
+        [
+            Seg(30, 0.0, stop=True),
+            Seg(600, 200.0),
+            Seg(40, 0.0, stop=True),
+            Seg(600, 200.0),
+            Seg(10, 0.0, stop=True),
+            Seg(300, 200.0),
+            Seg(60, 0.0, stop=True),
+        ]
+    )
     stops = ctx_mod.find_stops(f)
     # Leading / trailing standstill is not a stop; 10 s is under STOP_MIN_S.
     assert [(s.start_s, s.end_s) for s in stops] == [(630, 670)]
@@ -58,14 +67,16 @@ def test_no_power_no_coasting() -> None:
 
 # ------------------------------------------------------------------------------- intent
 
-SS = IntentTarget("band", 212.5, 237.5, 1800, rep_s=600, reps=3)
-ONE_REP = IntentTarget("band", 212.5, 237.5, 600, rep_s=600, reps=1)
+SS = IntentTarget("work", 212.5, 237.5, 1800, rep_s=600, reps=3)
+ONE_REP = IntentTarget("work", 212.5, 237.5, 600, rep_s=600, reps=1)
 
 
-def run(segs: list[Seg], target: IntentTarget = SS) -> intent_mod.IntentFacts:
+def run(
+    segs: list[Seg], target: IntentTarget = SS, np_w: float | None = None
+) -> intent_mod.IntentFacts:
     f = frame(segs)
     assert f.watts is not None
-    return assess_intent(target, f.watts, f.moving, grade=f.grade)
+    return assess_intent(target, f.watts, f.moving, grade=f.grade, np_w=np_w)
 
 
 def test_three_clean_reps_achieved() -> None:
@@ -79,8 +90,16 @@ def test_three_clean_reps_achieved() -> None:
 
 
 def test_red_light_inside_a_rep_is_excused_not_a_failure() -> None:
-    segs = [Seg(600, 150.0), Seg(300, 225.0), Seg(60, 0.0, stop=True), Seg(300, 225.0),
-            Seg(240, 120.0), Seg(600, 225.0), Seg(240, 120.0), Seg(600, 225.0)]  # fmt: skip
+    segs = [
+        Seg(600, 150.0),
+        Seg(300, 225.0),
+        Seg(60, 0.0, stop=True),
+        Seg(300, 225.0),
+        Seg(240, 120.0),
+        Seg(600, 225.0),
+        Seg(240, 120.0),
+        Seg(600, 225.0),
+    ]
     out = run(segs)
     assert out.reps_counted == 3 and out.verdict == "achieved"
     assert len(out.excused) == 1 and out.excused[0].reason == "stop"
@@ -122,7 +141,15 @@ def test_block_below_the_floor_on_average_does_not_count() -> None:
 def test_short_reps_keep_their_shape() -> None:
     # 10 x 30/15 at 320 W: smoothing shrinks to a quarter rep, so each 30 s rep is visible.
     segs = [Seg(600, 150.0)] + [Seg(30, 320.0), Seg(15, 100.0)] * 10 + [Seg(300, 120.0)]
-    out = run(segs, IntentTarget("band", 300.0, 340.0, 300, rep_s=30, reps=10))
+    out = run(segs, IntentTarget("work", 300.0, 340.0, 300, rep_s=30, reps=10))
+    assert out.reps_counted is not None and out.reps_counted >= 9
+
+
+def test_coasted_planned_rests_are_not_excused() -> None:
+    # 10 x 30/15 coasting through every rest: the rests are planned, not interruptions.
+    segs = [Seg(600, 150.0)] + [Seg(30, 320.0), Seg(15, 0.0, 9.0, -3.0)] * 10
+    out = run(segs, IntentTarget("work", 300.0, 340.0, 300, rep_s=30, reps=10))
+    assert out.excused == []
     assert out.reps_counted is not None and out.reps_counted >= 9
 
 
@@ -141,6 +168,19 @@ def test_ceiling_intent_fails_on_time_above(over_s: int, verdict: str) -> None:
     segs = [Seg(3600 - over_s, 120.0), Seg(over_s, 220.0)] if over_s else [Seg(3600, 120.0)]
     out = run(segs, target)
     assert out.verdict == verdict
+
+
+def test_short_rises_on_rolling_roads_do_not_fail_an_easy_ride() -> None:
+    # Z2 with a 40 s kicker every 5 minutes: the 90 s cap smoothing absorbs them.
+    segs = [Seg(260, 160.0), Seg(40, 260.0)] * 12
+    out = run(segs, IntentTarget("ceiling", 155.0, 187.5, 3600, floor_w=155.0), np_w=175.0)
+    assert out.above_s == 0 and out.verdict == "achieved"
+
+
+def test_far_too_easy_endurance_is_at_most_partial() -> None:
+    target = IntentTarget("ceiling", 155.0, 187.5, 3600, floor_w=155.0)
+    out = run([Seg(3600, 110.0)], target, np_w=112.0)
+    assert out.too_easy and out.verdict == "partial"
 
 
 def test_too_short_easy_ride_is_partial() -> None:

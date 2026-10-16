@@ -6,6 +6,7 @@ from cyp.store.repo.base import Repo
 from cyp.store.repo.events import IcuEventRepo
 from cyp.store.repo.intervals import ActivityIntervalRepo
 from cyp.store.repo.job_runs import JobRunRepo
+from cyp.store.repo.planned import PlannedWorkoutRepo
 from cyp.store.repo.power_curves import PowerCurveRepo
 from cyp.store.repo.sync_cursors import SyncCursorRepo
 from cyp.store.repo.wellness import WellnessRepo
@@ -16,6 +17,7 @@ __all__ = [
     "AthleteSettingsRepo",
     "IcuEventRepo",
     "JobRunRepo",
+    "PlannedWorkoutRepo",
     "PowerCurveRepo",
     "Repo",
     "SyncCursorRepo",
