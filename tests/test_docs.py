@@ -154,11 +154,21 @@ def _check(line: str) -> str | None:
     return None
 
 
+def _planned(doc: Path) -> bool:
+    """A spec whose status is not ``done`` (draft or accepted, not implemented yet)."""
+    if "specs" not in doc.relative_to(ROOT).parts:
+        return False
+    m = re.search(r"^Status:\s*(\w+)", doc.read_text(encoding="utf-8"), re.M)
+    return m is not None and m.group(1) != "done"
+
+
 def test_documented_cyp_commands_exist() -> None:
     bad = []
     # Accepted ADRs are historical records (never rewritten): their decision text may name
     # commands that were since replaced; their amendments say so.
-    for doc in (d for d in DOCS if "adr" not in d.relative_to(ROOT).parts):
+    # Specs not yet done describe commands that do not exist yet; once a spec is done, its
+    # commands must exist.
+    for doc in (d for d in DOCS if "adr" not in d.relative_to(ROOT).parts and not _planned(d)):
         for line in _command_lines(doc.read_text(encoding="utf-8")):
             problem = _check(line)
             if problem:
