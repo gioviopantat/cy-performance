@@ -142,7 +142,7 @@ sync (icu + strava) → analyze new rides → compliance of yesterday's slot →
        EASY        → today ≤ Z2, cap 60 % of planned TSS
        AS_PLANNED  → unchanged
        UPGRADE     → only if TSB > −10 and no HIT yesterday: allow +1 step of progression, never a new HIT
-    3. Load safety: simulate PMC through horizon; if ramp > cap, ACWR > 1.5, or TSB < floor
+    3. Load safety: simulate PMC through horizon; if ramp > cap or TSB < floor
        (−30 base/build, −20 specialty), remove lowest-value TSS until within bounds
     4. Calendar collisions: athlete-created events (no `cyp:` external_id) win; HOLIDAY/SICK/INJURED → no workouts; NOTE with `training_availability=LIMITED` + `max_training_time` → cap
     5. Only days ≥ today are mutable; today is mutable until 10:00 local (the ride usually starts 05:30–11:00) — configurable

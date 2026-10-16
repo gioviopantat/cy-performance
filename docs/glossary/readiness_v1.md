@@ -56,6 +56,19 @@ HRV z −0.6、安靜心率 z +0.4（→ −0.4）、睡眠 z +0.5、TSB −14�
 - z 分數假設常態分布；HRV 已取對數改善這點，主觀分數（1–4）則很粗。
 - 它不是醫療判斷。連續多日 REST、或安靜心率持續上升卻沒有訓練負荷解釋，應該看醫生而不是看課表。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `readiness_v1.subjective_wellness` 主觀身心狀態能追蹤訓練反應 | **B** | Saw et al. 2016 BJSM 系統性回顧 | 2026-10-16 |
+| `readiness_v1.hrv_guided` HRV 引導訓練優於固定計畫（統合分析：沒有顯著優勢） | **C** | Granero-Gallegos et al. 2020 IJERPH 統合分析：VO2max 小幅正效果（[PMC7663087](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7663087/)）；Düking et al. 2021 JSAMS（8 篇，[PMID 34489178](https://pubmed.ncbi.nlm.nih.gov/34489178/)）：VO2peak 效果不顯著；Manresa-Rocamora et al. 2021 IJERPH（[PMC8507742](https://pmc.ncbi.nlm.nih.gov/articles/PMC8507742/)）：VO2max 與表現都不顯著；等級依 2026-10 文獻月報，2026-10-16 核准 | 2026-10-16 |
+| `readiness_v1.weights` 我們 v1 的權重與切點 | **C** | 自訂，只是起點 | 2026-10-16 |
+| `readiness_v1.hrv_single_day` 單日 ln rMSSD 的 z 值反映準備度 | **C**（提議） | Plews et al. 2013（[PMID 23479420](https://pubmed.ncbi.nlm.nih.gov/23479420/)）：7 日平均 r = .72，單日只有 −.06 | 2026-10-16 |
+| `readiness_v1.overreached_rule` HRV z < −1.5 且安靜心率 z > +1.5 ＝過度訓練 | **C**（提議） | Bellenger et al. 2016（[PMID 26888648](https://pubmed.ncbi.nlm.nih.gov/26888648/)）：耐力選手過度訓練常見 HRV 上升 | 2026-10-16 |
+| `readiness_v1.sleep` 睡不好會降低隔天耐力表現 | **B**（提議） | Craven et al. 2022 Sports Med（[PMID 35708888](https://pubmed.ncbi.nlm.nih.gov/35708888/)） | 2026-10-16 |
+| `readiness_v1.rpe_surprise` RPE 比預期高 ≥ 3 → 隔天至多 EASY | **C**（提議） | Inoue et al. 2022 Sports Med Open（統合分析，證據確定性極低） | 2026-10-16 |
+
 ## 參考文獻
 - Plews DJ, Laursen PB, Stanley J, Kilding AE, Buchheit M. "Training adaptation and heart rate variability in elite endurance athletes: opening the door to effective monitoring." *Sports Medicine* 43(9):773–781, 2013.
 - Buchheit M. "Monitoring training status with HR measures: do all roads lead to Rome?" *Frontiers in Physiology* 5:73, 2014.

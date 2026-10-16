@@ -72,7 +72,7 @@ FTP 設定 {{ ftp | num }} W{% if goal and goal.target_ftp %} · 距離目標 {{
 
 ## 4. 體能與負荷（截至昨天）
 {% if fitness %}
-| CTL 體能 | ATL 疲勞 | TSB 狀態 | 一週 CTL 變化 | ACWR | 單調度 |
+| CTL 體能 | ATL 疲勞 | TSB 狀態 | 一週 CTL 變化 | ACWR{{ "ramp_rate_acwr_monotony.acwr_injury" | weak_badge }} | 單調度{{ "ramp_rate_acwr_monotony.monotony_overtraining" | weak_badge }} |
 |---------|---------|---------|--------------|------|--------|
 | {{ fitness.ctl | num(".1f") }} | {{ fitness.atl | num(".1f") }} | {{ fitness.tsb | signed }} | {{ fitness.ramp_rate | signed }} | {{ fitness.acwr | num(".2f") }} | {{ fitness.monotony | num(".2f") }} |
 
@@ -80,7 +80,7 @@ FTP 設定 {{ ftp | num }} W{% if goal and goal.target_ftp %} · 距離目標 {{
 {% if warnings %}
 
 {% for w in warnings %}
-- ⚠️ {{ w }}
+- {% if w.weak %}{{ WEAK_BADGE_ZH }}：{% else %}⚠️ {% endif %}{{ w.text_zh }}
 {% endfor %}
 {% endif %}
 {% else %}

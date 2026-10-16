@@ -28,6 +28,15 @@
 - 間歇課的休息段會被算成低區，讓高強度日看起來「比較低」。
 - 無功率的騎乘用心率區間替代，心率延遲會低估高區時間。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `time_in_zone_tid.low_volume` 大部分訓練量在低強度 | **A** | Seiler 2010 IJSPP；Seiler & Kjerland 2006 | 2026-10-16 |
+| `time_in_zone_tid.polarized_superior` 極化優於金字塔分布（證據偏向否定） | **C** | Oliveira et al. 2024 Sports Med 統合分析（17 篇，[PMC11329428](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11329428/)，合併數字未讀）；Rosenblat et al. 2025 Sports Med（13 篇，[PMID 39888556](https://pubmed.ncbi.nlm.nih.gov/39888556/)）：VO2max 與計時賽無差異。PI > 2 只當描述，不當目標 | 2026-10-16 |
+| `time_in_zone_tid.phase_targets` 各階段 TID 目標 80/15/5、75/15/10、75/5/20（以時間計） | **C**（提議） | Mateo-March et al. 2026 Biol Sport：WorldTour 車手高於 CP 的時間只有 4–7 % | 2026-10-16 |
+
 ## 參考文獻
 - Seiler KS, Kjerland GØ. "Quantifying training intensity distribution in elite endurance athletes: is there evidence for an 'optimal' distribution?" *Scandinavian Journal of Medicine & Science in Sports* 16(1):49–56, 2006.
 - Seiler S. "What is best practice for training intensity and duration distribution in endurance athletes?" *International Journal of Sports Physiology and Performance* 5(3):276–291, 2010.

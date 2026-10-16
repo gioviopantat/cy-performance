@@ -226,6 +226,7 @@ def explain_durability(blocks: list[DurabilityBlock], *, as_of: dt.date) -> Expl
                 "warmup_s": WARMUP_S,
             },
             doc="docs/glossary/decoupling_hr_lag.md",
+            claim="decoupling_hr_lag.durability_kj_buckets",
         ),
         confidence=conf,  # type: ignore[arg-type]
         glossary_terms=["efficiency_factor", "decoupling_hr_lag"],

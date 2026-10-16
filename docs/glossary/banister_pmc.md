@@ -36,6 +36,14 @@ TSB_今天 = CTL_昨天 − ATL_昨天      （用昨天的值，代表「今天
 - 模型不知道睡眠、生病、工作壓力；這些由 `readiness_v1` 補上。
 - TSB 很正不代表「狀態好」，可能只是沒練；要配 CTL 一起看。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `banister_pmc.load_history` CTL／ATL 描述負荷歷史 | **B** | Banister 1975；Sanders et al. 2017 | 2026-10-16 |
+| `banister_pmc.tsb_performance` TSB 能預測某一天的個人表現 | **C** | Marchal et al. 2025 Sci Rep 15:3706（[PMC11779798](https://pmc.ncbi.nlm.nih.gov/articles/PMC11779798/)，對象是滑冰選手）：疲勞參數難以辨識，加入後預測沒有變好 | 2026-10-16 |
+
 ## 參考文獻
 - Banister EW, Calvert TW, Savage MV, Bach T. "A systems model of training for athletic performance." *Australian Journal of Sports Medicine* 7(3):57–61, 1975.
 - Banister EW. "Modeling elite athletic performance." In: MacDougall JD, Wenger HA, Green HJ (eds.), *Physiological Testing of Elite Athletes*, Human Kinetics, 1991, pp. 403–424.

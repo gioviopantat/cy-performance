@@ -22,6 +22,7 @@ from cyp.analysis.longitudinal import tid as tid_mod
 from cyp.analysis.longitudinal.run import load_latest_report, primary_athlete_id
 from cyp.analysis.ride.classify import CLASS_ZH
 from cyp.analysis.run import activity_local_date
+from cyp.core import evidence
 from cyp.core.errors import AnalysisError
 from cyp.core.timeutil import week_start
 from cyp.settings import AthleteConfig
@@ -35,7 +36,8 @@ from cyp.store.models import (
 )
 from cyp.store.repo.athlete_settings import AthleteSettingsRepo
 
-#: Warning thresholds quoted in the report (docs/glossary/ramp_rate_acwr_monotony.md).
+#: Thresholds quoted in the report (docs/glossary/ramp_rate_acwr_monotony.md); their claims
+#: are grade C, so the report shows them as context (docs/07 §6).
 ACWR_HIGH = 1.3
 ACWR_LOW = 0.8
 MONOTONY_HIGH = 2.0
@@ -157,25 +159,49 @@ def _fitness(session: Session, athlete_id: int, day: dt.date) -> dict[str, Any] 
     }
 
 
-def _warnings(fit: dict[str, Any] | None, cfg: AthleteConfig | None) -> list[str]:
+def _warning(text_zh: str, claim: str) -> dict[str, Any]:
+    """A report warning; ``weak`` (grade C claim) renders it as context, never as a verdict."""
+    return {"text_zh": text_zh, "claim": claim, "weak": not evidence.verdict_allowed([claim])}
+
+
+def _warnings(fit: dict[str, Any] | None, cfg: AthleteConfig | None) -> list[dict[str, Any]]:
     if not fit:
         return []
-    out: list[str] = []
+    out: list[dict[str, Any]] = []
     ramp_cap = max((cfg.planner.ramp_cap.values() if cfg else []), default=DEFAULT_RAMP_CAP)
     floor = min((cfg.planner.tsb_floor.values() if cfg else []), default=DEFAULT_TSB_FLOOR)
     if fit.get("acwr") is not None and fit["acwr"] > ACWR_HIGH:
         out.append(
-            f"ACWR {fit['acwr']:.2f} > {ACWR_HIGH}：最近一週比過去一個月重很多，受傷風險上升"
+            _warning(
+                f"ACWR {fit['acwr']:.2f} > {ACWR_HIGH}：最近一週的負荷比過去一個月高很多"
+                "（只描述負荷變化；「比值高就容易受傷」來自團隊運動研究，自行車沒有驗證）",
+                "ramp_rate_acwr_monotony.acwr_injury",
+            )
         )
     if fit.get("acwr") is not None and fit["acwr"] < ACWR_LOW:
-        out.append(f"ACWR {fit['acwr']:.2f} < {ACWR_LOW}：負荷在下降（減量週正常，否則體能會掉）")
+        out.append(
+            _warning(
+                f"ACWR {fit['acwr']:.2f} < {ACWR_LOW}：最近一週的負荷比過去一個月低"
+                "（減量週屬正常）",
+                "ramp_rate_acwr_monotony.acwr_low",
+            )
+        )
     if fit.get("ramp_rate") is not None and fit["ramp_rate"] > ramp_cap:
-        out.append(f"CTL 一週升 {fit['ramp_rate']:.1f}，超過上限 {ramp_cap:g}")
+        out.append(
+            _warning(
+                f"CTL 一週升 {fit['ramp_rate']:.1f}，超過上限 {ramp_cap:g}",
+                "ramp_rate_acwr_monotony.ramp_cap",
+            )
+        )
     if fit.get("tsb") is not None and fit["tsb"] < floor:
-        out.append(f"TSB {fit['tsb']:.1f} 低於下限 {floor:g}")
+        out.append(_warning(f"TSB {fit['tsb']:.1f} 低於下限 {floor:g}", "guardrails.tsb_floor"))
     if fit.get("monotony") is not None and fit["monotony"] > MONOTONY_HIGH:
         out.append(
-            f"單調度 {fit['monotony']:.2f} > {MONOTONY_HIGH}：每天負荷太像，缺少真正的輕鬆日"
+            _warning(
+                f"單調度 {fit['monotony']:.2f} > {MONOTONY_HIGH}：這週每天的負荷很接近，"
+                "少了真正的輕鬆日",
+                "ramp_rate_acwr_monotony.monotony_overtraining",
+            )
         )
     return out
 

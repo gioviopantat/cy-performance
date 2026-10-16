@@ -15,6 +15,8 @@ from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
+from cyp.core import evidence
+
 REC_ZH = {
     "REST": "休息",
     "EASY": "輕鬆騎",
@@ -38,6 +40,8 @@ COMPONENT_ZH = {
 }
 CONFIDENCE_ZH = {"high": "高", "medium": "中", "low": "低"}
 WEEKDAY_ZH = ["一", "二", "三", "四", "五", "六", "日"]
+#: Badge for numbers whose claim is grade C (docs/07 §6).
+WEAK_BADGE_ZH = "參考（證據弱）"
 
 
 def _num(value: Any, fmt: str = ".0f", dash: str = "–") -> str:
@@ -62,6 +66,11 @@ def _weekday(value: dt.date | str) -> str:
     return f"週{WEEKDAY_ZH[d.weekday()]}"
 
 
+def _weak_badge(claim_id: str | None, fmt: str = " · {}") -> str:
+    """The weak-evidence badge placed in ``fmt`` when ``claim_id`` is grade C, else ``""``."""
+    return fmt.format(WEAK_BADGE_ZH) if evidence.is_weak(claim_id) else ""
+
+
 def _glossary(term: str) -> str:
     return f"[{term}](../../../docs/glossary/{term}.md)"
 
@@ -82,11 +91,13 @@ def environment() -> Environment:
         pct=_pct,
         weekday=_weekday,
         glossary=_glossary,
+        weak_badge=_weak_badge,
         rec_zh=lambda v: REC_ZH.get(v, v or "–"),
         status_zh=lambda v: STATUS_ZH.get(v, v or "–"),
         component_zh=lambda v: COMPONENT_ZH.get(v, v),
         confidence_zh=lambda v: CONFIDENCE_ZH.get(v, v),
     )
+    env.globals["WEAK_BADGE_ZH"] = WEAK_BADGE_ZH
     return env
 
 

@@ -31,6 +31,14 @@ Coggan 提出的三個功率計指標，把一趟高低起伏的騎乘壓縮成�
 - 沒有功率計的騎乘（Edge 530）用 hrTSS 估算，誤差大，報告會標記 `confidence: low`。
 - 不同運動（重訓、瑜珈）的 icu 負荷是另一套估法，進 PMC 時當作同一幣別只是近似。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `coggan_np_if_tss.tss_dose` TSS 可以當作體能變化的劑量 | **B** | Sanders et al. 2017 IJSPP 12(5):668–675，n=15：TSS 與次最大體能 r≈0.75–0.79；個人化 TRIMP 相當或更強 | 2026-10-16 |
+| `coggan_np_if_tss.np_fourth_power` NP 的四次方加權反映代謝成本 | **C** | 經驗公式，未找到同儕審查驗證 | 2026-10-16 |
+
 ## 參考文獻
 - Allen H, Coggan A, McGregor S. *Training and Racing with a Power Meter*, 3rd ed. VeloPress, 2019. 第 7–8 章（NP/IF/TSS 的定義與推導）。
 - Coggan A. "Normalized Power, Intensity Factor and Training Stress Score." TrainingPeaks 部落格／原 wattage 論壇文章（2003–2006）。

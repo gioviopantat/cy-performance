@@ -33,6 +33,8 @@ class MethodRef(BaseModel):
     version: str
     inputs: dict[str, Any] = Field(default_factory=dict)
     doc: str
+    #: Evidence claim id in ``core/evidence.py`` (sets the grade); ``None`` in older JSON.
+    claim: str | None = None
 
 
 class Explanation(BaseModel):

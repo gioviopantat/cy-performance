@@ -241,6 +241,7 @@ def explain_ride(metrics: RideMetrics, inputs: RideInputs) -> Explanation:
             "thresholds": th.as_dict(),
         },
         doc=GLOSSARY[primary],
+        claim="decoupling_hr_lag.ride_status_rules",
     )
 
     if metrics.tss_source == "power" and inputs.has_hr and metrics.moving_s >= 3600:

@@ -30,6 +30,9 @@ class MethodRef(BaseModel):
     version: str
     inputs: dict[str, Any]  # exact inputs used
     doc: str  # docs/glossary/banister_pmc.md
+    claim: (
+        str | None
+    )  # evidence claim id in core/evidence.py (§6), e.g. "banister_pmc.load_history"
 ```
 
 Rules:
@@ -66,3 +69,34 @@ to template rendering when disabled or on validation failure.
 - M2: every metric function returns an Explanation; glossary stubs with formulas.
 - M4: planner emits one Explanation per day and per guardrail repair.
 - M5: zh-TW glossary complete, report templates, icu footer/NOTE, LLM narration.
+
+## 6. Evidence grades (core/evidence.py)
+Each scientific claim the reports or the planner rely on is graded per claim, not per model
+(`docs/specs/research-review.md`): CP as the heavy/severe boundary is **A**, W′bal predicting the
+failing rep is **C**.
+
+| Grade | Meaning | Allowed use |
+|-------|---------|-------------|
+| **A** | Meta-analyses / several controlled studies agree, or strong physiological consensus | May drive a verdict alone |
+| **B** | Group-level support; individual error is material | May drive a verdict; show the uncertainty |
+| **C** | Heuristic, proprietary formula, single small study, team-sport data only, or contested | Context only, badged 參考（證據弱） |
+
+- `REGISTRY` in `src/cyp/core/evidence.py` holds claim id → glossary id, grade, citations, the
+  review date and a `status`. Every glossary file has a `## 證據等級` table with the same rows
+  (`tests/test_evidence.py`). Grades are data: the monthly review (a report under docs/research/)
+  proposes changes, a human approves them, and registry and glossary change in one commit.
+  Claims the review proposes enter as `status="proposed"` (marked （提議） in the glossary)
+  with the recommended grade already in effect; a model without a glossary page yet
+  (`ride_intent_v1`, `outdoor_context_v1`, `goal_projection_v1`) has `glossary=None`.
+- `MethodRef.claim` (optional) names the claim an Explanation rests on; the renderer badges the
+  headline when that claim is grade C. Unknown ids raise. Set today on readiness
+  (`readiness_v1.weights`, C), the ride verdict (`decoupling_hr_lag.ride_status_rules`, C), PMC
+  (`banister_pmc.load_history`, B), CP fits (`cp_wprime.cp_boundary`, A), the FTP proposal
+  (`eftp.proposal_3pct`, C) and the durability trend
+  (`decoupling_hr_lag.durability_kj_buckets`, B). Planner / guardrail explanations carry none.
+- **Verdict rule:** a verdict or warning may rest only on A/B claims
+  (`evidence.verdict_allowed`). Report warnings carry their `claim`; a grade-C warning is shown
+  as 參考（證據弱） context instead of ⚠️, with its numbers kept. Today ACWR, monotony, the CTL
+  ramp cap and the TSB floor are all grade C, so the daily/weekly reports show them as context;
+  the same holds for the readiness, ride-status and FTP-proposal headlines above.
+- A grade change never changes a threshold or planner rule; that needs an ADR (ADR-0004).

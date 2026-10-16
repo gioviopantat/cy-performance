@@ -24,6 +24,13 @@ EF_1000kJ = 累積功超過 1 000 kJ 之後那段的 NP / 平均心率
 - 心率隨年齡與訓練年資下降（最大心率下降）本身會讓 EF 微幅上升，不全是體能。
 - 無功率的騎乘沒有 EF。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `efficiency_factor.z2_trend` Z2 騎乘的 EF 趨勢反映有氧基礎 | **C** | 教練常用指標；高溫、睡眠會干擾 | 2026-10-16 |
+
 ## 參考文獻
 - Friel J. "Efficiency Factor and Decoupling." joefrieltraining.com，2009；*The Cyclist's Training Bible*, 5th ed., 2018.
 - Allen H, Coggan A, McGregor S. *Training and Racing with a Power Meter*, 3rd ed., 2019（Power:HR 相關章節）。

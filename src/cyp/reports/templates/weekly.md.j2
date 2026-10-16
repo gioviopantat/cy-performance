@@ -14,10 +14,10 @@ FTP 設定 {{ ftp | num }} W{% if goal %} · 目標 {{ goal.name }}（{{ goal.da
 - 負荷 {{ totals.load }}{% if totals.planned_load %} vs 計畫 {{ totals.planned_load }}（{{ (totals.load / totals.planned_load) | pct }}）{% else %}（尚無計畫可比對，M4 起提供）{% endif %}
 
 {% if fitness_start and fitness_end %}
-- CTL {{ fitness_start.ctl | num(".1f") }} → {{ fitness_end.ctl | num(".1f") }}（{{ (fitness_end.ctl - fitness_start.ctl) | signed }}）· 週末 TSB {{ fitness_end.tsb | signed }} · ACWR {{ fitness_end.acwr | num(".2f") }}
+- CTL {{ fitness_start.ctl | num(".1f") }} → {{ fitness_end.ctl | num(".1f") }}（{{ (fitness_end.ctl - fitness_start.ctl) | signed }}）· 週末 TSB {{ fitness_end.tsb | signed }} · ACWR {{ fitness_end.acwr | num(".2f") }}{{ "ramp_rate_acwr_monotony.acwr_injury" | weak_badge("（{}）") }}
 {% endif %}
 {% for w in warnings %}
-- ⚠️ {{ w }}
+- {% if w.weak %}{{ WEAK_BADGE_ZH }}：{% else %}⚠️ {% endif %}{{ w.text_zh }}
 {% endfor %}
 
 | 日 | 訓練 | 負荷 | 準備度 |

@@ -33,6 +33,14 @@
 - 沒有比賽意味著沒有「真實情境」的回饋；爬坡重複 @ 目標功率是刻意補這一塊。
 - 體重被視為常數；W/kg 目標若有減重成分，需另外處理，v1 不排營養。
 
+## 證據等級
+等級 A／B 可以單獨支撐報告裡的判斷；C 只當參考，報告標示「參考（證據弱）」（定義見 [docs/07 §6](../07-explainability.md)）。標「（提議）」的是文獻月報建議新增、等 Roger 核准的主張，等級已經生效。這張表與 `src/cyp/core/evidence.py` 必須一致（測試會檢查）。
+
+| 主張 | 等級 | 依據 | 最後審查 |
+|------|------|------|----------|
+| `ftp_target_season.intervals_4_8` 4–8 分鐘間歇能發展閾值／VO2 | **B** | Seiler et al. 2013 SJMSS；Rønnestad et al. 2020 | 2026-10-16 |
+| `ftp_target_season.gain_20pct` 26 週 FTP +20 % 是可達成的 | **C** | 不典型；有訓練的車手一季通常進步 5–10 % | 2026-10-16 |
+
 ## 參考文獻
 - `docs/05-training-engine.md` §2.4（本季節類型的規格）、`config/athlete.yaml`。
 - Allen H, Coggan A, McGregor S. *Training and Racing with a Power Meter*, 3rd ed., 2019, 第 3 章（FTP 測驗）與第 10 章（用功率規劃一季）。

@@ -348,6 +348,7 @@ def explain_pmc(day: PMCDay, agreement: IcuAgreement | None) -> Explanation:
                 "decay": agreement.params.decay if agreement else "exp",
             },
             doc="docs/glossary/banister_pmc.md",
+            claim="banister_pmc.load_history",
         ),
         confidence=confidence,
         glossary_terms=["banister_pmc", "ramp_rate_acwr_monotony"],
