@@ -25,7 +25,7 @@
     {% endfor %}
   </div>
   <table>
-    <thead><tr><th>日期</th><th>計畫</th><th>實際騎乘</th><th class="n">TSS 計畫</th><th class="n">TSS 實際</th><th class="n">分鐘</th><th>地點</th><th>結果</th></tr></thead>
+    <thead><tr><th>日期</th><th>計畫</th><th>實際騎乘</th><th class="n">TSS 計畫</th><th class="n">TSS 實際</th><th class="n">分鐘</th><th class="where">地點</th><th>結果</th></tr></thead>
     <tbody>
     {% for s in d.sessions %}
     <tr>
@@ -35,7 +35,7 @@
       <td class="n">{{ s.planned_tss | num }}</td>
       <td class="n">{{ s.actual_tss | num }}</td>
       <td class="n">{{ s.moving_min | num }}</td>
-      <td>{{ where(s.outdoor) }}</td>
+      <td class="where">{{ where(s.outdoor) }}</td>
       <td>{{ badge(SESSION, s.verdict) }}</td>
     </tr>
     {% if s.note_zh %}<tr class="sub"><td></td><td colspan="7" class="note">{{ s.note_zh }}</td></tr>{% endif %}
@@ -93,13 +93,15 @@
 {% set h = d.highlights %}
 <section class="highlights">
   <h2><span class="no">7</span>本週亮點</h2>
-  {% if h.durability_w is not none %}
+  {% if h.durability_ratio is not none %}
   <div class="figures">
-    {{ stat("後段功率（耐力）", h.durability_w | num, "W") }}
-    {% if h.durability_median_w is not none %}{{ stat("近 4 週中位數", h.durability_median_w | num, "W") }}{% endif %}
+    {{ stat("耐力：騎 1000 kJ 後的效率", h.durability_ratio | pct) }}
+    {% if h.durability_median_ratio is not none %}{{ stat("近 4 週中位數", h.durability_median_ratio | pct) }}{% endif %}
   </div>
+  <p class="note">效率 = 騎過 1000 kJ 之後的 EF（功率／心率）除以剛出發時的 EF；100 % 代表完全沒有衰退。</p>
   {% endif %}
   {% if h.text_zh %}<p>{{ h.text_zh }}</p>{% endif %}
+  {{ explain(h.explanation) }}
   {% for c in h.climbs %}
   <div class="keep">
   <h3>{{ c.name }}{% if c.rank is not none and c.of_n is not none %}　<span class="badge">第 {{ c.rank }} 快 · 共 {{ c.of_n }} 次</span>{% endif %}</h3>

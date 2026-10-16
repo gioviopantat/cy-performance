@@ -61,7 +61,7 @@
     <tr><td>賽季最佳</td>{% for w in p.season_best_w %}<td class="n">{{ w | num }}</td>{% endfor %}</tr>
     </tbody>
   </table>
-  <p class="note">單位 W；時間欄為 分:秒。</p>
+  <p class="note">單位 W；時間欄為 分:秒。{% if p.best_since %}賽季最佳取自 {{ p.best_since.isoformat() }} 起。{% endif %}</p>
   {% if p.text_zh %}<p>{{ p.text_zh }}</p>{% endif %}
 </section>
 {% endif %}

@@ -12,11 +12,14 @@ badges:
   partial: ◐ 部分
   over: 高於目標
   break: 休息期
+  no_data: 資料不足
 grades: [A 級, B 級, C 級]
 weak_grade: 參考（證據弱）
 no_grade: 未分級
 rest_day: 休息
 readiness_easy: 輕鬆騎
+durability_label: 騎 1000 kJ 後的效率
+best_since: 賽季最佳取自 2025-10-01 起
 climb_name: 示範坡 A
 this_week: （本週）
 minimal:

@@ -24,3 +24,8 @@ tr.sub + tr td { border-top: none; }
 .day-cell .entry { margin-top: 1.2mm; }
 .day-cell .name { font-size: 7.5pt; line-height: 1.3; margin-bottom: 0.6mm; }
 .day-cell .badge { font-size: 7pt; padding: 0.2mm 1.2mm; }
+
+/* Long citations and plan purposes must not squeeze the short columns into one glyph per line. */
+th.n, td.n, td.where, th.where { white-space: nowrap; }
+section.methods td:nth-child(3) { white-space: nowrap; }
+section.methods td:nth-child(3) .note { display: block; }

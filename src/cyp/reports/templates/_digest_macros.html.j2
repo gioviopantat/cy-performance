@@ -15,6 +15,7 @@
   "overdone": ("warning", "▲ 騎過頭"),
   "skipped": ("", "– 沒騎"),
   "unplanned": ("", "○ 計畫外"),
+  "no_data": ("", "– 資料不足"),
 } %}
 {% set DIST = {
   "on": ("good", "✓ 符合目標"),
@@ -38,10 +39,10 @@
   {% endif %}
   {% if n.sessions %}
   <table>
-    <thead><tr><th>日期</th><th>課表</th><th>目的</th><th class="n">TSS</th><th class="n">分鐘</th><th>地點</th></tr></thead>
+    <thead><tr><th>日期</th><th>課表</th><th>目的</th><th class="n">TSS</th><th class="n">分鐘</th><th class="where">地點</th></tr></thead>
     <tbody>
     {% for s in n.sessions %}
-    <tr><td class="day">{{ s.day.strftime("%m/%d") }}（{{ s.day | weekday }}）</td><td>{{ s.name }}</td><td>{{ s.purpose_zh or "–" }}</td><td class="n">{{ s.tss | num }}</td><td class="n">{{ s.minutes | num }}</td><td>{{ where(s.outdoor) }}</td></tr>
+    <tr><td class="day">{{ s.day.strftime("%m/%d") }}（{{ s.day | weekday }}）</td><td>{{ s.name }}</td><td>{{ s.purpose_zh or "–" }}</td><td class="n">{{ s.tss | num }}</td><td class="n">{{ s.minutes | num }}</td><td class="where">{{ where(s.outdoor) }}</td></tr>
     {% endfor %}
     </tbody>
   </table>

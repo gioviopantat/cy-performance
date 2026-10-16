@@ -173,12 +173,15 @@ def test_weekly_charts_and_grid() -> None:
     assert STRINGS["climb_name"] in html
     assert STRINGS["this_week"] in html
     assert STRINGS["readiness_easy"] in html
+    assert STRINGS["durability_label"] in html
+    assert "97 %" in html  # durability ratio as a percent
 
 
 def test_monthly_charts() -> None:
     html = digest_pdf.render_html(_monthly())
     # consistency, ctl, power curve, goal, distribution, limiters, recovery
     assert html.count(IMG) == 7
+    assert STRINGS["best_since"] in html
 
 
 def test_grade_badges_and_missing_grade() -> None:

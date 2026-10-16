@@ -20,7 +20,7 @@
  "sessions": [
   {"day": "2026-03-09", "verdict": "skipped", "planned_name": "休息日", "planned_tss": 0, "note_zh": ""},
   {"day": "2026-03-10", "planned_name": "甜蜜點 3×12", "planned_tss": 78, "ride_name": "室內甜蜜點", "activity_id": 1001, "actual_tss": 81, "moving_min": 70, "outdoor": false, "verdict": "achieved"},
-  {"day": "2026-03-11", "planned_name": "Z2 耐力 60 分", "planned_tss": 45, "ride_name": "河濱輕鬆騎", "activity_id": 1002, "actual_tss": 47, "moving_min": 62, "outdoor": true, "verdict": "achieved"},
+  {"day": "2026-03-11", "planned_name": "Z2 耐力 60 分", "planned_tss": 45, "ride_name": "河濱輕鬆騎", "activity_id": 1002, "actual_tss": 47, "moving_min": 62, "outdoor": true, "verdict": "no_data"},
   {"day": "2026-03-12", "planned_name": "恢復騎 40 分", "planned_tss": 22, "ride_name": "午間小繞", "activity_id": 1003, "actual_tss": 58, "moving_min": 55, "outdoor": true, "verdict": "overdone", "note_zh": "負荷是計畫的 2.6 倍，大多在 Z3。"},
   {"day": "2026-03-13", "planned_name": "甜蜜點 2×20", "planned_tss": 82, "ride_name": "室內甜蜜點", "activity_id": 1004, "actual_tss": 84, "moving_min": 72, "outdoor": false, "verdict": "achieved"},
   {"day": "2026-03-14", "planned_name": "長途 Z2 3 小時", "planned_tss": 160, "ride_name": "山區長途", "activity_id": 1005, "actual_tss": 171, "moving_min": 176, "outdoor": true, "verdict": "partial", "note_zh": "停車 14 次已排除；Z2 時間 128 / 150 分鐘。"},
@@ -118,9 +118,10 @@
     "note_zh": "已騎 910 kJ 之後仍是歷來最快，疲勞下的爬坡能力在進步。"
    }
   ],
-  "durability_w": 214,
-  "durability_median_w": 205,
-  "text_zh": "長途最後一小時的平均功率比近 4 週中位數高 9 W。"
+  "durability_ratio": 0.97,
+  "durability_median_ratio": 0.94,
+  "text_zh": "長途騎過 1000 kJ 後效率只掉 3 %，比近 4 週中位數好。",
+  "explanation": {"headline_zh": "疲勞後 EF 衰退比近 4 週少。", "method": {"model_id": "durability_v1"}, "confidence": "low"}
  },
  "next_week": {
   "sessions": [
