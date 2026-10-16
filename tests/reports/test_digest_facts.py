@@ -317,8 +317,7 @@ def test_month_without_rides(
     monkeypatch.setattr(digest_facts, "now_utc", lambda: dt.datetime(2027, 1, 1, tzinfo=dt.UTC))
     d = monthly(world, EMPTY_MONTH, cfg)
     assert d.period.is_break and d.period.break_reason_zh == text("period.break_unknown")
-    assert d.consistency is not None and d.consistency.planned == 0
-    assert d.consistency.longest_gap_days == 31
+    assert d.consistency is None  # nothing was planned: no consistency section
     assert d.power_curve is d.fitness is d.limiters is d.recovery is d.research is None
     assert d.distribution_by_week == []
     assert d.headline.verdict == "break" and d.headline.change_zh == ""

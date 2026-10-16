@@ -506,7 +506,8 @@ def build(inp: DigestInputs, month_start: dt.date, *, generated_at: dt.datetime)
             is_break=period.is_break,
             break_reason=period.break_reason_zh,
         ),
-        consistency=consistency,
+        # Before the planner ran there is nothing to be consistent with: no section.
+        consistency=consistency if consistency.planned else None,
         load=load,
         power_curve=curve,
         fitness=fitness,

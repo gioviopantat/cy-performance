@@ -25,7 +25,11 @@
   <div class="stats">
     {{ stat("騎乘", d.load.rides, "次") }}
     {{ stat("時數", d.load.hours | num(".1f"), "小時") }}
+    {% if d.load.planned_tss %}
     {{ stat("TSS 計畫 → 實際", d.load.planned_tss | num ~ " → " ~ d.load.actual_tss | num) }}
+    {% else %}
+    {{ stat("TSS（沒有計畫）", d.load.actual_tss | num) }}
+    {% endif %}
     {% if d.load.ctl_start is not none and d.load.ctl_end is not none %}{{ stat("CTL", d.load.ctl_start | num ~ " → " ~ d.load.ctl_end | num) }}{% endif %}
     {% if d.load.tsb_end is not none %}{{ stat("期末 TSB", d.load.tsb_end | signed("+.0f")) }}{% endif %}
   </div>
