@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import datetime as dt
 
+import pytest
 from sqlalchemy import func, select
 
+from cyp.schemas import PlanOut, PlanPreviewRequest
+from cyp.services import ride_preview
 from cyp.services.context import AppContext
 from cyp.services.plan import preview
 from cyp.services.ride_preview import tomorrow_preview
@@ -93,3 +96,19 @@ def test_preview_reasons_never_say_yesterday(ctx: AppContext) -> None:
     assert t is not None
     for reason in t.reasons_zh:
         assert not any(p in reason for p in forbidden), reason
+
+
+def test_preview_plans_as_tomorrow_morning(
+    ctx: AppContext, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The planner must see the ride just done as yesterday, like the 05:30 run will."""
+    seen: list[dt.date | None] = []
+    real = ride_preview.preview
+
+    def spy(c: AppContext, req: PlanPreviewRequest | None = None) -> PlanOut:
+        seen.append(req.today if req else None)
+        return real(c, req)
+
+    monkeypatch.setattr(ride_preview, "preview", spy)
+    tomorrow_preview(ctx, TOMORROW)
+    assert seen == [TOMORROW]

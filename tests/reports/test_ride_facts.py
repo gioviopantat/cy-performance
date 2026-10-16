@@ -216,6 +216,23 @@ def test_recovery_plan_is_judged_by_its_ceiling(
     assert (r.intent.explanation or {})["headline_zh"] in r.headline.text_zh
 
 
+def test_easy_day_far_over_its_planned_load_is_missed(
+    factory: sessionmaker[Session], store: StreamStore, world: dict[str, int], cfg: AthleteConfig
+) -> None:
+    with factory() as s:
+        pw = s.query(PlannedWorkout).one()
+        pw.template_id, pw.intent = "recovery_spin", "recovery"
+        pw.steps = {"params": {"total_min": 45}}
+        pw.target_tss = 10.0
+        s.commit()
+    r = report(factory, store, world["ride"], cfg)
+    assert r.intent is not None and r.intent.verdict == "missed"
+    assert r.intent.load_ratio is not None and r.intent.load_ratio > 1.3
+    expl = r.intent.explanation or {}
+    assert expl["headline_zh"].startswith("騎過頭")
+    assert expl["method"]["inputs"]["overdone_factor"] == 1.3
+
+
 def test_without_power_the_intent_is_no_data(
     factory: sessionmaker[Session], store: StreamStore, world: dict[str, int], cfg: AthleteConfig
 ) -> None:
