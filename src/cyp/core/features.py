@@ -87,6 +87,22 @@ REGISTRY: tuple[Feature, ...] = (
         requires=("analysis.rides",),
     ),
     Feature(
+        "report.digest_weekly",
+        "report",
+        False,
+        "每週摘要 PDF",
+        "Build (and with notify.email, email) the weekly digest PDF on Mondays (cyp digest).",
+        requires=("analysis.rides",),
+    ),
+    Feature(
+        "report.digest_monthly",
+        "report",
+        False,
+        "每月摘要 PDF",
+        "Build (and with notify.email, email) the monthly digest PDF on the 1st (cyp digest).",
+        requires=("analysis.rides",),
+    ),
+    Feature(
         "plan.horizon",
         "plan",
         True,
@@ -183,9 +199,8 @@ REGISTRY: tuple[Feature, ...] = (
         "notify.email",
         "notify",
         False,
-        "Email 騎乘報告",
-        "Email the PDF to CYP_REPORT_EMAIL_TO (copies to CYP_REPORT_EMAIL_CC).",
-        requires=("report.ride",),
+        "Email 報告 PDF",
+        "Email the ride / digest PDFs to CYP_REPORT_EMAIL_TO (copies to CYP_REPORT_EMAIL_CC).",
     ),
 )
 

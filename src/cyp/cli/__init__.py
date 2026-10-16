@@ -11,9 +11,11 @@ The commands live in topic modules and call the service layer (:mod:`cyp.service
 - :mod:`~cyp.cli.dev`: ``dev seed``, ``dev bench``, ``dev openapi``
 - :mod:`~cyp.cli.serve`: ``serve``
 - :mod:`~cyp.cli.profiles`: ``profile list|show|add|adopt|promote|demote|use``, ``features``
-- :mod:`~cyp.cli.autopilot`: ``run [--all]``, ``schedule install [--watch]|uninstall|status``
+- :mod:`~cyp.cli.autopilot`: ``run [--all]``,
+  ``schedule install [--watch|--digest]|uninstall|status``
 - :mod:`~cyp.cli.ridelog`: ``ride-log show|save|push``
 - :mod:`~cyp.cli.watch`: ``watch [--all]``, ``ride-report``
+- :mod:`~cyp.cli.digest`: ``digest weekly|monthly [--period] [--send]``, ``digest run [--all]``
 
 Global ``--profile <name>`` (or ``CYP_PROFILE``) selects an athlete profile (ADR-0006).
 """
@@ -31,6 +33,7 @@ from cyp.cli import (
     autopilot,
     core,
     dev,
+    digest,
     planning,
     profiles,
     reports,
@@ -91,5 +94,6 @@ for _module in (
     autopilot,
     ridelog,
     watch,
+    digest,
 ):
     _module.register(app)
