@@ -55,7 +55,11 @@ fitness drift, and the plan for coming back. Sections without data are omitted.
 | Module | Layer | Role |
 |--------|-------|------|
 | `reports/digest_model.py` | 5 | contract: `WeeklyDigest`, `MonthlyDigest` (pydantic, like `ride_model.py`) |
-| `reports/digest_facts.py` (+ section modules) | 5 | fill the contract from stored results; reuse `facts.weekly_facts` and the ride-report builders |
+| `reports/digest_facts.py` | 5 | entry: load the period's inputs once, hand them to the builders |
+| `reports/digest_common.py` | 5 | `DigestInputs` (dataset, season skeleton, trends as of any day, cached per-ride inputs), zh-TW text (`i18n/digest_report.zh-TW.yaml`), section 9/11 methods with grades |
+| `reports/digest_sections.py` | 5 | period / break, sessions (ride intent per ride), load, TID by sessions |
+| `reports/digest_progress.py` | 5 | goal projection now vs period start, recovery, next plan |
+| `reports/digest_weekly.py`, `digest_monthly.py` | 5 | the kind's own sections (highlights; consistency, power curve, FTP / CP, limiters, research), headline, assembly |
 | `reports/digest_pdf.py`, `charts.py`, `templates/digest_*.html.j2` | 5 | render (WeasyPrint, matplotlib; same look as the ride PDF) |
 | `store/models.py` + migration | 2 | `digest_reports(kind, period_start, status, attempts, pdf_path, sent_at, error)`, unique per kind + period |
 | `services/digest.py` | 7 | build / send one digest |
@@ -65,6 +69,22 @@ fitness drift, and the plan for coming back. Sections without data are omitted.
 Flags: `report.digest_weekly` (default off, requires `analysis.rides`),
 `report.digest_monthly` (default off, requires `analysis.rides`); emailing reuses
 `notify.email` and the profile's SMTP settings.
+
+## Data rules
+Every number is read from stored results or the models' public functions and carries its
+Explanation; the renderer adds none. Thresholds are named constants quoted in the texts.
+
+| Section | Source | Rule |
+|---------|--------|------|
+| Sessions | `ride_intent.build_intent` per ride, `planned_for` precedence | `overdone`: an easy day (`ceiling` intent, or a recovery / endurance plan) with load > `planning.adapt.OVERDONE_FACTOR` (1.3) × plan; `skipped`: a planned day with no ride, once the day is over; `no_data`: plan without trusted power. Outdoor stops / heat from `outdoor_context` |
+| Load | `Dataset.loads` (icu's daily fitness load, ADR-0003), `fitness_daily` | planned = Σ the sessions' plans; ramp = CTL change × 7 / days vs `planner.ramp_cap[phase]`; monthly adds the season plan's CTL path (`season_projection` from the CTL going into the season) |
+| TID | `compute_trends(…, as_of=Sunday).report.tid_weeks` (tid_v2) | hard (mid + high) sessions vs phase target × sessions, ±1 session (`TID_SESSION_SLACK`) = on |
+| Goal | `goal.project_goal` on the FTP status as of the period end and the day before it | evidence = the period's best `ride_goal.ride_evidence` |
+| Recovery | `readiness.hrv_window` (7-day HRV, ADR-0013) per day; `readiness_daily` verdicts as stored | RHR / sleep vs the 28 days before |
+| Highlights | `ride_sections.build_climbs` (best 3 by rank); `durability_trend` | durability ratio of the week vs the 28 days before, ±2 % (`DURABILITY_MARGIN`) |
+| Power curve | rides' stored power curves (`power_ok`) | 5 s, 1, 5, 20, 60 min; "best" = since the season start, a year back before it |
+| Headline | the sections | credited share (achieved 1, partial 0.5) of judged sessions ≥ 0.8 on track, ≥ 0.5 partly; the one change in a fixed priority (overdone, skipped ≥ 2, too hard, missed, recovery, volume < 80 %, too easy) |
+| Break | no ride in the period | reason from `availability.dates` = 0 and SICK / INJURED events; keeps sessions, load, next plan |
 
 ## Safety
 Same as the ride report: no calendar or Strava write; email is the only outbound write, to the
@@ -86,6 +106,9 @@ per kind + period, so a digest is sent once; tests stub SMTP.
 3. Same level of detail for both athletes.
 
 ## Contract
-`src/cyp/reports/digest_model.py` (`WeeklyDigest`, `MonthlyDigest` and their sections) plus
+`src/cyp/reports/digest_model.py` (`WeeklyDigest`, `MonthlyDigest` and their sections; filled
+by digest-facts: `SessionVerdict` has `no_data`, `Load.ctl_plan`, `PowerCurve.best_since`,
+`Highlights.durability_ratio` / `durability_median_ratio` (the model is an EF ratio, not watts))
+plus
 the stub signatures `reports.digest_facts.build_weekly` / `build_monthly` and
 `reports.digest_pdf.render_digest_pdf`. Builders, renderer and the job meet only there.
