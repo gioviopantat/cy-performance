@@ -1,7 +1,7 @@
-"""Overpass (places in a box) and Nominatim (district names) client (ADR-0021).
+"""Overpass client: named places in a bounding box (ADR-0021).
 
 Takes only points that went through :mod:`cyp.ingest.osm.privacy`. At most one request per
-:attr:`OsmClient.min_interval_s` per service (Nominatim's usage policy), an identifying
+:attr:`OsmClient.min_interval_s` per service (OSM usage policy), an identifying
 User-Agent with an optional contact (``CYP_OSM_CONTACT``), no retries beyond one per call:
 a failure raises :class:`OsmError` and the caller writes its text without route details.
 """
@@ -26,7 +26,6 @@ OVERPASS_URLS = (
     "https://overpass.kumi.systems/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
 )
-NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
 #: A place counts as on the route within this distance of it (checked locally).
 AROUND_M = 150
 SERVER_TIMEOUT_S = 90
@@ -42,15 +41,10 @@ KINDS: dict[str, tuple[str, ...]] = {
 }
 #: Kinds worth suggesting as a next destination, best first.
 SPOT_KINDS = ("viewpoint", "peak", "attraction", "cafe")
-#: How interesting a kind is to name in a post, best first (small parks last).
-KIND_ORDER = ("viewpoint", "peak", "attraction", "temple", "cafe", "drink", "park")
-#: Address keys of a Nominatim result that name a district, the district level first (a
-#: village name is too fine for a post).
-DISTRICT_KEYS = ("city_district", "town", "district", "suburb", "village", "county", "city")
 
 
 class OsmError(CypError):
-    """An Overpass or Nominatim request failed or returned something unusable."""
+    """An Overpass request failed or returned something unusable."""
 
 
 @dataclass(frozen=True)
@@ -126,19 +120,9 @@ def bbox_query(box: tuple[float, float, float, float], kinds: Sequence[str] = SP
     return f"[out:json][timeout:{SERVER_TIMEOUT_S}];({''.join(parts)});out center tags 300;"
 
 
-def district_of(data: dict[str, Any]) -> str | None:
-    """The most local district name of a Nominatim reverse result."""
-    address = data.get("address") or {}
-    for key in DISTRICT_KEYS:
-        value = address.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return None
-
-
 @dataclass
 class OsmClient:
-    """Rate-limited Overpass + Nominatim client; ``transport`` and ``sleep`` are for tests."""
+    """Rate-limited Overpass client; ``transport`` and ``sleep`` are for tests."""
 
     contact: str = ""
     timeout_s: float = 60.0
@@ -236,11 +220,3 @@ class OsmClient:
         Only the box leaves; which places lie on the route is decided locally by the caller.
         """
         return parse_overpass(self._overpass(bbox_query(box, kinds)))
-
-    def district(self, p: Point) -> str | None:
-        """The district a (privacy-checked) point is in."""
-        params = {"format": "jsonv2", "lat": f"{p[0]:.5f}", "lon": f"{p[1]:.5f}", "zoom": "14",
-                  "accept-language": "zh-TW", "addressdetails": "1"}  # fmt: skip
-        return district_of(
-            self._json("nominatim", self.http.build_request("GET", NOMINATIM_URL, params=params))
-        )

@@ -76,9 +76,8 @@ Implementation facts (`ingest/strava/sync.py`, verified 2026-10-02):
 ## 2b. OpenStreetMap and Claude (RIDE.LOG, ADR-0021)
 | Service | Used for | Sent | Limits |
 |---------|----------|------|--------|
-| Overpass `overpass-api.de`, then `overpass.kumi.systems`, `overpass.private.coffee` | named cafés, drink shops, viewpoints, attractions, peaks, parks, temples in the route's box (on-route = within 150 m, decided locally); spots in the usual area | two bounding boxes whose corners lie outside the 1 km privacy zone | ≤ 1 request/s, 75 s per request, 180 s per ride |
-| Nominatim `https://nominatim.openstreetmap.org/reverse` | district names (zh-TW) | ≤ 3 such points per ride | ≤ 1 request/s (usage policy), User-Agent `cy-performance/<version> (+CYP_OSM_CONTACT)` |
-| Claude Messages API | casual lines + acrostic poem | the facts JSON (no ids, no coordinates) | 1 call per ride, ≤ 1024 output tokens, 30 s timeout, 2 retries |
+| Overpass `overpass-api.de`, then `overpass.kumi.systems`, `overpass.private.coffee` | named cafés, drink shops, viewpoints, attractions, peaks, parks, temples in the route's box (on-route = within 150 m, decided locally); spots in the usual area | two bounding boxes whose corners lie outside the 1 km privacy zone | ≤ 1 request/s, 75 s per request, 180 s per ride, User-Agent `cy-performance/<version> (+CYP_OSM_CONTACT)` |
+| Claude Messages API | light suggestion lines + acrostic poem (ADR-0022) | the facts JSON (no ids, no coordinates) | 1 call per ride, ≤ 1024 output tokens, 30 s timeout, 2 retries |
 Results are cached per ride under `data/ride_story/`; failures give the deterministic RIDE.LOG.
 
 ## 3. intervals.icu API v1

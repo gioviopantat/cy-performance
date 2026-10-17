@@ -1,5 +1,7 @@
 """The casual Strava RIDE.LOG: facts, content type, copy and validation (spec casual-and-strava C).
 
+The lines are light suggestions for next time, never a diary of the ride (Roger, 2026-10-17).
+
 Pure: :func:`story_facts` turns the ride report (the PDF's facts) and the OSM route lookup into
 a :class:`StoryFacts`; :func:`pick_type` and :func:`pick_head` choose what this post is about and
 the acrostic head deterministically; :func:`deterministic_lines` writes the lines from
@@ -18,18 +20,18 @@ from typing import Any
 
 import yaml
 
-from cyp.ingest.osm.client import KIND_ORDER, Place
+from cyp.ingest.osm.client import Place
 from cyp.reports.ride_model import RideReport
 
-STORY_VERSION = "ride_story_v1"
+STORY_VERSION = "ride_story_v2"
 COPY_PATH = Path(__file__).resolve().parent / "i18n" / "ride_story.zh-TW.yaml"
 MARKER = "⚙️ RIDE.LOG"
 #: Rotation order; a ride only gets types it has material for.
-TYPES = ("route", "stop", "climb", "next_spot", "weather", "number", "season")
-#: A casual ride (tag A) prefers its stop, then where it went.
-CASUAL_ORDER = ("stop", "route")
+TYPES = ("next_spot", "stop", "climb", "weather", "season", "tip")
+#: A casual ride (tag A) prefers a next spot, then its stop.
+CASUAL_ORDER = ("next_spot", "stop")
 RECENT_HEADS = 10
-MAX_LINES, MIN_LINES, MAX_LINE_CHARS = 4, 2, 60
+MAX_LINES, MIN_LINES, MAX_LINE_CHARS = 2, 1, 60
 POEM_LINES, POEM_MIN_CHARS, POEM_MAX_CHARS = 4, 5, 9
 #: Place-like and forbidden words live in the copy file (``validation``).
 #: The only units a public post may use (no W, kJ, bpm, kg: they reveal FTP, weight, health).
@@ -53,9 +55,7 @@ def _pick(options: Sequence[str], seed: int) -> str:
 class RouteInfo:
     """What the OSM lookup found for one ride (cached per ride by the service)."""
 
-    districts: list[str] = field(default_factory=list)
     places: list[Place] = field(default_factory=list)
-    turnaround: str | None = None
     stop: Place | None = None
     spot: Place | None = None
     spot_km: int | None = None
@@ -63,9 +63,7 @@ class RouteInfo:
     def to_dict(self) -> dict[str, Any]:
         """JSON-ready dict."""
         return {
-            "districts": self.districts,
             "places": [p.to_dict() for p in self.places],
-            "turnaround": self.turnaround,
             "stop": self.stop.to_dict() if self.stop else None,
             "spot": self.spot.to_dict() if self.spot else None,
             "spot_km": self.spot_km,
@@ -75,9 +73,7 @@ class RouteInfo:
     def from_dict(cls, d: Mapping[str, Any]) -> RouteInfo:
         """Inverse of :meth:`to_dict`."""
         return cls(
-            districts=[str(x) for x in d.get("districts") or []],
             places=[Place.from_dict(p) for p in d.get("places") or []],
-            turnaround=d.get("turnaround"),
             stop=Place.from_dict(d["stop"]) if d.get("stop") else None,
             spot=Place.from_dict(d["spot"]) if d.get("spot") else None,
             spot_km=d.get("spot_km"),
@@ -99,8 +95,6 @@ class StoryFacts:
     climb: str | None = None
     climb_rank: int | None = None
     climb_of_n: int | None = None
-    districts: list[str] = field(default_factory=list)
-    route_places: list[str] = field(default_factory=list)
     peak: str | None = None
     stop: str | None = None
     spot: str | None = None
@@ -113,9 +107,7 @@ class StoryFacts:
 
     def place_names(self) -> set[str]:
         """Every place name the text may use."""
-        names = {*self.districts, *self.route_places}
-        names |= {n for n in (self.climb, self.peak, self.stop, self.spot) if n}
-        return names
+        return {n for n in (self.climb, self.peak, self.stop, self.spot) if n}
 
     def numbers(self) -> set[str]:
         """Every number the text may quote, as written."""
@@ -151,8 +143,6 @@ def story_facts(report: RideReport, route: RouteInfo | None, *, casual: bool) ->
         climb=best.name if best is not None else None,
         climb_rank=best.rank if best is not None else None,
         climb_of_n=best.of_n if best is not None else None,
-        districts=list(route.districts),
-        route_places=_named(route.places),
         peak=peak,
         stop=route.stop.name if route.stop is not None else None,
         spot=route.spot.name if route.spot is not None else None,
@@ -161,27 +151,15 @@ def story_facts(report: RideReport, route: RouteInfo | None, *, casual: bool) ->
     )
 
 
-#: At most this many places of the route go into the facts.
-MAX_PLACES = 8
-
-
-def _named(places: Sequence[Place]) -> list[str]:
-    """The route's places, most interesting kinds first, unique names, at most 8."""
-    rank = {k: i for i, k in enumerate(KIND_ORDER)}
-    ordered = sorted(places, key=lambda p: rank.get(p.kind, len(rank)))
-    return list(dict.fromkeys(p.name for p in ordered))[:MAX_PLACES]
-
-
 def available_types(f: StoryFacts) -> list[str]:
-    """The content types this ride has material for (``number`` and ``season`` always)."""
+    """The content types this ride has material for (``season`` and ``tip`` always)."""
     has = {
-        "route": bool(f.districts),
         "stop": f.stop is not None,
         "climb": f.climb is not None or (f.peak is not None and bool(f.elev_m)),
         "next_spot": f.spot is not None and f.spot_km is not None,
         "weather": f.temp_c is not None,
-        "number": True,
         "season": True,
+        "tip": True,
     }
     return [t for t in TYPES if has[t]]
 
@@ -189,7 +167,7 @@ def available_types(f: StoryFacts) -> list[str]:
 def pick_type(f: StoryFacts, previous: str | None) -> str:
     """This post's content type: a rotation by activity id that never repeats the previous one.
 
-    A casual ride takes its stop or its route first when it has one.
+    A casual ride takes a next spot or its stop first when it has one.
     """
     available = available_types(f)
     if f.casual:
@@ -208,57 +186,34 @@ def pick_head(kind: str, activity_id: int, recent: Iterable[str] = ()) -> str:
     return _pick(fresh, activity_id)
 
 
-def _temp_word(temp: int) -> str:
-    words = _copy()["temp_word"]
-    key = "hot" if temp >= 30 else "warm" if temp >= 22 else "cool" if temp >= 12 else "cold"
-    return str(words[key])
+def _temp_key(temp: int) -> str:
+    return "hot" if temp >= 30 else "warm" if temp >= 22 else "cool" if temp >= 12 else "cold"
 
 
 def _main_line(f: StoryFacts, kind: str) -> str:
     c, seed = _copy(), f.activity_id
-    if kind == "route":
-        names = list(dict.fromkeys(f.districts))
-        turn = names[-1] if names else ""
-        if len(names) == 1:
-            return _pick(c["route_one"], seed).format(turn=turn)
-        return _pick(c["route"], seed).format(route="→".join(names), first=names[0], turn=turn)
     if kind == "stop":
         return _pick(c["stop"], seed).format(stop=f.stop)
     if kind == "climb":
         if f.climb is not None:
-            return _pick(c["climb_board"], seed).format(
-                climb=f.climb, rank=f.climb_rank, of_n=f.climb_of_n
-            )
-        return _pick(c["climb_place"], seed).format(peak=f.peak, elev=f.elev_m)
+            return _pick(c["climb_board"], seed)
+        return _pick(c["climb_place"], seed).format(peak=f.peak)
     if kind == "next_spot":
         why = c["spot_why"].get(f.spot_kind or "", c["spot_why"]["attraction"])
         return _pick(c["next_spot"], seed).format(spot=f.spot, why=why, spot_km=f.spot_km)
     if kind == "weather":
         assert f.temp_c is not None
-        return _pick(c["weather"], seed).format(temp=f.temp_c, temp_word=_temp_word(f.temp_c))
-    if kind == "number":
-        unit = c["number_unit"]
-        if f.elev_m and f.elev_m >= 200:
-            num, u = str(f.elev_m), unit["elev"]
-        elif f.km is not None:
-            num, u = f"{f.km:.1f}", unit["km"]
-        else:
-            num, u = str(f.minutes), unit["minutes"]
-        return _pick(c["number"], seed).format(num=num, unit=u)
+        return str(c["weather"][_temp_key(f.temp_c)]).format(temp=f.temp_c)
+    if kind == "tip":
+        return _pick(c["tip"], seed)
     return str(c["season"][f.month])
 
 
 def deterministic_lines(f: StoryFacts, kind: str) -> list[str]:
-    """2–3 casual lines: the content type's line, the ride in numbers, the company if casual."""
-    c, seed = _copy(), f.activity_id
+    """1–2 light suggestions: the content type's, plus a next spot when the ride has one."""
     lines = [_main_line(f, kind)]
-    km = f"{f.km:.1f}" if f.km is not None else "0"
-    if f.elev_m and f.elev_m >= 50:
-        lines.append(_pick(c["summary"], seed).format(km=km, elev=f.elev_m, minutes=f.minutes))
-    else:
-        lines.append(_pick(c["summary_flat"], seed).format(km=km, minutes=f.minutes))
-    if f.casual:
-        lines.append(_pick(c["casual"], seed))
+    if kind != "next_spot" and "next_spot" in available_types(f):
+        lines.append(_main_line(f, "next_spot"))
     return lines
 
 

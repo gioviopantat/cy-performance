@@ -119,7 +119,7 @@ model {
     technology 'SMTP over TLS (e.g. Gmail with an App Password)'
     description 'Delivers the per-ride PDF to CYP_REPORT_EMAIL_TO (and CYP_REPORT_EMAIL_CC) from the profile .env (feature notify.email, jobs/notify.py)'
   }
-  osm = extsys 'OpenStreetMap (Overpass, Nominatim)' {
+  osm = extsys 'OpenStreetMap (Overpass)' {
     #optional
     technology 'HTTPS, public APIs, <= 1 request/s'
     description 'Place and district names for the RIDE.LOG route story; receives only route points outside the 1 km privacy zone around start and end (feature strava.route_story, ingest/osm, ADR-0021)'
@@ -154,7 +154,7 @@ model {
   cyp.watcher -> cyp.reports 'writes ride PDFs and facts JSON'
   cyp.watcher -> smtp 'emails the ride PDF'
   cyp.watcher -> macNotify 'notice after 3 failed attempts (or 2 failed Strava writes)'
-  cyp.watcher -> osm 'looks up the ride route places and districts (privacy-trimmed points; strava.route_story)'
+  cyp.watcher -> osm 'looks up places around the ride route (privacy-trimmed box; strava.route_story)'
   cyp.watcher -> claude 'narrates the RIDE.LOG and its poem (llm.ride_poem)'
   cyp.cli -> osm 'ride-log show --fetch'
   cyp.cli -> claude 'ride-log show --fetch'

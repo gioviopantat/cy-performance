@@ -1,7 +1,8 @@
 # ADR-0021 · First LLM use (RIDE.LOG narration) and OpenStreetMap route lookups
 
 **Status**: accepted · 2026-10-17 (Roger: a casual, varied RIDE.LOG with route and next-spot
-ideas; OSM approved; spec casual-and-strava §C)
+ideas; OSM approved; spec casual-and-strava §C). Content types and the district lookup
+superseded by ADR-0022.
 
 ## Context
 The Strava RIDE.LOG printed model jargon nobody read. Roger wants a casual post that knows where

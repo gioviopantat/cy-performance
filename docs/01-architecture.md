@@ -78,8 +78,8 @@ Thin, rate-limit-aware HTTP clients + sync jobs that write raw payloads to the s
   sport settings, athlete, events (read-back of our published plan and the athlete's own races/notes).
 - `osm/` — OpenStreetMap for the RIDE.LOG route story (flag `strava.route_story`, ADR-0021):
   `privacy.py` drops every point within 1 km of start and end and samples every 200 m before
-  anything leaves; `client.py` asks Overpass (named places near the route, places in an area)
-  and Nominatim (district names), ≤ 1 request/s, identifying User-Agent.
+  anything leaves; `client.py` asks Overpass (named places near the route, places in an area),
+  ≤ 1 request/s, identifying User-Agent.
 - `matcher.py` — joins Strava ↔ intervals.icu activities (`external_id`/`strava_id` when present,
   else start time ±120 s + duration ±2%).
 

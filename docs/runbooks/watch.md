@@ -50,7 +50,7 @@ sqlite3 profiles/<name>/data/cyp.sqlite \
 ## RIDE.LOG has no route or no poem
 
 `cyp --profile <name> ride-log show <id> --fetch` retries both and prints the text; the log
-(`ride_story.*` events in `cyp.jsonl`) says why: `osm_failed` (Overpass / Nominatim down or
+(`ride_story.*` events in `cyp.jsonl`) says why: `osm_failed` (Overpass down or
 rate-limited: try later), `no_api_key` (`ANTHROPIC_API_KEY` missing in the profile's `.env`),
 `narrator_failed` (API error), `narrator_declined` (refusal or cut off), `invalid` (the poem
 broke a rule; the deterministic lines are used). Caches: `data/ride_story/<id>.json` (delete it

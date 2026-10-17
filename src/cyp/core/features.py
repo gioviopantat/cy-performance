@@ -225,15 +225,15 @@ REGISTRY: tuple[Feature, ...] = (
         "report",
         False,
         "RIDE.LOG 路線故事",
-        "Name where the ride went (districts, places, the stop) and suggest a next spot from "
-        "OpenStreetMap, with the 1 km privacy zone around start and end (ADR-0021).",
+        "Suggest a next spot and a stop worth revisiting from OpenStreetMap, with the 1 km "
+        "privacy zone around start and end (ADR-0021, ADR-0022).",
     ),
     Feature(
         "llm.ride_poem",
         "report",
         False,
         "RIDE.LOG 藏頭詩",
-        "Let Claude phrase the casual RIDE.LOG lines and write the acrostic poem from the "
+        "Let Claude phrase the RIDE.LOG suggestions and write the acrostic poem from the "
         "ride's facts; validated, deterministic text on any failure (ADR-0021).",
     ),
     Feature(

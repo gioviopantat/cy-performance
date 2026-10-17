@@ -42,7 +42,6 @@ STOP_RADIUS_M = 150.0
 BBOX_PAD_DEG = 0.02
 #: Margin of the route box (about 200 m), so places just beside the route are found.
 AROUND_PAD_DEG = 0.002
-MAX_DISTRICT_POINTS = 3
 #: A second narration call is made only when the first broke a rule (it gets the problems).
 NARRATION_ATTEMPTS = 2
 
@@ -333,15 +332,6 @@ def route_info(
         key=position,
     )
     turn = max(trimmed, key=lambda p: privacy.haversine_m(p, start))
-    probes = list(dict.fromkeys([trimmed[len(trimmed) // 3], turn, trimmed[2 * len(trimmed) // 3]]))
-    districts: list[str] = []
-    turn_district: str | None = None
-    for p in probes[:MAX_DISTRICT_POINTS]:
-        name = client.district(p)
-        if p == turn:
-            turn_district = name
-        if name and name not in districts:
-            districts.append(name)
     stop: Place | None = None
     sp = _stop_point(ctx, activity_id, report)
     if sp is not None and privacy.outside_zone(sp, start, end):
@@ -370,7 +360,7 @@ def route_info(
     pool = sorted((p for p in candidates if p.kind == best), key=lambda p: p.osm_id)
     spot = pool[activity_id % len(pool)] if pool else None
     spot_km = round(privacy.haversine_m(turn, (spot.lat, spot.lng)) / 1000) if spot else None
-    info = copy.RouteInfo(districts, places, turn_district, stop, spot, spot_km)
+    info = copy.RouteInfo(places, stop, spot, spot_km)
     _write(
         _osm_path(ctx, activity_id),
         {
@@ -404,7 +394,7 @@ def _compose(
     head = copy.pick_head(kind, activity_id, heads)
     lines = copy.deterministic_lines(facts, kind)
     poem: list[str] = []
-    source = "route" if route is not None and route.districts else "deterministic"
+    source = "route" if route is not None and (route.stop or route.spot) else "deterministic"
     ok = True
     payload = {**facts.to_dict(), "content_type": kind, "draft_lines": lines}
     problems: list[str] = []

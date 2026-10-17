@@ -118,11 +118,13 @@ PDF and the email only.
   (API field kept for the web client).
 - **Facts** (`reports/ride_story.py`, layer 5, pure): `StoryFacts` from the ride report the PDF
   uses (`reports/ride_facts.build_ride_report`; the stored facts JSON beside the PDF when there
-  is one, so the numbers match it) plus the route places. Content types: `route`, `climb`,
-  `stop`, `next_spot`, `weather`, `number`, `season`. The type is picked deterministically: a
-  rotation by activity id over the types this ride has material for, skipping the previous ride's
-  type (no two consecutive posts with the same type). A casual ride (tag A) prefers `stop`, then
-  `route`, and adds a 跟朋友 line. Copy: `reports/i18n/ride_story.zh-TW.yaml`, variants rotated
+  is one, so the numbers match it) plus the route places. The lines are 1–2 light suggestions
+  for next time, never a retelling of the ride (ADR-0022). Content types: `next_spot`, `stop`,
+  `climb`, `weather`, `season`, `tip`. The type is picked deterministically: a rotation by
+  activity id over the types this ride has material for, skipping the previous ride's type (no
+  two consecutive posts with the same type); a next spot is added as the second line when the
+  ride has one. A casual ride (tag A) prefers `next_spot`, then `stop`; nothing says who came
+  along. Copy: `reports/i18n/ride_story.zh-TW.yaml`, variants rotated
   by activity id. The acrostic head (4 characters) is picked from a list per content type,
   skipping heads used by the last 10 stories.
 - **Route** (`ingest/osm/`, layer 3; flag `strava.route_story`, default off): from the latlng
@@ -133,8 +135,7 @@ PDF and the email only.
   150 m of the route is decided locally, so only 4 numbers leave; first answering instance of
   overpass-api.de, overpass.kumi.systems, overpass.private.coffee; 75 s per request and a 180 s
   budget per ride, so a busy Overpass cannot stall the watcher): `amenity=cafe`, `shop=beverages|tea|coffee|bubble_tea`, `tourism=viewpoint|attraction`,
-  `natural=peak`, `leisure=park`, `amenity=place_of_worship` with a name) and Nominatim reverse
-  geocoding (zh-TW; at most 3 points: the turnaround and two along the way) for district names,
+  `natural=peak`, `leisure=park`, `amenity=place_of_worship` with a name),
   ≤ 1 request/s, `User-Agent: cy-performance/<version> (+CYP_OSM_CONTACT)`; the contact is an
   optional setting, never hard-coded. The turnaround is the kept point farthest from the start;
   the longest stop (from the report's stops) is matched to the nearest drink/café POI within
@@ -159,7 +160,7 @@ PDF and the email only.
   started, when it was free to pick from all the facts). Input: only the facts JSON (content type, place names, numbers,
   casual, the head) and the rules (acrostic, literary Chinese, rhymed, no English, no rap,
   甜蜜點 never 甜點). `stop_reason` refusal / max_tokens, an API error, or an invalid output →
-  the deterministic lines and no poem. Validation (`reports/ride_story.validate`): 2–4 lines of
+  the deterministic lines and no poem. Validation (`reports/ride_story.validate`): 1–2 lines of
   ≤ 60 characters, exactly 4 poem lines of 5–9 characters whose first characters spell the head,
   no Latin letters except `km`, `m`, `W`, `°C`, every number appears in the facts, every
   「name」 is a facts place, no POI-like word (咖啡、茶、寺、宮、廟、公園、步道、觀景台) outside a
@@ -176,14 +177,13 @@ facts JSON only, never Strava data or streams (docs/02 Strava terms). Both defau
 degrade to the deterministic text. ADR-0021.
 
 ### Decisions taken without asking (Roger runs bypass mode, lead 2026-10-17)
-- The WORKOUT block is dropped (plan talk); its only casual fact (distance/time) moves into the
-  lines.
+- The WORKOUT block is dropped (plan talk).
 - `cyp_llm_model` default becomes `claude-opus-5-5` (it was unused).
 - The poem has no deterministic fallback: without the LLM there is no poem.
 - The next-spot area is the bounding box of cached, privacy-trimmed routes (no extra stream reads).
 
 ### Acceptance
-Tests stub Overpass, Nominatim and Claude (no network): privacy zone (no coordinate within 1 km
+Tests stub Overpass and Claude (no network): privacy zone (no coordinate within 1 km
 of start/end leaves), cache (second prepare makes no request), variety (no two consecutive
 types), invented-name rejection, acrostic / Latin / number checks, refusal → no poem, compose
 replaces an old WORKOUT + RIDE.LOG + poem block exactly once. Texts for activities 226, 228,
@@ -192,9 +192,9 @@ replaces an old WORKOUT + RIDE.LOG + poem block exactly once. Texts for activiti
 ### Public only (lead 2026-10-17)
 Strava's API has no private-notes field, so the description carries public-safe content only.
 `StoryFacts` is the allow-list (distance, elevation gain, moving time, temperature, climb rank
-"第 N 快" without watts, districts / places / stop / next spot); the LLM and the deterministic
+"第 N 快" without watts, peak / stop / next spot); the LLM and the deterministic
 text see nothing else. Plan names, verdicts, FTP, any watts, heart rate, HRV, sleep, RPE / feel,
 readiness, tomorrow, goals, weight, TSS / CTL / TSB and companions stay in the email / PDF. The
 validator allows only the units `km`, `m`, `°C` (so W, kJ, bpm, kg, FTP, TSS, RPE are rejected)
 and only numbers of the facts / draft; tests: `test_the_facts_object_is_an_allow_list`,
-`test_private_tokens_are_rejected`. Not done yet: top / average speed (not in the facts).
+`test_private_tokens_are_rejected`.

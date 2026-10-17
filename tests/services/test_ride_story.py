@@ -92,11 +92,6 @@ class FakeOsm:
         self.requests.append(request)
         if self.fail:
             return httpx.Response(503)
-        if "nominatim" in request.url.host:
-            return httpx.Response(
-                200,
-                json={"address": {"suburb": T["places"]["district"], "city": T["places"]["city"]}},
-            )
         query = parse_qs(request.content.decode())["data"][0]
         along = '"leisure"' in query  # the route box asks for every kind, parks included
         return httpx.Response(200, json={"elements": self.along if along else self.box})
@@ -111,10 +106,6 @@ class FakeOsm:
     def sent_points(self) -> list[privacy.Point]:
         out: list[privacy.Point] = []
         for r in self.requests:
-            if "nominatim" in r.url.host:
-                q = parse_qs(r.url.query.decode())
-                out.append((float(q["lat"][0]), float(q["lon"][0])))
-                continue
             query = parse_qs(r.content.decode())["data"][0]
             for box in BOX.findall(query):  # every corner of a bounding box counts as sent
                 south, west, north, east = (float(v) for v in box)
@@ -148,7 +139,6 @@ def test_no_coordinate_near_start_or_end_ever_leaves(ctx: AppContext) -> None:
         assert "t_s" not in body and "activity" not in body and "athlete" not in body
         assert r.headers["User-Agent"].startswith("cy-performance/")
         assert "test@example.invalid" in r.headers["User-Agent"]
-    assert sum("nominatim" in r.url.host for r in fake.requests) <= 3
     # A place next to home is never named; the route's café and peak are.
     route = copy.RouteInfo.from_dict(
         json.loads((ride_story.story_dir(ctx) / "osm" / f"{aid}.json").read_text())["route"]
@@ -161,7 +151,7 @@ def test_no_coordinate_near_start_or_end_ever_leaves(ctx: AppContext) -> None:
     assert (
         route.spot is not None and route.spot.name == T["places"]["viewpoint"]
     )  # visited café skipped
-    assert route.districts == [T["places"]["district"]] and story.prepared
+    assert story.prepared
 
 
 def test_osm_cache_and_visited_record(ctx: AppContext) -> None:
@@ -211,7 +201,8 @@ def test_no_two_consecutive_posts_share_a_content_type() -> None:
     for aid in range(1, 60):
         f = _facts(
             aid,
-            districts=[T["places"]["linkou"]] if aid % 2 else [],
+            spot=T["places"]["viewpoint"] if aid % 2 else None,
+            spot_km=12 if aid % 2 else None,
             stop=T["places"]["cafe"] if aid % 3 else None,
         )
         kind = copy.pick_type(f, previous)
@@ -226,18 +217,28 @@ def test_service_variety_across_rides(ctx: AppContext) -> None:
     assert all(a != b for a, b in itertools.pairwise(kinds))
 
 
-def test_casual_ride_leans_on_the_stop_and_company() -> None:
-    f = _facts(7, casual=True, stop=T["places"]["cafe"], districts=[T["places"]["linkou"]])
+def test_casual_ride_leans_on_the_stop_and_never_assumes_company() -> None:
+    f = _facts(7, casual=True, stop=T["places"]["cafe"])
     assert copy.pick_type(f, None) == "stop"
-    assert copy.pick_type(f, "stop") == "route"
+    assert copy.pick_type(f, "stop") != "stop"
     lines = copy.deterministic_lines(f, "stop")
-    assert f"「{T['places']['cafe']}」" in lines[0] and T["company"] in lines[-1]
+    assert f"「{T['places']['cafe']}」" in lines[0] and T["company"] not in "".join(lines)
+
+
+def test_lines_are_suggestions_not_a_diary() -> None:
+    """Roger, 2026-10-17: only suggestions for next time, never what happened on the ride."""
+    P = T["places"]
+    f = _facts(5, spot=P["viewpoint"], spot_kind="viewpoint", spot_km=12)
+    for kind in copy.available_types(f):
+        lines = copy.deterministic_lines(f, kind)
+        assert 1 <= len(lines) <= 2, (kind, lines)
+        assert "42.3" not in "".join(lines) and "95" not in "".join(lines)
 
 
 def test_heads_skip_recent_ones() -> None:
-    heads = [copy.pick_head("route", 3, [])]
+    heads = [copy.pick_head("tip", 3, [])]
     for _ in range(5):
-        heads.append(copy.pick_head("route", 3, heads))
+        heads.append(copy.pick_head("tip", 3, heads))
     assert len(set(heads)) == len(heads) and all(len(h) == 4 for h in heads)
 
 
@@ -245,7 +246,6 @@ def test_deterministic_lines_are_casual_and_valid() -> None:
     P = T["places"]
     f = _facts(
         5,
-        districts=[P["linkou"], P["bali"]],
         stop=P["cafe"],
         spot=P["viewpoint"],
         spot_kind="viewpoint",
@@ -267,7 +267,7 @@ POEM_OK: list[str] = T["poem_ok"]
 
 
 def test_validate_accepts_a_good_answer() -> None:
-    f = _facts(1, districts=[T["places"]["linkou"]], stop=T["places"]["cafe"])
+    f = _facts(1, stop=T["places"]["cafe"])
     lines = T["lines"]["good"]
     assert copy.validate(lines, POEM_OK, f, T["poem_head"]) == []
     assert copy.head_chars(POEM_OK) == T["poem_head"]
@@ -281,14 +281,14 @@ def test_validate_accepts_a_good_answer() -> None:
         (T["lines"]["number"], POEM_OK, "number 99"),
         (T["lines"]["latin"], POEM_OK, "latin"),
         (T["lines"]["forbidden"], POEM_OK, "forbidden"),
-        (T["lines"]["one"], POEM_OK, "1 lines"),
+        (T["lines"]["three"], POEM_OK, "3 lines"),
         (T["lines"]["plain"], POEM_OK[:3], "3 poem lines"),
         (T["lines"]["plain"], [T["poem_bad_head"], *POEM_OK[1:]], "does not start with"),
         (T["lines"]["plain"], [T["poem_short"], *POEM_OK[1:]], "has 1 characters"),
     ],
 )
 def test_validate_rejects(lines: list[str], poem: list[str], problem: str) -> None:
-    f = _facts(1, districts=[T["places"]["linkou"]], stop=T["places"]["cafe"])
+    f = _facts(1, stop=T["places"]["cafe"])
     errors = copy.validate(lines, poem, f, T["poem_head"])
     assert any(problem in e for e in errors), errors
 
@@ -311,7 +311,9 @@ def test_valid_narration_is_used_and_cached(ctx: AppContext) -> None:
     s = ride_story.prepare(ctx, aid, narrator=narrator)
     assert s.source == "llm" and len(s.poem) == 4 and s.prepared
     assert copy.head_chars(s.poem) == s.head
-    assert set(seen[0]) >= {"content_type", "km", "districts"} and "athlete" not in json.dumps(seen)
+    assert set(seen[0]) >= {"content_type", "km", "draft_lines"} and "athlete" not in json.dumps(
+        seen
+    )
     text = ride_story.story(ctx, aid).text
     assert text.count("\n> ") == 4 and text.endswith("#cyperformance")
     assert ride_story.prepare(ctx, aid, narrator=lambda f, h, *_: None) == s  # cached
@@ -449,15 +451,6 @@ def test_a_slow_overpass_answer_is_cut_at_the_deadline() -> None:
         client.places_in((25.1, 121.4, 25.11, 121.41))
 
 
-def test_district_is_the_district_level_not_the_village() -> None:
-    from cyp.ingest.osm.client import district_of
-
-    address = {"village": "v", "suburb": "s", "town": "t", "city": "c"}
-    assert district_of({"address": address}) == "t"
-    assert district_of({"address": {"village": "v"}}) == "v"
-    assert district_of({}) is None
-
-
 def test_an_overloaded_overpass_falls_over_to_the_next_instance() -> None:
     from cyp.ingest.osm.client import OVERPASS_URLS
 
@@ -491,7 +484,7 @@ def test_one_lookup_has_a_total_budget() -> None:
         client.places_in((25.1, 121.4, 25.11, 121.41))
     assert len(calls) == 3  # tried at 0 s, 70 s and 140 s, all inside the 180 s budget
     with pytest.raises(OsmError, match="budget"):
-        client.district((25.1, 121.4))
+        client.places_in((25.1, 121.4, 25.11, 121.41))
     assert len(calls) == 3
 
 
@@ -522,14 +515,17 @@ def test_retry_message_lists_the_problems() -> None:
 
 def test_a_rephrasing_may_not_add_places_or_numbers_beyond_the_draft() -> None:
     P = T["places"]
-    f = _facts(1, districts=[P["linkou"]], route_places=[P["cafe"], P["peak"]], spot=P["viewpoint"])
-    draft = [f"{P['linkou']} 42.3"]
-    ok = [f"{P['linkou']} 42.3", T["company"]]
+    f = _facts(1, peak=P["peak"], spot=P["viewpoint"])
+    draft = [f"{P['viewpoint']} 42.3"]
+    ok = [f"{P['viewpoint']} 42.3", T["filler_line"]]
     assert copy.validate(ok, POEM_OK, f, T["poem_head"], draft=draft) == []
-    extra_place = [f"{P['linkou']} 42.3", P["peak"]]  # a real place of the ride, not in the draft
+    extra_place = [
+        f"{P['viewpoint']} 42.3",
+        P["peak"],
+    ]  # a real place of the ride, not in the draft
     errors = copy.validate(extra_place, POEM_OK, f, T["poem_head"], draft=draft)
     assert any("not in the draft" in e for e in errors)
-    extra_number = [f"{P['linkou']} 42.3", "380"]  # a real number of the ride, not in the draft
+    extra_number = [f"{P['viewpoint']} 42.3", "380"]  # a real number of the ride, not in the draft
     errors = copy.validate(extra_number, POEM_OK, f, T["poem_head"], draft=draft)
     assert any("number 380 not in the draft" in e for e in errors)
 
@@ -537,7 +533,7 @@ def test_a_rephrasing_may_not_add_places_or_numbers_beyond_the_draft() -> None:
 #: Every field the public facts object may carry (lead 2026-10-17: Strava gets public content only).
 PUBLIC_FIELDS = {
     "activity_id", "month", "casual", "indoor", "km", "elev_m", "minutes", "temp_c", "climb",
-    "climb_rank", "climb_of_n", "districts", "route_places", "peak", "stop", "spot",
+    "climb_rank", "climb_of_n", "peak", "stop", "spot",
     "spot_kind", "spot_km",
 }  # fmt: skip
 
@@ -549,7 +545,7 @@ def test_the_facts_object_is_an_allow_list() -> None:
 
 @pytest.mark.parametrize("private", ["250 W", "150 bpm", "FTP", "TSS", "RPE", "64 kg", "3.9 W/kg"])
 def test_private_tokens_are_rejected(private: str) -> None:
-    f = _facts(1, districts=[T["places"]["linkou"]])
-    lines = [f"{T['places']['linkou']} {private}", T["company"]]
+    f = _facts(1, stop=T["places"]["cafe"])
+    lines = [f"{T['places']['cafe']} {private}", T["filler_line"]]
     errors = copy.validate(lines, POEM_OK, f, T["poem_head"])
     assert any("latin letters" in e or "not in the" in e for e in errors), errors
