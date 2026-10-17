@@ -212,6 +212,15 @@ REGISTRY: tuple[Feature, ...] = (
         requires=("sync.strava",),
     ),
     Feature(
+        "strava.auto_description",
+        "publish",
+        False,
+        "騎完自動寫入 Strava 說明",
+        "The ride watcher writes each reported ride's RIDE.LOG into its Strava description "
+        "right after the report, with every strava.write_description gate (ADR-0020).",
+        requires=("strava.write_description",),
+    ),
+    Feature(
         "notify.macos",
         "notify",
         True,

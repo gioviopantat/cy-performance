@@ -38,7 +38,9 @@ the docs below match the code in the same commit. Format/autofix: `uv run poe fm
 - **Never write a plan that needs review**, from the autopilot or `cyp plan --apply`.
 - **The only Strava write is `services/strava_write.push()`**: flag `strava.write_description`,
   `activity:write` scope, token owner == ride owner, explicit confirmation; keeps the athlete's
-  own text and replaces only our RIDE.LOG block.
+  own text and replaces only our RIDE.LOG block. The one exception to the confirmation: the
+  ride watcher after a ride's report, for profiles with `strava.auto_description` on (the flag
+  is the confirmation, ADR-0020; it calls `push()` with every other gate).
 - **The web UI writes only through those same functions** (ADR-0009): `confirm=true`, the
   feature flag, the profile lock; `cyp serve` refuses a non-loopback bind without
   `CYP_API_TOKEN` and checks the `Host` header on loopback.
@@ -78,6 +80,7 @@ uv run cyp --profile <name> run --no-write --json   # a dry run of the morning
 uv run cyp schedule status               # are the 05:30 and watch agents loaded; last exit codes
 uv run cyp --profile <name> watch --json # one ride-watcher tick (emails new rides' PDFs)
 uv run cyp --profile <name> ride-report  # newest ride's PDF, no email
+uv run cyp --profile <name> ride-feedback <id> --casual  # tag a ride casual (local file; no resend)
 uv run cyp --profile <name> digest weekly --period <monday>  # one weekly digest PDF, no email
 uv run cyp --profile <name> doctor       # config, DB, tokens, last job runs
 uv run cyp --profile <name> plan replay --from <D> --to <D> --json  # read-only replay of the planner
@@ -87,7 +90,8 @@ Morning run failed? `docs/runbooks/README.md`. Never run `cyp ride-log push --co
 `cyp plan --apply --confirm-write`, `cyp profile promote` or `cyp publish spike --confirm-write`
 without the user asking: they write to a real person's calendar. Likewise never run
 `cyp ride-report --send`, `cyp digest weekly --send`, `cyp digest monthly --send`, `cyp digest run` or `cyp watch` with
-`notify.email` on without the user asking: they send email.
+`notify.email` on without the user asking: they send email (and `cyp watch` writes Strava for a
+profile with `strava.auto_description` on).
 `.claude/hooks/ask_before_writes.sh` makes Claude Code ask before each of them, and before
 `curl` POSTs to the API's write endpoints or Python that calls the write functions.
 

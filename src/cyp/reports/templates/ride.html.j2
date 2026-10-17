@@ -6,6 +6,7 @@
   "missed": ("critical", "✕ 未達成"),
   "unplanned": ("", "○ 計畫外"),
   "no_data": ("", "– 資料不足"),
+  "casual": ("", "○ 休閒騎（不評分）"),
 } %}
 {% macro verdict_badge(v) %}<span class="badge {{ VERDICT[v][0] }}">{{ VERDICT[v][1] }}</span>{% endmacro %}
 {% from "_report.html.j2" import stat, explain, methods, climb_table %}

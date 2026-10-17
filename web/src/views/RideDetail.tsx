@@ -248,14 +248,16 @@ const FEEL = [
   [5, "很差"],
 ] as const;
 
-/** Post-ride feeling: RPE 1–10 and feel 1–5. Saved at once; tomorrow's readiness uses it. */
+/** Post-ride feeling: RPE 1–10, feel 1–5 and the casual tag. Saved at once; tomorrow's readiness
+ * uses it. A casual ride is not graded and its planned session counts as not done; a report
+ * already emailed is not sent again. */
 function Feedback({ profile, id }: { profile: string; id: number }) {
   const q = useQuery({ queryKey: ["feedback", profile, id], queryFn: () => api.feedback(profile, id) });
   const [error, setError] = useState<unknown>(null);
-  const save = async (rpe: number | null, feel: number | null) => {
+  const save = async (rpe: number | null, feel: number | null, casual?: boolean) => {
     setError(null);
     try {
-      await api.saveFeedback(profile, id, rpe, feel);
+      await api.saveFeedback(profile, id, rpe, feel, casual);
       void q.refetch();
     } catch (e) {
       setError(e);
@@ -263,6 +265,7 @@ function Feedback({ profile, id }: { profile: string; id: number }) {
   };
   const rpe = q.data?.rpe ?? null;
   const feel = q.data?.feel ?? null;
+  const casual = q.data?.casual ?? false;
   return (
     <div className="feedback">
       <div className="feedback-head">
@@ -295,6 +298,18 @@ function Feedback({ profile, id }: { profile: string; id: number }) {
             {label}
           </button>
         ))}
+      </div>
+      <div className="scale" role="group" aria-label="休閒騎">
+        <span className="scale-label">休閒騎</span>
+        <button
+          className={casual ? "on" : ""}
+          aria-pressed={casual}
+          onClick={() => void save(rpe, feel, !casual)}
+          title="和朋友隨便騎、喝飲料：這趟不評分，排定的課算沒做（負荷照算）"
+        >
+          {casual ? "☕ 休閒騎（不評分）" : "標記為休閒騎"}
+        </button>
+        {casual && <span className="muted small">已寄出的報告不會重寄</span>}
       </div>
       <ErrorNote error={error} />
     </div>

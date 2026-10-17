@@ -236,3 +236,19 @@ def test_outdated_schema_gives_upgrade_hint(
     res = CliRunner().invoke(app, ["dev", "bench", "--athlete-config", str(athlete_yaml)], env=env)
     assert res.exit_code == 2
     assert "cyp db upgrade" in res.output and "Traceback" not in res.output
+
+
+def test_ride_feedback_casual(seeded: dict[str, str]) -> None:
+    """``cyp ride-feedback <id> --casual`` writes only the local feedback file."""
+    show = runner.invoke(app, ["ride-feedback", "latest"], env=seeded)
+    assert show.exit_code == 0, show.output
+    aid = _json(show.output)["activity_id"]  # type: ignore[index]
+    assert _json(show.output)["casual"] is False  # type: ignore[index]
+    res = runner.invoke(app, ["ride-feedback", str(aid), "--casual"], env=seeded)
+    assert res.exit_code == 0, res.output
+    assert _json(res.output)["casual"] is True  # type: ignore[index]
+    path = Path(seeded["CYP_DATA_DIR"]) / "ride_feedback" / f"{aid}.json"
+    assert json.loads(path.read_text(encoding="utf-8"))["casual"] is True
+    res = runner.invoke(app, ["ride-feedback", str(aid), "--not-casual"], env=seeded)
+    assert _json(res.output)["casual"] is False and not path.exists()  # type: ignore[index]
+    assert runner.invoke(app, ["ride-feedback", "999999", "--casual"], env=seeded).exit_code == 1

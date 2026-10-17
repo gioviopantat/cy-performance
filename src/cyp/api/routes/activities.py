@@ -21,6 +21,7 @@ from cyp.schemas import (
 )
 from cyp.services import activities as service
 from cyp.services.context import AppContext
+from cyp.services.ride_feedback import RideFeedback
 
 router = APIRouter(prefix="/activities", tags=["activities"])
 Ctx = Annotated[AppContext, Depends(ctx)]
@@ -117,12 +118,12 @@ def get_feedback(c: Ctx, activity_id: int) -> RideFeedbackOut:
     from cyp.services.ride_feedback import get
 
     f = get(c, activity_id)
-    return RideFeedbackOut(activity_id=f.activity_id, rpe=f.rpe, feel=f.feel, source=f.source)
+    return _feedback_out(f)
 
 
 @router.post("/{activity_id}/feedback", response_model=RideFeedbackOut)
 def save_feedback(c: Ctx, activity_id: int, body: RideFeedbackIn) -> RideFeedbackOut:
-    """Store post-ride RPE / feel; readiness is recomputed for the next day right away."""
+    """Store post-ride RPE / feel / casual tag; readiness is recomputed for the next day."""
     import datetime as dt
 
     from fastapi import HTTPException
@@ -132,10 +133,16 @@ def save_feedback(c: Ctx, activity_id: int, body: RideFeedbackIn) -> RideFeedbac
     from cyp.services.ride_feedback import save
 
     try:
-        f = save(c, activity_id, body.rpe, body.feel)
+        f = save(c, activity_id, body.rpe, body.feel, body.casual)
     except ConfigError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     ride = next((a for a in c.dataset().activities if a.id == activity_id), None)
     if ride is not None:
         readiness_service.recompute(c, [ride.date + dt.timedelta(days=1)])
-    return RideFeedbackOut(activity_id=f.activity_id, rpe=f.rpe, feel=f.feel, source=f.source)
+    return _feedback_out(f)
+
+
+def _feedback_out(f: RideFeedback) -> RideFeedbackOut:
+    return RideFeedbackOut(
+        activity_id=f.activity_id, rpe=f.rpe, feel=f.feel, source=f.source, casual=f.casual
+    )

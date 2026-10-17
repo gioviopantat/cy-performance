@@ -121,8 +121,32 @@ def build_intent(
     """Section 2 (``None`` when nothing was planned for this ride).
 
     ``planned`` replaces the stored plan lookup (:func:`planned_for`); ``cyp plan replay``
-    judges rides against its replayed plan this way.
+    judges rides against its replayed plan this way. A ride the athlete tagged casual keeps
+    its figures but gets the neutral verdict ``casual`` (:func:`as_casual`).
     """
+    intent = _build_intent(inp, planned)
+    return as_casual(intent) if intent is not None and inp.casual else intent
+
+
+def as_casual(intent: Intent) -> Intent:
+    """The same figures, not graded: verdict ``casual``, a neutral headline, the tag as reason."""
+    expl = dict(intent.explanation or {})
+    reason = Reason(
+        text_zh=text("intent.casual_rule", name=intent.planned_name),
+        evidence={"casual": True, "graded_verdict": intent.verdict},
+    ).model_dump(mode="json")
+    expl["headline_zh"] = text(
+        "intent.headline_casual",
+        name=intent.planned_name,
+        load=intent.load_actual if intent.load_actual is not None else 0.0,
+    )
+    expl["because"] = [reason, *list(expl.get("because") or [])]
+    return intent.model_copy(update={"verdict": "casual", "explanation": expl})
+
+
+def _build_intent(
+    inp: RideInputs, planned: tuple[PlannedWorkout | None, IcuEvent | None] | None
+) -> Intent | None:
     pw, ev = planned if planned is not None else planned_for(inp)
     if pw is None and ev is None:
         return None

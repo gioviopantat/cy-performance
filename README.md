@@ -108,6 +108,7 @@ evidence grade of every model). `brew install pango` once (WeasyPrint); put `CYP
 ```bash
 uv run cyp --profile me ride-report          # newest ride's PDF under data/reports/ride (no email)
 uv run cyp --profile me ride-report --send   # build and email it
+uv run cyp --profile me ride-feedback 228 --casual   # 休閒騎: not graded, plan counts as not done
 uv run cyp schedule install --watch          # `cyp watch --all` every 10 min (polls intervals.icu)
 ```
 
@@ -129,6 +130,9 @@ RIDE.LOG to Strava (flag `strava.write_description`, off by default): add `activ
 `STRAVA_SCOPE` in the profile's `.env`, run `uv run cyp --profile me auth strava` once, set
 `strava.write_description: true` under `features:`. Then `uv run cyp ride-log push latest`
 previews and `--confirm-write` writes (or use the 行事曆 page: open the ride's day). Your own text on Strava is kept.
+To have the ride watcher do this after every ride report, also set
+`strava.auto_description: true` (ADR-0020; same gates, no per-ride confirmation; the outcome is
+in `ride_reports.strava_status`, see `docs/runbooks/watch.md`).
 An edited RIDE.LOG (e.g. with the acrostic poem) is saved per ride (`cyp ride-log save`, or 儲存 on
 the 行事曆 page, `data/ride_logs/<id>.txt`) and shown and pushed from then on.
 

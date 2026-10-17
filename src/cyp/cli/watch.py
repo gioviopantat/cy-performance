@@ -1,4 +1,8 @@
-"""``watch [--all]`` (the ride watcher tick) and ``ride-report`` (build / resend one ride's PDF)."""
+"""``watch [--all]``, ``ride-report`` and ``ride-feedback``.
+
+The ride watcher tick, building / resending one ride's PDF, and showing a ride's answers or
+tagging it casual.
+"""
 
 from __future__ import annotations
 
@@ -21,7 +25,8 @@ def watch(
 ) -> None:
     """One ride-watcher tick: sync, then email the PDF report of each new ride once.
 
-    Does nothing for profiles with ``report.ride`` off. Never writes a calendar or Strava.
+    Does nothing for profiles with ``report.ride`` off. Never writes a calendar; writes a
+    reported ride's RIDE.LOG to Strava only with ``strava.auto_description`` on (ADR-0020).
     Exit 1 when a tick or a report failed.
     """
     from cyp.jobs.watch import watch_all, watch_profile
@@ -85,7 +90,48 @@ def ride_report(
         fail(out.error or out.status, code=1)
 
 
+def ride_feedback(
+    activity: ActivityArg = "latest",
+    casual: Annotated[
+        bool | None,
+        typer.Option(
+            "--casual/--not-casual",
+            help="Tag the ride casual (not graded; the plan counts as not done) or untag it.",
+        ),
+    ] = None,
+) -> None:
+    """Show a ride's post-ride answers; ``--casual`` tags it (local file only, sends nothing).
+
+    A report already emailed is not sent again: rebuild it with ``cyp ride-report <id>``.
+    """
+    from cyp.services import ride_feedback as service
+
+    with app_context(cli_settings()) as ctx:
+        activity_id = _resolve(ctx, activity)
+        try:
+            f = (
+                service.get(ctx, activity_id)
+                if casual is None
+                else service.set_casual(ctx, activity_id, casual)
+            )
+        except CypError as exc:
+            fail(str(exc), code=1)
+    typer.echo(
+        json.dumps(
+            {
+                "activity_id": f.activity_id,
+                "rpe": f.rpe,
+                "feel": f.feel,
+                "source": f.source,
+                "casual": f.casual,
+            },
+            ensure_ascii=False,
+        )
+    )
+
+
 def register(app: typer.Typer) -> None:
-    """Attach ``watch`` and ``ride-report`` to ``app``."""
+    """Attach ``watch``, ``ride-report`` and ``ride-feedback`` to ``app``."""
     app.command()(watch)
     app.command("ride-report")(ride_report)
+    app.command("ride-feedback")(ride_feedback)

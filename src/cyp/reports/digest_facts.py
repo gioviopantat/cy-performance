@@ -35,6 +35,7 @@ def _inputs(
     cfg: AthleteConfig | None,
     reports_dir: Path,
     now: dt.datetime,
+    casual: frozenset[int] = frozenset(),
 ) -> DigestInputs:
     ds = load_dataset(session)
     if ds is None:
@@ -58,6 +59,7 @@ def _inputs(
         reports_dir=reports_dir,
         today=local_date(now, cfg.timezone if cfg is not None else DEFAULT_TZ),
         skeleton=skeleton,
+        casual=casual,
     )
 
 
@@ -70,11 +72,13 @@ def build_weekly(
     cfg: AthleteConfig | None,
     reports_dir: Path,
     gate: GateDecision | None = None,
+    casual: frozenset[int] = frozenset(),
 ) -> WeeklyDigest:
     """Read stored results for the ISO week starting ``week_start`` (a Monday).
 
     ``reports_dir`` is the profile's reports directory (ride facts JSON, trends JSON);
-    ``gate`` the progression gate's decision for the week after (flag-gated by the caller).
+    ``gate`` the progression gate's decision for the week after (flag-gated by the caller);
+    ``casual`` the rides the athlete tagged casual (not graded).
 
     Raises:
         AnalysisError: no athlete in the store.
@@ -83,7 +87,9 @@ def build_weekly(
     if week_start.weekday() != 0:
         raise ValueError(f"{week_start} is not a Monday")
     now = now_utc()
-    inp = _inputs(session, store, profile=profile, cfg=cfg, reports_dir=reports_dir, now=now)
+    inp = _inputs(
+        session, store, profile=profile, cfg=cfg, reports_dir=reports_dir, now=now, casual=casual
+    )
     return digest_weekly.build(inp, week_start, generated_at=now, gate=gate)
 
 
@@ -95,8 +101,11 @@ def build_monthly(
     profile: str,
     cfg: AthleteConfig | None,
     reports_dir: Path,
+    casual: frozenset[int] = frozenset(),
 ) -> MonthlyDigest:
     """Read stored results for the calendar month starting ``month_start`` (day 1).
+
+    ``casual``: the rides the athlete tagged casual (not graded).
 
     Raises:
         AnalysisError: no athlete in the store.
@@ -105,5 +114,7 @@ def build_monthly(
     if month_start.day != 1:
         raise ValueError(f"{month_start} is not the first of a month")
     now = now_utc()
-    inp = _inputs(session, store, profile=profile, cfg=cfg, reports_dir=reports_dir, now=now)
+    inp = _inputs(
+        session, store, profile=profile, cfg=cfg, reports_dir=reports_dir, now=now, casual=casual
+    )
     return digest_monthly.build(inp, month_start, generated_at=now)

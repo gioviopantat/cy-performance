@@ -26,6 +26,7 @@ from cyp.reports.ride_common import RideInputs
 from cyp.reports.ride_intent import build_intent
 from cyp.services.context import AppContext
 from cyp.services.readiness import ride_feedback
+from cyp.services.ride_feedback import casual_ids
 from cyp.settings import AthleteConfig
 from cyp.store.models import Activity, ActivityMetrics, PlannedWorkout
 from cyp.store.repo.planned import is_live
@@ -52,6 +53,7 @@ def intent_verdict(
     row: ActivityRow,
     pw: PlannedWorkout,
     frames: dict[int, RideFrame | None] | None = None,
+    casual: bool = False,
 ) -> str | None:
     """The intent verdict of ``row`` against ``pw`` (``None`` when the ride is not stored)."""
     a = session.get(Activity, row.id)
@@ -70,6 +72,7 @@ def intent_verdict(
         row=row,
         trends=None,
         _frames=frames if frames is not None else {},
+        casual=casual,
     )
     try:
         intent = build_intent(inp, planned=(pw, None))
@@ -89,17 +92,22 @@ def judge_day(
     *,
     with_intent: bool = True,
     frames: dict[int, RideFrame | None] | None = None,
+    casual: frozenset[int] = frozenset(),
 ) -> dict[str, Any]:
     """Compliance record of planned workout ``pw`` on ``day`` (``pw`` may be transient).
 
     ``with_intent=False`` skips the stream-based intent check (``intent_verdict`` ``None``).
+    ``casual``: rides the athlete tagged casual; a casual carrier makes the slot not done.
     """
     carrier = _carrier(ds, day, pw)
+    is_casual = carrier is not None and carrier.id in casual
     response = ride_response(ds, day, feedback)
     steps = pw.steps if isinstance(pw.steps, dict) else {}
     verdict = (
-        intent_verdict(session, store, ds, cfg, carrier, pw, frames)
+        intent_verdict(session, store, ds, cfg, carrier, pw, frames, casual=is_casual)
         if carrier is not None and with_intent
+        else "casual"
+        if is_casual
         else None
     )
     return compliance_record(
@@ -114,6 +122,7 @@ def judge_day(
         feel=response.feel if response is not None else None,
         rated_class=response.rated_classification if response is not None else None,
         rated_minutes=response.rated_minutes if response is not None else None,
+        casual=is_casual,
     )
 
 
@@ -122,6 +131,7 @@ def compute(ctx: AppContext, today: dt.date, days: int = COMPLIANCE_DAYS) -> dic
     ds = ctx.dataset()
     cfg = ctx.athlete_config_or_none()
     feedback = ride_feedback(ctx)
+    casual = casual_ids(ctx)
     frames: dict[int, RideFrame | None] = {}
     out: dict[int, Any] = {}
     with ctx.factory() as s:
@@ -137,7 +147,7 @@ def compute(ctx: AppContext, today: dt.date, days: int = COMPLIANCE_DAYS) -> dic
         ).all()
         for pw in rows:
             out[pw.id] = judge_day(
-                s, ctx.store, ds, cfg, pw.date_local, pw, feedback, frames=frames
+                s, ctx.store, ds, cfg, pw.date_local, pw, feedback, frames=frames, casual=casual
             )
     return out
 

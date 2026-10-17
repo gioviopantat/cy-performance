@@ -26,9 +26,11 @@ verdict:
   skipped: "沒騎"
   unplanned: "自由騎"
   no_data: "無法判斷"
+  casual: "休閒騎"
 
 session:
   unplanned: "沒有排課的自由騎：{cls}"
+  casual: "休閒騎（不評分）：{cls}"
   overdone: "輕鬆課騎過頭：負荷是計畫的 {ratio:.0%}（超過 {max:.0%} 而且多 {margin:.0f} TSS 以上，就沒達到輕鬆課的目的；隔天規劃器會依多出的量減量）"
   excused: "{n} 段停車／滑行／下坡不扣分"
   stops: "停車 {n} 次、共 {minutes} 分鐘，間歇結構不可靠"

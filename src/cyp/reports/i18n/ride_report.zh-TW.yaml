@@ -8,6 +8,7 @@ verdict:
   missed: "未達成"
   unplanned: "沒有排課"
   no_data: "資料不足"
+  casual: "休閒騎（不評分）"
 
 headline:
   achieved: "目的達成：{name}。"
@@ -15,6 +16,8 @@ headline:
   missed: "沒有達成：{name}。"
   no_data: "無法判斷：{name}。"
   unplanned: "今天沒有排課，這趟是自由騎：{cls}。"
+  casual: "休閒騎（不評分）：{name}。"
+  casual_unplanned: "休閒騎（不評分）：{cls}。"
   end: "。"
   goal_date: "{target:.0f} W 預估 {date} 達成"
   goal_shift_earlier: "（比上一趟提前 {days} 天）"
@@ -41,6 +44,8 @@ intent:
   headline_too_easy: "，但標準化功率 {np:.0f} W 低於下限 {floor:.0f} W，比計畫輕鬆太多"
   headline_load: "負荷 {actual:.0f}/{planned:.0f}（{ratio:.0%}）"
   headline_no_power: "沒有可信的功率資料，無法判斷是否達到刺激"
+  headline_casual: "你把這趟標記為休閒騎，不和「{name}」比對；負荷 {load:.0f} TSS 照樣算進體能與週總量"
+  casual_rule: "你在騎完感受標記了休閒騎：這趟不評分，下面的數字只供參考；「{name}」對規劃器來說算沒做，錯過的高強度課會照規則補排"
   headline_no_load: "這份課表沒有功率區間也沒有計畫負荷，無法比對"
   band: "目標區間 {lo:.0f}–{hi:.0f} W（FTP {ftp:.0f} W 的 {lo_pct:.0f}–{hi_pct:.0f} %）；超過區間上限 {overshoot:.0%} 以內仍算達到刺激（容許上限 {ceiling:.0f} W）"
   smooth: "功率先用 {window} 秒移動平均，避免單秒尖峰或掉功率影響判斷"

@@ -50,7 +50,7 @@ model {
     }
     watcher = container 'Ride watcher' {
       technology 'Python subprocess per profile + flock'
-      description 'Per profile with report.ride on: lock -> light intervals.icu sync -> per-ride analysis -> for each new ride wait for streams (<= 6 h) and the rating (<= 2 h) -> build the zh-TW PDF (WeasyPrint, matplotlib; tomorrow is a dry-run preview) -> email it (notify.email) -> ride_reports row; never writes a calendar or Strava (jobs/watch.py, services/ride_report.py, ADR-0010)'
+      description 'Per profile with report.ride on: lock -> light intervals.icu sync -> per-ride analysis -> for each new ride wait for streams (<= 6 h) and the rating (<= 2 h) -> build the zh-TW PDF (WeasyPrint, matplotlib; tomorrow is a dry-run preview) -> email it (notify.email) -> ride_reports row; never writes a calendar; with strava.auto_description on, then writes the ride RIDE.LOG to its Strava description through services/strava_write.push (outcome in ride_reports.strava_status, one retry; ADR-0020) (jobs/watch.py, services/ride_report.py, ADR-0010)'
     }
     digestAgent = container 'Digest agent' {
       technology 'macOS LaunchAgent com.cy-performance.digest'
@@ -74,7 +74,7 @@ model {
     }
     web = container 'Web dashboard' {
       technology 'Vite + React + TypeScript (web/), served by cyp serve'
-      description 'Today / calendar (plan and rides in one grid, a day opens in a modal) / runs per profile, phone layout, 8-bit look, a pixel route strip with catchable critters, sound effects and lo-fi chiptune music; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling and a previewed, confirmed Strava description write. Viewer preferences (profile, tab, sound, music, critter party) stay in the browser localStorage (docs/specs/web-ui.md)'
+      description 'Today / calendar (plan and rides in one grid, a day opens in a modal) / runs per profile, phone layout, 8-bit look, a pixel route strip with catchable critters, sound effects and lo-fi chiptune music; buttons for sync, dry run, confirmed calendar writes, RIDE.LOG editing, post-ride feeling (RPE, feel, casual-ride tag) and a previewed, confirmed Strava description write. Viewer preferences (profile, tab, sound, music, critter party) stay in the browser localStorage (docs/specs/web-ui.md)'
     }
     profileFiles = store 'Profile workspace' {
       technology 'profiles/<slug>/: .env, athlete.yaml, profile.yaml'
@@ -140,10 +140,11 @@ model {
   cyp.watcher -> icu 'checks key owner, syncs recent activities and streams (read only)'
   cyp.watcher -> cyp.db 'reads rides, metrics, plans; writes ride_reports and job_runs'
   cyp.watcher -> cyp.streams 'reads ride streams for the charts'
-  cyp.watcher -> cyp.rideFiles 'reads post-ride feelings'
+  cyp.watcher -> cyp.rideFiles 'reads post-ride feelings, casual tags and RIDE.LOG texts'
   cyp.watcher -> cyp.reports 'writes ride PDFs and facts JSON'
   cyp.watcher -> smtp 'emails the ride PDF'
-  cyp.watcher -> macNotify 'notice after 3 failed attempts'
+  cyp.watcher -> macNotify 'notice after 3 failed attempts (or 2 failed Strava writes)'
+  cyp.watcher -> strava 'after the report, writes the ride RIDE.LOG description (flag strava.auto_description, ADR-0020; scope + owner gates)'
   cyp.digestAgent -> cyp.cli 'starts digest run --all daily at 07:00'
   cyp.cli -> cyp.digester 'digest run --all: one subprocess per profile; digest weekly|monthly [--send]'
   cyp.digester -> cyp.db 'reads rides, metrics, wellness, plans; writes digest_reports and job_runs'
@@ -162,8 +163,8 @@ model {
   cyp.api -> cyp.reports 'serves reports'
   cyp.api -> cyp.rideFiles 'saves RIDE.LOG texts and post-ride feelings'
   cyp.api -> icu 'POST /v1/jobs/sync: background sync for the selected profile'
-  cyp.runner -> cyp.rideFiles 'reads post-ride feelings for readiness (flag readiness.ride_feel)'
-  cyp.cli -> cyp.rideFiles 'ride-log show/save/push'
+  cyp.runner -> cyp.rideFiles 'reads post-ride feelings for readiness (flag readiness.ride_feel) and casual tags for the planner and compliance'
+  cyp.cli -> cyp.rideFiles 'ride-log show/save/push, ride-feedback --casual'
   cyp.cli -> icu 'sync, plan --apply --confirm-write, publish spike'
   cyp.cli -> strava 'auth strava (OAuth callback on :8721), sync strava, ride-log push (description, flag-gated)'
   cyp.api -> strava 'writes a ride description after confirmation (flag strava.write_description)'

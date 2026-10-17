@@ -102,11 +102,14 @@ class Adaptive:
     ``gate``: run the weekly progression gate and the weekly accumulation rule (flag
     ``plan.progression_gate``, ADR-0018); ``rpe_offset_at``: the personal RPE offsets learned
     before a given Monday, which the gate reads (``None`` = the fixed table).
+    ``casual_days``: days whose rides the athlete all tagged casual (spec casual-and-strava):
+    yesterday's plan counts as not done there.
     """
 
     easy_day: Learned | None = None
     gate: bool = False
     rpe_offset_at: Callable[[dt.date], Mapping[str, float]] | None = None
+    casual_days: frozenset[dt.date] = frozenset()
 
 
 @dataclass
@@ -304,6 +307,7 @@ def plan_horizon(
                 ds.loads.get(y),
                 hard_y,
                 reference_tss=next((d.tss for d in all_days if d.date == y), None),
+                casual=y in ad.casual_days,
             ),
             today,
             ctx,

@@ -98,6 +98,8 @@ class RideInputs:
     row: ActivityRow | None
     trends: TrendsResult | None
     _frames: dict[int, RideFrame | None] = field(default_factory=dict)
+    #: The athlete tagged this ride casual: figures as usual, no grade (``Verdict`` ``casual``).
+    casual: bool = False
 
     @property
     def indoor(self) -> bool:

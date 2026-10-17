@@ -75,6 +75,9 @@ The owner can do everyday things with buttons instead of commands, for any profi
   that profile; off = the button is hidden and the endpoint refuses. `strava.write_description`
   (default off) does the same for the Strava write; `readiness.ride_feel` decides whether the
   post-ride feeling changes readiness.
+- **休閒騎 toggle** in 騎完感受 (`casual` in `POST /v1/activities/{id}/feedback`, stored with the
+  answers): the ride is not graded and its planned session counts as not done; an email already
+  sent is not resent ([casual-and-strava.md](casual-and-strava.md)).
 - **Client rules**: every API call takes the profile explicitly (the same value as in its query
   key); the RIDE.LOG editor never replaces text that has unsaved edits and does not refetch on
   window focus; deleting a saved RIDE.LOG asks first.
@@ -87,7 +90,8 @@ The owner can do everyday things with buttons instead of commands, for any profi
 - The only calendar write is `POST /v1/autopilot` with `write=true`. The server requires
   `confirm=true`, apply mode, the flag and the usual write guard (`publish_plan`). The UI asks
   for an explicit confirmation naming the athlete.
-- The only Strava write is `POST /v1/activities/{id}/strava-description` with `confirm=true`,
+- The only Strava write from the UI is `POST /v1/activities/{id}/strava-description` with `confirm=true`
+  (the ride watcher's opt-in write, ADR-0020, is not a UI write),
   through `services/strava_write.push` (flag, `activity:write` scope, token owner == ride owner;
   keeps the athlete's own text and replaces only our block). The UI enables 寫入 Strava only after
   a preview of the current text, and the confirmation names the athlete and the ride and shows

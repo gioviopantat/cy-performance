@@ -15,7 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 REPORT_VERSION = "ride_report_v1"
 
-Verdict = Literal["achieved", "partial", "missed", "unplanned", "no_data"]
+#: ``casual``: the athlete tagged the ride casual, so it is not graded (spec casual-and-strava).
+Verdict = Literal["achieved", "partial", "missed", "unplanned", "no_data", "casual"]
 Grade = Literal["A", "B", "C"]
 
 

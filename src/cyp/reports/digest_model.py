@@ -21,9 +21,10 @@ MONTHLY_VERSION = "digest_monthly_v1"
 
 #: Per planned session: the ride's intent verdict, ``overdone`` for an easy day ridden far past
 #: its load, ``skipped`` when nothing was ridden, ``unplanned`` for a ride without a plan,
-#: ``no_data`` for a planned ride the intent check could not judge (no trusted power).
+#: ``no_data`` for a planned ride the intent check could not judge (no trusted power),
+#: ``casual`` for a ride the athlete tagged casual (not graded, planned or not).
 SessionVerdict = Literal[
-    "achieved", "partial", "missed", "overdone", "skipped", "unplanned", "no_data"
+    "achieved", "partial", "missed", "overdone", "skipped", "unplanned", "no_data", "casual"
 ]
 Band = Literal["low", "mid", "high"]
 

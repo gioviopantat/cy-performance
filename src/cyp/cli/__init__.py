@@ -14,7 +14,7 @@ The commands live in topic modules and call the service layer (:mod:`cyp.service
 - :mod:`~cyp.cli.autopilot`: ``run [--all]``,
   ``schedule install [--watch|--digest]|uninstall|status``
 - :mod:`~cyp.cli.ridelog`: ``ride-log show|save|push``
-- :mod:`~cyp.cli.watch`: ``watch [--all]``, ``ride-report``
+- :mod:`~cyp.cli.watch`: ``watch [--all]``, ``ride-report``, ``ride-feedback``
 - :mod:`~cyp.cli.digest`: ``digest weekly|monthly [--period] [--send]``, ``digest run [--all]``
 
 Global ``--profile <name>`` (or ``CYP_PROFILE``) selects an athlete profile (ADR-0006).

@@ -84,17 +84,23 @@ def _summary(a: Activity, fact: Mapping[str, Any]) -> RideSummary:
 
 
 def build_headline(
-    intent: Intent | None, goal: Goal | None, tomorrow: Tomorrow | None, fact: Mapping[str, Any]
+    intent: Intent | None,
+    goal: Goal | None,
+    tomorrow: Tomorrow | None,
+    fact: Mapping[str, Any],
+    *,
+    casual: bool = False,
 ) -> Headline:
     """Section 1: deterministic sentence from the section verdicts (no LLM).
 
     The intent clause is the intent section's own headline, so both quote the same numbers.
+    A casual ride without a plan is ``casual`` too (the tag, not the calendar, decides).
     """
     parts: list[str] = []
     if intent is None:
-        verdict: Verdict = "unplanned"
+        verdict: Verdict = "casual" if casual else "unplanned"
         cls = fact["classification_zh"] or fact["sport"] or ""
-        parts.append(text("headline.unplanned", cls=cls))
+        parts.append(text("headline.casual_unplanned" if casual else "headline.unplanned", cls=cls))
     else:
         verdict = intent.verdict
         parts.append(text(f"headline.{verdict}", name=intent.planned_name))
@@ -176,12 +182,14 @@ def build_ride_report(
     tomorrow: Tomorrow | None = None,
     rate_url: str | None = None,
     feedback: tuple[float | None, int | None] | None = None,
+    casual: bool = False,
 ) -> RideReport:
     """Read persisted results and the ride's streams into a report.
 
     Computes no new verdicts beyond the v1 intent and outdoor-context rules in the spec.
     ``feedback`` is the web post-ride answer ``(rpe, feel)``; per field it wins over
-    intervals.icu's (as in ``services.ride_feedback``).
+    intervals.icu's (as in ``services.ride_feedback``). ``casual``: the athlete's casual-ride
+    tag (the ride is not graded).
 
     Raises:
         NotFoundError: unknown activity.
@@ -207,6 +215,7 @@ def build_ride_report(
         ds=ds,
         row=row,
         trends=compute_trends(ds, day) if ds is not None and row is not None else None,
+        casual=casual,
     )
     intent = build_intent(inp)
     goal = build_goal(inp)
@@ -216,7 +225,7 @@ def build_ride_report(
         athlete_name=(athlete.name if athlete and athlete.name else profile),
         generated_at=now_utc(),
         ride=_summary(a, fact),
-        headline=build_headline(intent, goal, tomorrow, fact),
+        headline=build_headline(intent, goal, tomorrow, fact, casual=casual),
         intent=intent,
         goal=goal,
         outdoor=build_outdoor(inp, planned_reps=bool(intent and intent.reps_planned)),

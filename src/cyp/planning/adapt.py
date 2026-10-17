@@ -7,7 +7,8 @@ Applied to freshly planned days before the guardrails:
   to them. (Limited-availability NOTEs are applied earlier as minute overrides.)
 - **Yesterday**: a missed hard session is re-slotted within 72 h onto an endurance day that
   keeps 48 h from other hard days, else dropped (never stacked); a ride > 130 % of its plan
-  turns today into recovery.
+  turns today into recovery. A day the athlete tagged casual counts as not done (a hard plan is
+  re-slotted whatever was ridden) and is never overdone (spec casual-and-strava).
 - **Easy days** (flag ``plan.personal_scales``, :func:`apply_easy_days`): an easy day below the
   athlete's learned easy-day load is planned as a 60–90 min Z2 ride near it (IF ≤ 0.70).
 - **Readiness today**: ``REST`` -> rest (a hard session moves ≥ 48 h later if possible);
@@ -72,6 +73,8 @@ class Yesterday:
     #: The slot's target before any adaptation (the season's plan for that day). Overdone is
     #: judged against it, not against a recovery spin an earlier adaptation put there.
     reference_tss: float | None = None
+    #: Every ride of the day was tagged casual by the athlete: the plan was not done.
+    casual: bool = False
 
 
 def _expl(kind: str, day: dt.date, headline: str, reasons: list[Reason]) -> Explanation:
@@ -190,8 +193,10 @@ def apply_yesterday(
     p = y.planned
     if p is None or p.workout is None:
         return out
-    if p.is_hard and not y.completed_hard and (y.actual_load or 0) < 0.5 * p.tss:
+    if p.is_hard and (y.casual or (not y.completed_hard and (y.actual_load or 0) < 0.5 * p.tss)):
         out += reslot_missed_hard(days, p, today, ctx, phase, progress)
+    if y.casual:
+        return out
     ref = max(p.tss, y.reference_tss or 0.0)
     if is_overdone(y.actual_load, ref):
         assert y.actual_load is not None

@@ -10,7 +10,12 @@ One tick for one profile::
 
 Rows live in ``ride_reports`` (one per ride, so a ride is emailed once). A failed build or
 email is retried on the next ticks up to 3 attempts, then a macOS notice. The watcher never
-writes a calendar or Strava; tomorrow's plan in the PDF is a dry-run preview.
+writes a calendar; tomorrow's plan in the PDF is a dry-run preview.
+
+With ``strava.auto_description`` on (ADR-0020), a ride whose report was just done gets its
+RIDE.LOG written to Strava through ``services/strava_write.auto_push`` (every gate of ``push``).
+The outcome goes to ``ride_reports.strava_status``; a failure never touches the report row,
+is retried once on the next tick, then given up (macOS notice).
 """
 
 from __future__ import annotations
@@ -30,7 +35,7 @@ from cyp.core.errors import ConfigError, CypError
 from cyp.core.timeutil import now_utc, to_local
 from cyp.jobs.runner import ChildResult, RunLockedError, notify_failure, profile_lock, run_profiles
 from cyp.logging import get_logger
-from cyp.services import pipeline, ride_feedback, ride_report
+from cyp.services import pipeline, ride_feedback, ride_report, strava_write
 from cyp.services import trends as trends_service
 from cyp.services.context import AppContext
 from cyp.settings import Settings
@@ -60,7 +65,9 @@ class RideTick:
     """What one tick did with one ride."""
 
     activity_id: int
-    action: str  # wait_streams | wait_feel | built | sent | failed | gave_up
+    #: wait_streams | wait_feel | built | sent | failed | gave_up, or strava_<status> for the
+    #: automatic Strava write (written | unchanged | failed | gave_up).
+    action: str
     detail: str = ""
 
 
@@ -113,6 +120,7 @@ def watch_profile(
     now: dt.datetime | None = None,
     mailer: ride_report.Mailer | None = None,
     sync: SyncFn | None = None,
+    strava_client: strava_write.ClientFactory | None = None,
 ) -> WatchReport:
     """One tick for one profile; always returns a report (see the module docstring).
 
@@ -132,7 +140,7 @@ def watch_profile(
             path.mkdir(parents=True, exist_ok=True)
         with profile_lock(settings.cyp_data_dir):
             upgrade_head(settings.cyp_db_url)
-            return tick(ctx, now=now, mailer=mailer, sync=sync)
+            return tick(ctx, now=now, mailer=mailer, sync=sync, strava_client=strava_client)
     except RunLockedError:
         report = WatchReport(profile, "skipped", "another run holds the profile lock")
         _record_skip(ctx)
@@ -150,8 +158,12 @@ def tick(
     now: dt.datetime | None = None,
     mailer: ride_report.Mailer | None = None,
     sync: SyncFn | None = None,
+    strava_client: strava_write.ClientFactory | None = None,
 ) -> WatchReport:
-    """The body of a tick, under the caller's lock. One ``job_runs`` row (``watch``)."""
+    """The body of a tick, under the caller's lock. One ``job_runs`` row (``watch``).
+
+    ``strava_client`` replaces the Strava client of the automatic write (tests).
+    """
     at = now or now_utc()
     features = ctx.features()
     report = WatchReport(ctx.settings.cyp_profile or "default", "ok")
@@ -163,11 +175,18 @@ def tick(
             todo = _due(ctx, at, report)
             if todo:
                 trends_service.recompute(ctx, as_of=to_local(at, ctx.settings.cyp_timezone).date())
+            reported: list[int] = []
             for activity_id, detail in todo:
                 out = ride_report.send(ctx, activity_id, mailer=mailer, now=at)
                 report.rides.append(RideTick(activity_id, out.status, out.error or detail))
+                if out.ok:
+                    reported.append(activity_id)
                 if out.status == ride_report.GAVE_UP:
                     notify_failure(ctx.settings, f"ride report {activity_id} not sent: {out.error}")
+            if features.enabled(strava_write.AUTO_FLAG):
+                retries = [i for i in ride_report.strava_retries(ctx) if i not in reported]
+                for activity_id in [*reported, *retries]:
+                    report.rides.append(_strava(ctx, activity_id, at, strava_client))
             for r in report.rides:
                 run.incr(r.action)
             if sync_error:
@@ -175,6 +194,35 @@ def tick(
     except _TickFailedError as exc:
         report.status, report.detail = "failed", str(exc)
     return report
+
+
+def _strava(
+    ctx: AppContext,
+    activity_id: int,
+    at: dt.datetime,
+    client: strava_write.ClientFactory | None,
+) -> RideTick:
+    """Write one reported ride's RIDE.LOG to Strava and record the outcome; never raises.
+
+    A second failure in a row is final (``gave_up``, macOS notice); the email is never affected.
+    """
+    previous = ride_report.strava_status(ctx, activity_id)
+    error: str | None = None
+    try:
+        result = strava_write.auto_push(ctx, activity_id, client_factory=client)
+        status = ride_report.STRAVA_WRITTEN if result.written else ride_report.STRAVA_UNCHANGED
+    except Exception as exc:  # noqa: BLE001 - recorded on the row; the email already went out
+        error = f"{type(exc).__name__}: {exc}"
+        retried = previous == ride_report.STRAVA_FAILED
+        status = ride_report.STRAVA_GAVE_UP if retried else ride_report.STRAVA_FAILED
+    ride_report.record_strava(ctx, activity_id, status, error, at)
+    if error is None:
+        log.info("watch.strava", activity_id=activity_id, status=status)
+    else:
+        log.warning("watch.strava", activity_id=activity_id, status=status, error=error)
+    if status == ride_report.STRAVA_GAVE_UP:
+        notify_failure(ctx.settings, f"Strava RIDE.LOG {activity_id} not written: {error}")
+    return RideTick(activity_id, f"strava_{status}", error or "")
 
 
 def _sync(ctx: AppContext, sync: SyncFn, enabled: bool) -> str | None:
