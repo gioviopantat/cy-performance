@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import Any
 
 from sqlalchemy import select
 
@@ -10,6 +11,7 @@ from cyp.analysis.readiness import COMPONENT_ZH
 from cyp.analysis.readiness_job import Feedback, persist, readiness_for
 from cyp.core.explain import Explanation
 from cyp.core.load import Readiness
+from cyp.dataset import Dataset
 from cyp.reports.render import REC_ZH
 from cyp.schemas import ReadinessComponentOut, ReadinessOut
 from cyp.services.context import AppContext
@@ -47,6 +49,13 @@ def ride_feedback(ctx: AppContext) -> Feedback | None:
     return all_answers(ctx) if ctx.features().enabled("readiness.ride_feel") else None
 
 
+def _scales(ctx: AppContext, day: dt.date, ds: Dataset) -> dict[str, Any]:
+    """Personal RPE / feel scales for ``day`` (flag ``plan.personal_scales``; ``{}`` off)."""
+    from cyp.services.adaptive import readiness_scales, scales_for
+
+    return readiness_scales(scales_for(ctx, day, ds))
+
+
 def get(ctx: AppContext, day: dt.date) -> ReadinessOut:
     """Stored verdict for ``day``; computed on the fly (not stored) when there is none."""
     ds = ctx.dataset()
@@ -66,7 +75,7 @@ def get(ctx: AppContext, day: dt.date) -> ReadinessOut:
                     algo_version=row.algo_version or "readiness_v1",
                 )
             )
-    return _out(readiness_for(ds, day, ride_feedback(ctx)))
+    return _out(readiness_for(ds, day, ride_feedback(ctx), **_scales(ctx, day, ds)))
 
 
 def history(ctx: AppContext, start: dt.date, end: dt.date) -> list[ReadinessOut]:
@@ -104,7 +113,7 @@ def recompute(ctx: AppContext, days: list[dt.date]) -> list[ReadinessOut]:
     """Score and store each day."""
     ds = ctx.dataset()
     feedback = ride_feedback(ctx)
-    verdicts = [readiness_for(ds, d, feedback) for d in days]
+    verdicts = [readiness_for(ds, d, feedback, **_scales(ctx, d, ds)) for d in days]
     with ctx.write_lock, ctx.factory() as s:
         persist(s, ds.athlete_id, verdicts)
         s.commit()

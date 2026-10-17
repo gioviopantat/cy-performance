@@ -182,6 +182,19 @@ icu_event_id, priority, notes`
 | created_by(planner|llm|athlete), revision | |
 | explanation | json | why this workout today (Explanation) |
 
+### learned_params
+Personal parameters learned from the athlete's history (spec adaptive-planning D5, ADR-0019),
+one row per parameter holding the latest value; written by the morning run
+(`services/adaptive.record`, flag `plan.personal_scales`).
+
+| column | notes |
+|--------|-------|
+| athlete_id, param PK | `rpe_offset.<class>`, `rpe_offset.all`, `feel_baseline`, `easy_day_tss` |
+| value, n | the value used and how many observations back it |
+| as_of | the day it was computed for (rides before it) |
+| algo_version | `personal_scales_v1` |
+| source | `learned` / `default` / `yaml` (athlete.yaml `planner.scales` wins) |
+
 ### plan_revisions
 `id, season_id, created_at, trigger(daily|weekly|manual|llm|goal_change), reason text,
 horizon_start, horizon_end, before json, after json, diff json, explanation json, applied bool`

@@ -3,7 +3,8 @@
 For every day *D* of ``[start, end]`` (spec adaptive-planning, Phase 0b, decision D8):
 
 1. Readiness of *D* is recomputed from stored wellness, fitness and rides (the profile's
-   flags), never read from ``readiness_daily``.
+   flags, personal scales learned from rides before *D*), never read from
+   ``readiness_daily``.
 2. The planner runs as of *D* 05:30 on a view of the stored data in which the planned
    workouts are the replay's own (what the replay planned for each earlier day, as the
    athlete would have seen it that morning), our own calendar events are hidden (only the
@@ -27,15 +28,16 @@ from typing import Any
 
 from cyp.analysis.longitudinal.run import load_latest_report
 from cyp.analysis.readiness import HARD_CLASSES
-from cyp.analysis.readiness_job import Feedback, readiness_for, ride_response
+from cyp.analysis.readiness_job import readiness_for, ride_response
 from cyp.analysis.ride.frames import RideFrame
 from cyp.core.ids import external_id
-from cyp.dataset import CACHE, Dataset, PlannedRow, ReadinessRow
+from cyp.dataset import CACHE, PlannedRow, ReadinessRow
 from cyp.planning.compliance import KEY_ROLES
 from cyp.planning.job import PlanRun, plan_horizon
 from cyp.planning.planner import DayPlan
 from cyp.planning.season import build_skeleton
 from cyp.planning.templates import load_library
+from cyp.services import adaptive
 from cyp.services.compliance import judge_day
 from cyp.services.context import AppContext, NoDataError
 from cyp.services.readiness import ride_feedback
@@ -224,19 +226,6 @@ def _transient(day: DayPlan, run: PlanRun) -> PlannedWorkout:
     )
 
 
-def replay_readiness(
-    ds: Dataset, start: dt.date, end: dt.date, feedback: Feedback | None
-) -> dict[dt.date, ReadinessRow]:
-    """Recomputed readiness for every day of ``[start, end]`` (pure)."""
-    out: dict[dt.date, ReadinessRow] = {}
-    day = start
-    while day <= end:
-        r = readiness_for(ds, day, feedback)
-        out[day] = ReadinessRow(day, r.score_0_100, r.status, r.recommendation)
-        day += dt.timedelta(days=1)
-    return out
-
-
 def replay(
     ctx: AppContext,
     start: dt.date,
@@ -265,7 +254,7 @@ def replay(
     # Our own calendar events show the real plan, not the replayed one.
     base = replace(ds0, events=tuple(e for e in ds0.events if not e.ours), planned={})
     feedback = ride_feedback(ctx)
-    readiness = replay_readiness(base, start, end, feedback)
+    readiness: dict[dt.date, ReadinessRow] = {}
     bias = _bias(ctx)
     library = load_library()
     sk = build_skeleton(cfg)
@@ -282,6 +271,10 @@ def replay(
     with ctx.factory() as session:
         day = start
         while day <= end:
+            # Personal scales as of the day (flag plan.personal_scales), then its readiness.
+            scales = adaptive.scales_for(ctx, day, base)
+            r0 = readiness_for(base, day, feedback, **adaptive.readiness_scales(scales))
+            readiness[day] = ReadinessRow(day, r0.score_0_100, r0.status, r0.recommendation)
             view = replace(
                 base,
                 planned=dict(planned),
@@ -294,6 +287,7 @@ def replay(
                 now_local=dt.datetime.combine(day, REPLAY_TIME),
                 bias=bias,
                 library=library,
+                adaptive=adaptive.adaptive_for(scales),
             )
             for w_start, t in run.week_targets.items():
                 targets.setdefault(w_start, t.target_tss)

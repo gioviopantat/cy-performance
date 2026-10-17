@@ -14,6 +14,7 @@ simulatable, and bounded by guardrails ([ADR-0004](adr/0004-deterministic-planne
 | Availability: per-weekday max minutes, one-off `availability.dates` (`{2026-10-09: 210}` replaces that date's minutes, e.g. a swapped weekend), indoor/outdoor, hard "no" days; overrides from icu NOTE events with `training_availability` / `max_training_time` | `config/athlete.yaml` + icu events |
 | Limiters: from `longitudinal/limiters.py` (e.g. "fades after 40 min at threshold", "VO2 ceiling", "poor durability > 1 500 kJ") | analysis |
 | Compliance history (what actually got done) | `planned_workouts.compliance` |
+| Personal scales: RPE offset per class, usual feel, easy-day load (ADR-0019) | learned from rides, stored in `learned_params`; `athlete.yaml planner.scales` wins |
 | Other-sport load (yoga, strength, hiking, trail run) | icu activities with `icu_training_load` |
 
 ## 2. Season → blocks → weeks → days
@@ -143,7 +144,10 @@ sync (icu + strava) → analyze new rides → readiness(today) → compliance of
                                           ≥ 60 % of its load, hard → endurance (ADR-0017)
        (the plan is what the calendar showed: a later proposal for a frozen day that the
         calendar does not show is not judged; skipped Z2 is dropped, never made up)
-    2. Readiness today:
+    1b. Easy days from your habit (flag plan.personal_scales, ADR-0019): an endurance/recovery
+       day below your learned easy-day load → 60–90 min Z2 near it, IF ≤ 0.70 (not a today
+       below AS_PLANNED, not a week already ahead, not 60+)
+    2. Readiness today (RPE / feel read on your personal scale, ADR-0019):
        REST        → today = rest, push HIT ≥ 48 h
        EASY        → today ≤ Z2, cap 60 % of planned TSS
        AS_PLANNED  → unchanged

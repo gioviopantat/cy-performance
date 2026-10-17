@@ -82,7 +82,7 @@ model {
     }
     db = store 'Profile database' {
       technology 'SQLite + SQLAlchemy/Alembic'
-      description 'Activities, metrics, wellness, plans with plan-vs-actual compliance, publish_log, job_runs, ride_reports, sync cursors; one file per profile (store/)'
+      description 'Activities, metrics, wellness, plans with plan-vs-actual compliance, learned personal parameters, publish_log, job_runs, ride_reports, sync cursors; one file per profile (store/)'
     }
     streams = store 'Stream store' {
       technology 'Parquet per activity'
@@ -152,7 +152,7 @@ model {
   cyp.cli -> cyp.profileFiles 'profile add/adopt/promote; reads settings and flags'
   cyp.cli -> cyp.db 'reads, migrates, plans; plan replay reads it read-only (mode=ro, writes nothing)'
   cyp.runner -> cyp.profileFiles 'loads .env, athlete.yaml, flags, icu_athlete_id'
-  cyp.runner -> cyp.db 'stores synced data, plans, plan compliance, publish_log, job_runs'
+  cyp.runner -> cyp.db 'stores synced data, plans, plan compliance, learned_params, publish_log, job_runs'
   cyp.runner -> cyp.streams 'writes and reads ride streams'
   cyp.runner -> cyp.reports 'writes daily/weekly reports and logs'
   cyp.runner -> icu 'waits for DNS after wake, checks key owner, syncs activities/wellness; diffs and upserts our events (write guard, apply mode only)'

@@ -100,6 +100,9 @@ Pure functions over stored data. Details in [04-analysis-engine](04-analysis-eng
   counted, outdoor interruptions excused); `ride/context.py` — stops, coasting, heat and which
   numbers they make unreliable; `longitudinal/goal.py` — FTP trend and projected date to the
   season target (all for the per-ride report, [specs/ride-report.md](specs/ride-report.md)).
+- `personal_scales.py` — the athlete's own RPE offset per ride class, usual feel and easy-day
+  load, shrunk and bounded (ADR-0019); readiness and the planner read them through
+  `services/adaptive.py`.
 - `wellness_quality.py` — flags an overnight resting-HR level shift (≥ 10 bpm between 5-reading
   medians), a likely source change (battery swap, new device); reports mark comparisons across it.
 
@@ -208,6 +211,8 @@ A package may import only from its own layer or lower ones:
   `digest_monthly.py`) fill it; `reports/digest_pdf.py` + `digest_charts.py` render it, sharing
   `reports/pdf.py` and `templates/_report.html.j2` with the ride PDF; `reports/email_copy.py`
   writes every report email (subject, text, HTML) from `i18n/email.zh-TW.yaml`.
+- `services/adaptive.py` — the adaptive inputs per profile under its flags: personal scales for
+  readiness and the planner, and `learned_params` in the morning run.
 - `services/compliance.py` — fills `planned_workouts.compliance` for the last 7 days in the
   morning run (the intent verdict comes from `reports/ride_intent.build_intent`);
   `services/plan_replay.py` — `cyp plan replay`: readiness and the planner re-run day by day on

@@ -25,6 +25,7 @@ from cyp.cli.common import (
 from cyp.core.errors import CypError
 from cyp.planning.job import PlanRun, build_plan
 from cyp.schemas import PlanOut, PlanPreviewRequest, SeasonOut
+from cyp.services import adaptive as adaptive_service
 from cyp.services import plan as plan_service
 from cyp.services import plan_replay as replay_service
 from cyp.services.context import AppContext
@@ -79,7 +80,13 @@ def plan(
                 # The publisher needs the PlanRun's event specs, so build it directly here.
                 bias = (load_latest_report(ctx.reports_dir) or {}).get("planner_bias", {})
                 run = build_plan(
-                    ctx.factory, cfg, today=day, now_local=now_local, bias=bias, persist=not dry_run
+                    ctx.factory,
+                    cfg,
+                    today=day,
+                    now_local=now_local,
+                    bias=bias,
+                    persist=not dry_run,
+                    adaptive=adaptive_service.plan_inputs(ctx, day),
                 )
                 out = plan_service.to_out(ctx.dataset(), run, persisted=not dry_run)
             elif dry_run:

@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from cyp.analysis.longitudinal.pmc import PMCState, simulate
 from cyp.analysis.longitudinal.run import load_latest_report
 from cyp.dataset import Dataset
-from cyp.planning.job import PlanOverrides, PlanRun, build_plan, plan_horizon
+from cyp.planning.job import Adaptive, PlanOverrides, PlanRun, build_plan, plan_horizon
 from cyp.planning.planner import ROLE_ZH, DayPlan
 from cyp.planning.renderer import render
 from cyp.planning.season import PHASE_ZH, build_skeleton, season_projection
@@ -151,6 +151,12 @@ def _bias(ctx: AppContext) -> Mapping[str, float]:
     return {str(k): float(v) for k, v in bias.items()} if isinstance(bias, dict) else {}
 
 
+def _adaptive(ctx: AppContext, day: dt.date, ds: Dataset | None = None) -> Adaptive:
+    from cyp.services.adaptive import plan_inputs
+
+    return plan_inputs(ctx, day, ds)
+
+
 def _overrides(req: PlanPreviewRequest) -> PlanOverrides:
     return PlanOverrides(
         weekday_minutes={str(k): v for k, v in req.weekday_minutes.items()},
@@ -180,6 +186,7 @@ def preview(ctx: AppContext, req: PlanPreviewRequest | None = None) -> PlanOut:
         bias=_bias(ctx),
         library=load_library(),
         overrides=_overrides(req),
+        adaptive=_adaptive(ctx, today, ds),
     )
     return to_out(ds, run, persisted=False, ms=(time.perf_counter() - t0) * 1000)
 
@@ -198,6 +205,7 @@ def commit(ctx: AppContext, *, today: dt.date | None = None, trigger: str = "man
             bias=_bias(ctx),
             persist=True,
             trigger=trigger,
+            adaptive=_adaptive(ctx, day),
         )
     return to_out(ctx.dataset(), run, persisted=True, ms=(time.perf_counter() - t0) * 1000)
 

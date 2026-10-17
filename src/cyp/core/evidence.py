@@ -373,6 +373,33 @@ REGISTRY: tuple[Claim, ...] = (
         "(single-session spikes matter, week-to-week ratios do not)",
     ),
     _proposed(
+        "personal_scales.rpe_offset",
+        None,
+        "RPE is read against the athlete's own offset per ride class: median(RPE - table) over "
+        "90 days, >= 5 rides per class (else all classes), shrunk n/(n+5), within +-2 (ADR-0019).",
+        "C",
+        "Direction: Seiler S et al. 2017 / Inoue A et al. 2022 (session RPE differs by person "
+        "and session type); window, minimum, k = 5 and +-2 are ours",
+    ),
+    _proposed(
+        "personal_scales.feel_baseline",
+        None,
+        "A post-ride feel counts as bad only 2 points worse than the athlete's 90-day median "
+        "(>= 8 answers) and never stricter than the fixed rule (ADR-0019).",
+        "C",
+        "Ours (ADR-0019): a personal baseline instead of the scale's middle",
+    ),
+    _proposed(
+        "planning.easy_day_habit",
+        None,
+        "Easy days are planned near the athlete's own 28-day median non-hard-day load (>= 6 "
+        "days, shrunk to the Z2-60 template, within x[1, 1.8]) as 60-90 min Z2 with IF <= 0.70; "
+        "not below AS_PLANNED readiness, not in a week already ahead, never for 60+ (D2).",
+        "C",
+        "Ours (spec adaptive-planning D2): a plan the athlete actually rides makes compliance "
+        "meaningful; review §2.1 (Roger never rode a 45-min spin)",
+    ),
+    _proposed(
         "readiness_v1.overreached_rule",
         "readiness_v1",
         "The 7-day HRV mean 1.25 SD or more below baseline and RHR z > +1.5 together mean "

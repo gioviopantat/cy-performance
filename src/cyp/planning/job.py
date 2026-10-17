@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from cyp.analysis.longitudinal.pmc import PMCState, simulate
+from cyp.analysis.personal_scales import Learned
 from cyp.core.errors import AnalysisError
 from cyp.core.explain import Explanation
 from cyp.core.ids import external_id
@@ -86,6 +87,16 @@ class PlanOverrides:
         if self.horizon_days is not None:
             update["planner"] = cfg.planner.model_copy(update={"horizon_days": self.horizon_days})
         return cfg.model_copy(update=update) if update else cfg
+
+
+@dataclass(frozen=True)
+class Adaptive:
+    """Inputs learned from the athlete's history (spec adaptive-planning); empty = plain planner.
+
+    ``easy_day``: the learned easy-day load (flag ``plan.personal_scales``, decision D2).
+    """
+
+    easy_day: Learned | None = None
 
 
 @dataclass
@@ -183,9 +194,11 @@ def plan_horizon(
     bias: Mapping[str, float] | None = None,
     library: Mapping[str, Template] | None = None,
     overrides: PlanOverrides | None = None,
+    adaptive: Adaptive | None = None,
 ) -> PlanRun:
     """Plan the horizon starting ``today`` (pure; see module docstring)."""
     ov = overrides or PlanOverrides()
+    ad = adaptive or Adaptive()
     cfg = ov.apply_to(cfg)
     lib = library if library is not None else load_library()
     sk = build_skeleton(cfg)
@@ -240,6 +253,7 @@ def plan_horizon(
 
     run.adaptations += adapt.apply_calendar(horizon, athlete_events)
     week_today = sk.week_of(today)
+    rec: str | None = None
     if week_today is not None:
         phase, progress, step = _progress(week_today)
         y = today - dt.timedelta(days=1)
@@ -279,6 +293,19 @@ def plan_horizon(
                 progress_step=step,
             )
 
+    if ad.easy_day is not None:
+        touched = {e.key.rsplit(".", 1)[-1] for e in run.adaptations}
+        low_today = rec not in (None, "AS_PLANNED", "UPGRADE")
+        run.adaptations += adapt.apply_easy_days(
+            horizon,
+            ad.easy_day,
+            mutable_from=mutable_from,
+            skip={today} if low_today or today.isoformat() in touched else set(),
+            ahead_weeks=_ahead_weeks(ds, run, today),
+            ctx=ctx,
+            phase_of=lambda d: (sk.week_of(d) or weeks[0]).phase,
+        )
+
     seed_day = first - dt.timedelta(days=1)
     c0, a0 = ds.ctl_atl(seed_day)
     if ov.ctl is not None:
@@ -303,6 +330,15 @@ def plan_horizon(
     _refresh_explanations(horizon, run, sk, ctx)
     run.days = horizon
     return run
+
+
+def _ahead_weeks(ds: Dataset, run: PlanRun, today: dt.date) -> frozenset[dt.date]:
+    """This week, when the load ridden before today already exceeds the plan for those days."""
+    start = today - dt.timedelta(days=today.weekday())
+    past = [start + dt.timedelta(days=i) for i in range(today.weekday())]
+    actual = sum(ds.loads.get(d, 0.0) for d in past)
+    planned = sum(run.reference_tss.get(d, 0.0) for d in past)
+    return frozenset({start}) if past and actual > planned else frozenset()
 
 
 def _refresh_explanations(
@@ -357,6 +393,7 @@ def build_plan(
     persist: bool = True,
     trigger: str = "manual",
     overrides: PlanOverrides | None = None,
+    adaptive: Adaptive | None = None,
 ) -> PlanRun:
     """Plan from the cached dataset and (optionally) persist.
 
@@ -367,7 +404,14 @@ def build_plan(
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     run = plan_horizon(
-        ds, cfg, today=today, now_local=now_local, bias=bias, library=library, overrides=overrides
+        ds,
+        cfg,
+        today=today,
+        now_local=now_local,
+        bias=bias,
+        library=library,
+        overrides=overrides,
+        adaptive=adaptive,
     )
     if persist and run.days:
         with factory() as s:

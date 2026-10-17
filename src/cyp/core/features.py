@@ -154,6 +154,17 @@ REGISTRY: tuple[Feature, ...] = (
         requires=("plan.horizon",),
     ),
     Feature(
+        "plan.personal_scales",
+        "plan",
+        True,
+        "個人量表",
+        "Learn the athlete's own RPE offset per ride class, usual post-ride feel and easy-day "
+        "load (shrunk to defaults, bounded; athlete.yaml planner.scales wins); readiness reads "
+        "RPE / feel against them and easy days are planned near the athlete's habit (not for "
+        "athletes 60+). Stored in learned_params.",
+        requires=("analysis.rides",),
+    ),
+    Feature(
         "readiness.ride_feel",
         "analysis",
         True,
