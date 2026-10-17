@@ -10,6 +10,7 @@ a truncated answer or malformed JSON returns ``None``; an API failure raises
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
@@ -60,15 +61,26 @@ class Narration:
 class Narrator(Protocol):
     """``(facts, head) -> Narration | None``; tests inject fakes."""
 
-    def __call__(self, facts: dict[str, Any], head: str) -> Narration | None:
-        """Lines and poem for ``facts`` with the acrostic ``head``."""
+    def __call__(
+        self, facts: dict[str, Any], head: str, problems: Sequence[str] = ()
+    ) -> Narration | None:
+        """Lines and poem for ``facts`` with the acrostic ``head``.
+
+        ``problems``: the rules the previous answer broke (a retry).
+        """
         ...  # pragma: no cover
 
 
-def user_message(facts: dict[str, Any], head: str) -> str:
-    """The one user turn: the head and the facts JSON (keys sorted, so it is stable)."""
+def user_message(facts: dict[str, Any], head: str, problems: Sequence[str] = ()) -> str:
+    """The one user turn: the head, the facts JSON (keys sorted) and, on a retry, the problems."""
     payload = json.dumps(facts, ensure_ascii=False, sort_keys=True)
-    return f"head: {head}\nfacts: {payload}"
+    text = f"head: {head}\nfacts: {payload}"
+    if problems:
+        listed = "\n".join(f"- {p}" for p in problems)
+        text += (
+            f"\nYour previous answer broke these rules; write a new one that keeps them:\n{listed}"
+        )
+    return text
 
 
 def parse(text: str) -> tuple[list[str], list[str]] | None:
@@ -104,7 +116,9 @@ class ClaudeNarrator:
             )
         return self.client
 
-    def __call__(self, facts: dict[str, Any], head: str) -> Narration | None:
+    def __call__(
+        self, facts: dict[str, Any], head: str, problems: Sequence[str] = ()
+    ) -> Narration | None:
         """One call; ``None`` on a refusal, a cut-off answer or JSON outside the schema.
 
         Raises:
@@ -117,7 +131,7 @@ class ClaudeNarrator:
                 model=self.model,
                 max_tokens=MAX_TOKENS,
                 system=system_prompt(),
-                messages=[{"role": "user", "content": user_message(facts, head)}],
+                messages=[{"role": "user", "content": user_message(facts, head, problems)}],
                 output_config={
                     "effort": "low",
                     "format": {"type": "json_schema", "schema": SCHEMA},

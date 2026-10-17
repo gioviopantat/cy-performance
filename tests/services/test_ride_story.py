@@ -35,6 +35,7 @@ T: dict[str, Any] = yaml.safe_load(
 ROUTE = "strava.route_story=on"
 POEM = "llm.ride_poem=on"
 COORD = re.compile(r"(-?\d+\.\d+),(-?\d+\.\d+)")
+BOX = re.compile(r"nwr\((-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)\)")
 
 
 def _with(ctx: AppContext, features: str, **settings: Any) -> None:
@@ -55,11 +56,14 @@ def _rides(ctx: AppContext) -> list[int]:
 class FakeOsm:
     """Overpass + Nominatim stand-in; ``requests`` keeps what would have been sent."""
 
-    def __init__(self, ctx: AppContext, aid: int, *, fail: bool = False) -> None:
+    def __init__(
+        self, ctx: AppContext, aid: int, *, fail: bool = False, viewpoint: bool = True
+    ) -> None:
         self.requests: list[httpx.Request] = []
         self.fail = fail
         pts = ride_story._points(ctx, aid)
         mid = pts[len(pts) // 2]
+        peak = pts[len(pts) // 2 + 300]  # another point on the route
         self.start, self.end = pts[0], pts[-1]
         home = (self.start[0] + 0.001, self.start[1])  # within 1 km of the start
         self.along = [
@@ -67,16 +71,22 @@ class FakeOsm:
              "tags": {"amenity": "cafe", "name": T["places"]["cafe"]}},
             {"type": "node", "id": 2, "lat": home[0], "lon": home[1],
              "tags": {"amenity": "cafe", "name": T["places"]["home_cafe"]}},
-            {"type": "way", "id": 3, "center": {"lat": mid[0] + 0.002, "lon": mid[1]},
+            {"type": "way", "id": 3, "center": {"lat": peak[0], "lon": peak[1]},
              "tags": {"natural": "peak", "name": T["places"]["peak"]}},
         ]  # fmt: skip
         far = (mid[0] + 0.1, mid[1])
-        self.box = [
-            {"type": "node", "id": 9, "lat": far[0], "lon": far[1],
-             "tags": {"tourism": "viewpoint", "name": T["places"]["viewpoint"]}},
+        self.box: list[dict[str, Any]] = [
+            # Another branch of the café the route passed (same name), far away.
+            {"type": "node", "id": 8, "lat": far[0] - 0.05, "lon": far[1],
+             "tags": {"amenity": "cafe", "name": T["places"]["cafe"]}},
             {"type": "node", "id": 1, "lat": mid[0], "lon": mid[1],
              "tags": {"amenity": "cafe", "name": T["places"]["cafe"]}},
         ]  # fmt: skip
+        if viewpoint:
+            self.box.append(
+                {"type": "node", "id": 9, "lat": far[0], "lon": far[1],
+                 "tags": {"tourism": "viewpoint", "name": T["places"]["viewpoint"]}}
+            )  # fmt: skip
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -88,9 +98,8 @@ class FakeOsm:
                 json={"address": {"suburb": T["places"]["district"], "city": T["places"]["city"]}},
             )
         query = parse_qs(request.content.decode())["data"][0]
-        return httpx.Response(
-            200, json={"elements": self.box if "around" not in query else self.along}
-        )
+        along = '"leisure"' in query  # the route box asks for every kind, parks included
+        return httpx.Response(200, json={"elements": self.along if along else self.box})
 
     def client(self) -> OsmClient:
         return OsmClient(
@@ -107,8 +116,9 @@ class FakeOsm:
                 out.append((float(q["lat"][0]), float(q["lon"][0])))
                 continue
             query = parse_qs(r.content.decode())["data"][0]
-            if "around" in query:
-                out += [(float(a), float(b)) for a, b in COORD.findall(query)]
+            for box in BOX.findall(query):  # every corner of a bounding box counts as sent
+                south, west, north, east = (float(v) for v in box)
+                out += [(south, west), (south, east), (north, west), (north, east)]
         return out
 
 
@@ -181,7 +191,7 @@ def test_flags_off_never_call_out(ctx: AppContext) -> None:
     aid = _rides(ctx)[-1]
     fake = FakeOsm(ctx, aid)
     calls: list[Any] = []
-    s = ride_story.prepare(ctx, aid, osm=fake.client, narrator=lambda f, h: calls.append(f))
+    s = ride_story.prepare(ctx, aid, osm=fake.client, narrator=lambda f, h, *_: calls.append(f))
     assert fake.requests == [] and calls == [] and s.poem == []
     assert ride_story.story(ctx, aid) == s
 
@@ -291,7 +301,7 @@ def test_valid_narration_is_used_and_cached(ctx: AppContext) -> None:
     _with(ctx, POEM)
     seen: list[dict[str, Any]] = []
 
-    def narrator(facts: dict[str, Any], head: str) -> Narration:
+    def narrator(facts: dict[str, Any], head: str, *_: Any) -> Narration:
         seen.append(facts)
         km = f"{facts['km']:.1f}"
         poem = [f"{c}{T['mountain'] * 6}" for c in head]
@@ -304,14 +314,14 @@ def test_valid_narration_is_used_and_cached(ctx: AppContext) -> None:
     assert set(seen[0]) >= {"content_type", "km", "districts"} and "athlete" not in json.dumps(seen)
     text = ride_story.story(ctx, aid).text
     assert text.count("\n> ") == 4 and text.endswith("#cyperformance")
-    assert ride_story.prepare(ctx, aid, narrator=lambda f, h: None) == s  # cached
+    assert ride_story.prepare(ctx, aid, narrator=lambda f, h, *_: None) == s  # cached
 
 
 def test_invented_place_falls_back_to_the_deterministic_text(ctx: AppContext) -> None:
     aid = _rides(ctx)[-1]
     _with(ctx, POEM)
 
-    def liar(facts: dict[str, Any], head: str) -> Narration:
+    def liar(facts: dict[str, Any], head: str, *_: Any) -> Narration:
         return Narration(T["lines"]["liar"], [c * 7 for c in head], "m")
 
     s = ride_story.prepare(ctx, aid, narrator=liar)
@@ -321,10 +331,10 @@ def test_invented_place_falls_back_to_the_deterministic_text(ctx: AppContext) ->
 def test_refusal_and_api_error(ctx: AppContext) -> None:
     aid = _rides(ctx)[-1]
     _with(ctx, POEM)
-    assert ride_story.prepare(ctx, aid, narrator=lambda f, h: None).poem == []
+    assert ride_story.prepare(ctx, aid, narrator=lambda f, h, *_: None).poem == []
     other = _rides(ctx)[-2]
 
-    def down(facts: dict[str, Any], head: str) -> Narration:
+    def down(facts: dict[str, Any], head: str, *_: Any) -> Narration:
         raise NarrationError("APIConnectionError: offline")
 
     s = ride_story.prepare(ctx, other, narrator=down)
@@ -407,3 +417,118 @@ def test_cli_show_fetch_runs_prepare(
     assert "⚙️ RIDE.LOG" in plain.output
     fetched = CliRunner().invoke(app, ["ride-log", "show", str(aid), "--fetch"], env=env)
     assert fetched.exit_code == 0 and called == [aid]
+
+
+def test_next_spot_skips_a_chains_other_branch(ctx: AppContext) -> None:
+    aid = _rides(ctx)[-1]
+    _with(ctx, ROUTE)
+    fake = FakeOsm(ctx, aid, viewpoint=False)  # only the same-name café is a candidate
+    ride_story.prepare(ctx, aid, osm=fake.client)
+    route = copy.RouteInfo.from_dict(
+        json.loads((ride_story.story_dir(ctx) / "osm" / f"{aid}.json").read_text())["route"]
+    )
+    assert route.spot is None
+
+
+def test_a_slow_overpass_answer_is_cut_at_the_deadline() -> None:
+    """A queued Overpass query trickles bytes for minutes; the wall-clock limit stops it."""
+    from cyp.ingest.osm.client import OsmError
+
+    now = [0.0]
+
+    def clock() -> float:
+        now[0] += 10.0  # every look at the clock is 10 s later
+        return now[0]
+
+    def trickle() -> Any:
+        yield from (b" " for _ in range(100))
+
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, content=trickle()))
+    client = OsmClient(transport=transport, sleep=lambda _s: None, clock=clock)
+    with pytest.raises(OsmError, match=r"no answer in time|budget"):
+        client.places_in((25.1, 121.4, 25.11, 121.41))
+
+
+def test_district_is_the_district_level_not_the_village() -> None:
+    from cyp.ingest.osm.client import district_of
+
+    address = {"village": "v", "suburb": "s", "town": "t", "city": "c"}
+    assert district_of({"address": address}) == "t"
+    assert district_of({"address": {"village": "v"}}) == "v"
+    assert district_of({}) is None
+
+
+def test_an_overloaded_overpass_falls_over_to_the_next_instance() -> None:
+    from cyp.ingest.osm.client import OVERPASS_URLS
+
+    hosts: list[str] = []
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        hosts.append(r.url.host)
+        if r.url.host == httpx.URL(OVERPASS_URLS[0]).host:
+            return httpx.Response(502)
+        return httpx.Response(200, json={"elements": []})
+
+    client = OsmClient(transport=httpx.MockTransport(handler), sleep=lambda _s: None)
+    assert client.places_in((25.1, 121.4, 25.11, 121.41)) == []
+    assert hosts == [httpx.URL(u).host for u in OVERPASS_URLS[:2]]
+
+
+def test_one_lookup_has_a_total_budget() -> None:
+    from cyp.ingest.osm.client import OsmError
+
+    now = [0.0]
+    calls: list[str] = []
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        calls.append(r.url.host)
+        now[0] += 70.0  # each instance takes 70 s to fail
+        return httpx.Response(502)
+
+    client = OsmClient(transport=httpx.MockTransport(handler), sleep=lambda _s: None,
+                       clock=lambda: now[0])  # fmt: skip
+    with pytest.raises(OsmError, match="502"):
+        client.places_in((25.1, 121.4, 25.11, 121.41))
+    assert len(calls) == 3  # tried at 0 s, 70 s and 140 s, all inside the 180 s budget
+    with pytest.raises(OsmError, match="budget"):
+        client.district((25.1, 121.4))
+    assert len(calls) == 3
+
+
+def test_a_broken_answer_is_retried_once_with_its_problems(ctx: AppContext) -> None:
+    aid = _rides(ctx)[-1]
+    _with(ctx, POEM)
+    calls: list[list[str]] = []
+
+    def narrator(facts: dict[str, Any], head: str, problems: Any = ()) -> Narration:
+        calls.append(list(problems))
+        poem = [f"{c}{T['mountain'] * 6}" for c in head]
+        if len(calls) == 1:
+            poem[0] = T["poem_bad_head"]  # breaks the acrostic
+        return Narration(T["lines"]["plain"][:1] * 2, poem, "m")
+
+    s = ride_story.prepare(ctx, aid, narrator=narrator)
+    assert len(calls) == 2 and calls[0] == [] and any("does not start" in p for p in calls[1])
+    assert s.source == "llm" and copy.head_chars(s.poem) == s.head
+
+
+def test_retry_message_lists_the_problems() -> None:
+    from cyp.llm.narrator import user_message
+
+    first = user_message({"km": 1.0}, "head")
+    retry = user_message({"km": 1.0}, "head", ["poem line 2 does not start with x"])
+    assert "previous answer" not in first and "poem line 2 does not start" in retry
+
+
+def test_a_rephrasing_may_not_add_places_or_numbers_beyond_the_draft() -> None:
+    P = T["places"]
+    f = _facts(1, districts=[P["linkou"]], route_places=[P["cafe"], P["peak"]], spot=P["viewpoint"])
+    draft = [f"{P['linkou']} 42.3"]
+    ok = [f"{P['linkou']} 42.3", T["company"]]
+    assert copy.validate(ok, POEM_OK, f, T["poem_head"], draft=draft) == []
+    extra_place = [f"{P['linkou']} 42.3", P["peak"]]  # a real place of the ride, not in the draft
+    errors = copy.validate(extra_place, POEM_OK, f, T["poem_head"], draft=draft)
+    assert any("not in the draft" in e for e in errors)
+    extra_number = [f"{P['linkou']} 42.3", "380"]  # a real number of the ride, not in the draft
+    errors = copy.validate(extra_number, POEM_OK, f, T["poem_head"], draft=draft)
+    assert any("number 380 not in the draft" in e for e in errors)

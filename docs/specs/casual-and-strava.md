@@ -128,8 +128,11 @@ PDF and the email only.
 - **Route** (`ingest/osm/`, layer 3; flag `strava.route_story`, default off): from the latlng
   stream. **Privacy zone**: every point within 1 km of the start or the end is dropped before any
   request; the rest is downsampled to one point per 200 m and rounded to 5 decimals; no
-  timestamps, no athlete id, no activity id ever leaves. Overpass (one `around:150` query on the
-  route line: `amenity=cafe`, `shop=beverages|tea|coffee|bubble_tea`, `tourism=viewpoint|attraction`,
+  timestamps, no athlete id, no activity id ever leaves. Overpass (one bounding-box query around
+  the route, grown until no corner is within 1 km of start or end; whether a place lies within
+  150 m of the route is decided locally, so only 4 numbers leave; first answering instance of
+  overpass-api.de, overpass.kumi.systems, overpass.private.coffee; 75 s per request and a 180 s
+  budget per ride, so a busy Overpass cannot stall the watcher): `amenity=cafe`, `shop=beverages|tea|coffee|bubble_tea`, `tourism=viewpoint|attraction`,
   `natural=peak`, `leisure=park`, `amenity=place_of_worship` with a name) and Nominatim reverse
   geocoding (zh-TW; at most 3 points: the turnaround and two along the way) for district names,
   ≤ 1 request/s, `User-Agent: cy-performance/<version> (+CYP_OSM_CONTACT)`; the contact is an
@@ -140,13 +143,20 @@ PDF and the email only.
 - **Next spot** (`next_spot`): one more Overpass query (viewpoints, peaks, cafés with a name) in
   the bounding box of the last 90 days' cached routes (already privacy-trimmed), minus places in
   the per-profile visited record (`data/ride_story/visited.json`, every POI a past route passed).
-  One unvisited place is picked deterministically, with why it fits (its kind and the distance
-  from this ride's turnaround).
+  A place whose name was already seen (a chain's other branch) does not count as new; the best
+  kind present wins (viewpoint > peak > attraction > café), then one is picked
+  deterministically, with why it fits (its kind and the distance from this ride's turnaround,
+  3–40 km). The box is grown until none of its corners lies within 1 km of the ride's start or
+  end, so no coordinate near home leaves in any form.
 - **Narration** (`llm/narrator.py`, layer 7; flag `llm.ride_poem`, default off, needs
   `ANTHROPIC_API_KEY`): one call to `claude-opus-5-5` (`settings.cyp_llm_model`), effort low,
   max_tokens 1024, timeout 30 s, SDK retries 2, server-side fallback
   (`server-side-fallback-2026-07-01`, `fallbacks="default"`), structured output
-  `{lines: [...], poem: [...]}`. Input: only the facts JSON (content type, place names, numbers,
+  `{lines: [...], poem: [...]}`; an answer that breaks a rule gets one retry that lists the
+  broken rules. The narrator **rephrases** the deterministic lines (`draft_lines` in the facts):
+  its lines may name only the places and quote only the numbers the draft does (a live run on
+  2026-10-17 showed real place names in invented claims, e.g. a highest point or where the ride
+  started, when it was free to pick from all the facts). Input: only the facts JSON (content type, place names, numbers,
   casual, the head) and the rules (acrostic, literary Chinese, rhymed, no English, no rap,
   甜蜜點 never 甜點). `stop_reason` refusal / max_tokens, an API error, or an invalid output →
   the deterministic lines and no poem. Validation (`reports/ride_story.validate`): 2–4 lines of

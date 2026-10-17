@@ -1,4 +1,4 @@
-"""Overpass (places near the route) and Nominatim (district names) client (ADR-0021).
+"""Overpass (places in a box) and Nominatim (district names) client (ADR-0021).
 
 Takes only points that went through :mod:`cyp.ingest.osm.privacy`. At most one request per
 :attr:`OsmClient.min_interval_s` per service (Nominatim's usage policy), an identifying
@@ -8,6 +8,7 @@ a failure raises :class:`OsmError` and the caller writes its text without route 
 
 from __future__ import annotations
 
+import json
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -19,9 +20,16 @@ from cyp import __version__
 from cyp.core.errors import CypError
 from cyp.ingest.osm.privacy import Point
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+#: Public Overpass instances, tried in order when one is overloaded (5xx, timeout).
+OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+)
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
+#: A place counts as on the route within this distance of it (checked locally).
 AROUND_M = 150
+SERVER_TIMEOUT_S = 90
 #: ``kind`` of a place -> the Overpass filters that find it (all with a name).
 KINDS: dict[str, tuple[str, ...]] = {
     "cafe": ('["amenity"="cafe"]', '["shop"="coffee"]'),
@@ -32,10 +40,13 @@ KINDS: dict[str, tuple[str, ...]] = {
     "park": ('["leisure"="park"]',),
     "temple": ('["amenity"="place_of_worship"]',),
 }
-#: Kinds worth suggesting as a next destination.
-SPOT_KINDS = ("viewpoint", "peak", "cafe", "attraction")
-#: Address keys of a Nominatim result, most local first, that name a district.
-DISTRICT_KEYS = ("suburb", "city_district", "town", "village", "county", "city")
+#: Kinds worth suggesting as a next destination, best first.
+SPOT_KINDS = ("viewpoint", "peak", "attraction", "cafe")
+#: How interesting a kind is to name in a post, best first (small parks last).
+KIND_ORDER = ("viewpoint", "peak", "attraction", "temple", "cafe", "drink", "park")
+#: Address keys of a Nominatim result that name a district, the district level first (a
+#: village name is too fine for a post).
+DISTRICT_KEYS = ("city_district", "town", "district", "suburb", "village", "county", "city")
 
 
 class OsmError(CypError):
@@ -108,18 +119,11 @@ def _coords(points: Sequence[Point]) -> str:
     return ",".join(f"{la:.5f},{lo:.5f}" for la, lo in points)
 
 
-def along_query(points: Sequence[Point], kinds: Sequence[str] = tuple(KINDS)) -> str:
-    """Overpass QL: named places of ``kinds`` within :data:`AROUND_M` of the route line."""
-    around = f"(around:{AROUND_M},{_coords(points)})"
-    parts = [f'nwr{around}{flt}["name"];' for k in kinds for flt in KINDS[k]]
-    return f"[out:json][timeout:25];({''.join(parts)});out center tags;"
-
-
 def bbox_query(box: tuple[float, float, float, float], kinds: Sequence[str] = SPOT_KINDS) -> str:
     """Overpass QL: named places of ``kinds`` in ``(south, west, north, east)``."""
     b = ",".join(f"{v:.4f}" for v in box)
     parts = [f'nwr({b}){flt}["name"];' for k in kinds for flt in KINDS[k]]
-    return f"[out:json][timeout:25];({''.join(parts)});out center tags 300;"
+    return f"[out:json][timeout:{SERVER_TIMEOUT_S}];({''.join(parts)});out center tags 300;"
 
 
 def district_of(data: dict[str, Any]) -> str | None:
@@ -137,13 +141,18 @@ class OsmClient:
     """Rate-limited Overpass + Nominatim client; ``transport`` and ``sleep`` are for tests."""
 
     contact: str = ""
-    timeout_s: float = 30.0
+    timeout_s: float = 60.0
+    #: Wall-clock limit of one request (the watcher tick has 9 minutes for everything).
+    total_timeout_s: float = 75.0
+    #: Wall-clock budget of every request of this client together (one ride's lookup).
+    budget_s: float = 180.0
     min_interval_s: float = 1.0
     transport: httpx.BaseTransport | None = None
     sleep: Callable[[float], None] = time.sleep
     clock: Callable[[], float] = time.monotonic
     _http: httpx.Client | None = field(default=None, init=False, repr=False)
     _last: dict[str, float] = field(default_factory=dict, init=False, repr=False)
+    _budget_end: float | None = field(default=None, init=False, repr=False)
 
     @property
     def user_agent(self) -> str:
@@ -176,36 +185,62 @@ class OsmClient:
                 self.sleep(gap)
         self._last[service] = self.clock()
 
-    def _json(self, service: str, request: Callable[[], httpx.Response]) -> dict[str, Any]:
+    def _json(self, service: str, request: httpx.Request) -> dict[str, Any]:
+        """Send ``request`` and parse its JSON, within :attr:`total_timeout_s` of wall clock.
+
+        A busy Overpass keeps the connection alive while the query waits in its queue, so the
+        per-read timeout alone could wait for many minutes; the body is read in chunks against
+        a deadline instead.
+        """
+        if self._budget_end is None:
+            self._budget_end = self.clock() + self.budget_s
+        if self.clock() >= self._budget_end:
+            raise OsmError(f"{service}: the {self.budget_s:.0f} s budget of this lookup is spent")
         self._wait(service)
+        deadline = min(self.clock() + self.total_timeout_s, self._budget_end)
         try:
-            response = request()
-            response.raise_for_status()
-            data = response.json()
+            response = self.http.send(request, stream=True)
+            try:
+                response.raise_for_status()
+                body = bytearray()
+                for chunk in response.iter_bytes():
+                    body += chunk
+                    if self.clock() > deadline:
+                        raise OsmError(f"{service}: no answer in time")
+            finally:
+                response.close()
+            data = json.loads(bytes(body))
         except (httpx.HTTPError, ValueError) as exc:
             raise OsmError(f"{service}: {type(exc).__name__}: {exc}") from exc
         if not isinstance(data, dict):
             raise OsmError(f"{service}: unexpected answer")
         return data
 
-    def places_along(self, points: Sequence[Point]) -> list[Place]:
-        """Named places near the (privacy-trimmed) route."""
-        if not points:
-            return []
-        query = along_query(points)
-        data = self._json("overpass", lambda: self.http.post(OVERPASS_URL, data={"data": query}))
-        return parse_overpass(data)
+    def _overpass(self, query: str) -> dict[str, Any]:
+        """``query`` on the first Overpass instance that answers."""
+        error: OsmError | None = None
+        for url in OVERPASS_URLS:
+            request = self.http.build_request("POST", url, data={"data": query})
+            try:
+                return self._json("overpass", request)
+            except OsmError as exc:
+                error = exc
+        assert error is not None
+        raise error
 
-    def places_in(self, box: tuple[float, float, float, float]) -> list[Place]:
-        """Named viewpoints, peaks, cafés and attractions in a bounding box."""
-        query = bbox_query(box)
-        data = self._json("overpass", lambda: self.http.post(OVERPASS_URL, data={"data": query}))
-        return parse_overpass(data)
+    def places_in(
+        self, box: tuple[float, float, float, float], kinds: Sequence[str] = SPOT_KINDS
+    ) -> list[Place]:
+        """Named places of ``kinds`` in a (privacy-checked) bounding box.
+
+        Only the box leaves; which places lie on the route is decided locally by the caller.
+        """
+        return parse_overpass(self._overpass(bbox_query(box, kinds)))
 
     def district(self, p: Point) -> str | None:
         """The district a (privacy-checked) point is in."""
         params = {"format": "jsonv2", "lat": f"{p[0]:.5f}", "lon": f"{p[1]:.5f}", "zoom": "14",
                   "accept-language": "zh-TW", "addressdetails": "1"}  # fmt: skip
         return district_of(
-            self._json("nominatim", lambda: self.http.get(NOMINATIM_URL, params=params))
+            self._json("nominatim", self.http.build_request("GET", NOMINATIM_URL, params=params))
         )

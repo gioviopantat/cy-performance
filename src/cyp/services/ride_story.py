@@ -21,7 +21,7 @@ from sqlalchemy import select
 
 from cyp.core.errors import AnalysisError, CypError, NotFoundError
 from cyp.ingest.osm import privacy
-from cyp.ingest.osm.client import SPOT_KINDS, OsmClient, Place
+from cyp.ingest.osm.client import AROUND_M, KINDS, SPOT_KINDS, OsmClient, Place
 from cyp.llm.narrator import ClaudeNarrator, Narrator
 from cyp.logging import get_logger
 from cyp.reports import ride_story as copy
@@ -40,7 +40,11 @@ SPOT_WINDOW_DAYS = 90
 SPOT_MIN_M, SPOT_MAX_M = 3_000.0, 40_000.0
 STOP_RADIUS_M = 150.0
 BBOX_PAD_DEG = 0.02
+#: Margin of the route box (about 200 m), so places just beside the route are found.
+AROUND_PAD_DEG = 0.002
 MAX_DISTRICT_POINTS = 3
+#: A second narration call is made only when the first broke a rule (it gets the problems).
+NARRATION_ATTEMPTS = 2
 
 OsmFactory = Callable[[], OsmClient]
 
@@ -268,6 +272,31 @@ def _usual_box(
     return (s - BBOX_PAD_DEG, w - BBOX_PAD_DEG, n + BBOX_PAD_DEG, e + BBOX_PAD_DEG)
 
 
+def _padded(box: tuple[float, float, float, float] | None) -> tuple[float, float, float, float]:
+    """``box`` with :data:`AROUND_PAD_DEG` on every side (places just off the route)."""
+    assert box is not None
+    s, w, n, e = box
+    return (s - AROUND_PAD_DEG, w - AROUND_PAD_DEG, n + AROUND_PAD_DEG, e + AROUND_PAD_DEG)
+
+
+def _distance_to(points: list[privacy.Point], p: privacy.Point) -> float:
+    """Metres from ``p`` to the nearest of ``points``."""
+    return min((privacy.haversine_m(q, p) for q in points), default=float("inf"))
+
+
+def _safe_box(
+    box: tuple[float, float, float, float], start: privacy.Point, end: privacy.Point
+) -> tuple[float, float, float, float]:
+    """``box`` grown until none of its corners is inside the privacy zone."""
+    s, w, n, e = box
+    for _ in range(20):
+        corners = ((s, w), (s, e), (n, w), (n, e))
+        if all(privacy.outside_zone(c, start, end) for c in corners):
+            break
+        s, w, n, e = s - BBOX_PAD_DEG, w - BBOX_PAD_DEG, n + BBOX_PAD_DEG, e + BBOX_PAD_DEG
+    return (round(s, 4), round(w, 4), round(n, 4), round(e, 4))
+
+
 def route_info(
     ctx: AppContext, activity_id: int, report: RideReport, client: OsmClient
 ) -> copy.RouteInfo:
@@ -296,7 +325,13 @@ def route_info(
             range(len(trimmed)), key=lambda i: privacy.haversine_m(trimmed[i], (p.lat, p.lng))
         )
 
-    places = sorted((p for p in client.places_along(trimmed) if kept(p)), key=position)
+    # Only a box leaves (corners outside the zone); "on the route" is decided here.
+    local = points[:: max(1, len(points) // 2000)]
+    along = client.places_in(_safe_box(_padded(privacy.bbox(trimmed)), start, end), tuple(KINDS))
+    places = sorted(
+        (p for p in along if kept(p) and _distance_to(local, (p.lat, p.lng)) <= AROUND_M),
+        key=position,
+    )
     turn = max(trimmed, key=lambda p: privacy.haversine_m(p, start))
     probes = list(dict.fromkeys([trimmed[len(trimmed) // 3], turn, trimmed[2 * len(trimmed) // 3]]))
     districts: list[str] = []
@@ -319,19 +354,21 @@ def route_info(
     day = report.ride.start_local.date()
     visited = _visited(ctx)
     passed = {p.osm_id for p in places}
-    candidates = sorted(
-        (
-            p
-            for p in client.places_in(_usual_box(ctx, day, own))
-            if p.kind in SPOT_KINDS
-            and p.osm_id not in visited
-            and p.osm_id not in passed
-            and kept(p)
-            and SPOT_MIN_M <= privacy.haversine_m(turn, (p.lat, p.lng)) <= SPOT_MAX_M
-        ),
-        key=lambda p: p.osm_id,
-    )
-    spot = candidates[activity_id % len(candidates)] if candidates else None
+    # A chain's other branch is not a new place: names already seen are skipped too.
+    seen_names = set(visited.values()) | {p.name for p in places}
+    candidates = [
+        p
+        for p in client.places_in(_safe_box(_usual_box(ctx, day, own), start, end))
+        if p.kind in SPOT_KINDS
+        and p.osm_id not in visited
+        and p.osm_id not in passed
+        and p.name not in seen_names
+        and kept(p)
+        and SPOT_MIN_M <= privacy.haversine_m(turn, (p.lat, p.lng)) <= SPOT_MAX_M
+    ]
+    best = next((k for k in SPOT_KINDS if any(p.kind == k for p in candidates)), None)
+    pool = sorted((p for p in candidates if p.kind == best), key=lambda p: p.osm_id)
+    spot = pool[activity_id % len(pool)] if pool else None
     spot_km = round(privacy.haversine_m(turn, (spot.lat, spot.lng)) / 1000) if spot else None
     info = copy.RouteInfo(districts, places, turn_district, stop, spot, spot_km)
     _write(
@@ -369,28 +406,36 @@ def _compose(
     poem: list[str] = []
     source = "route" if route is not None and route.districts else "deterministic"
     ok = True
-    if narrator is not None:
-        payload = {**facts.to_dict(), "content_type": kind}
+    payload = {**facts.to_dict(), "content_type": kind, "draft_lines": lines}
+    problems: list[str] = []
+    for attempt in range(NARRATION_ATTEMPTS if narrator is not None else 0):
+        assert narrator is not None
         try:
-            got = narrator(payload, head)
+            got = narrator(payload, head, problems)
         except CypError as exc:
             log.warning("ride_story.narrator_failed", activity_id=activity_id, error=str(exc))
-            got, ok = None, False
-        if got is None and ok:
+            ok = False
+            break
+        if got is None:
             log.warning("ride_story.narrator_declined", activity_id=activity_id)
-        elif got is not None:
-            errors = copy.validate(got.lines, got.poem, facts, head)
-            if errors:
-                log.warning("ride_story.invalid", activity_id=activity_id, errors=errors[:5])
-            else:
-                lines, poem, source = got.lines, got.poem, "llm"
-                log.info(
-                    "ride_story.narrated",
-                    activity_id=activity_id,
-                    model=got.model,
-                    input_tokens=got.input_tokens,
-                    output_tokens=got.output_tokens,
-                )
+            break
+        problems = copy.validate(got.lines, got.poem, facts, head, draft=lines)
+        if problems:
+            log.warning(
+                "ride_story.invalid", activity_id=activity_id, attempt=attempt + 1,
+                errors=problems[:5],
+            )  # fmt: skip
+            continue
+        lines, poem, source = got.lines, got.poem, "llm"
+        log.info(
+            "ride_story.narrated",
+            activity_id=activity_id,
+            model=got.model,
+            attempt=attempt + 1,
+            input_tokens=got.input_tokens,
+            output_tokens=got.output_tokens,
+        )
+        break
     story = Story(activity_id, kind, head, lines, poem, source, facts=facts.to_dict())
     return story, ok
 

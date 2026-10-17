@@ -18,7 +18,7 @@ from typing import Any
 
 import yaml
 
-from cyp.ingest.osm.client import Place
+from cyp.ingest.osm.client import KIND_ORDER, Place
 from cyp.reports.ride_model import RideReport
 
 STORY_VERSION = "ride_story_v1"
@@ -151,13 +151,24 @@ def story_facts(report: RideReport, route: RouteInfo | None, *, casual: bool) ->
         climb_rank=best.rank if best is not None else None,
         climb_of_n=best.of_n if best is not None else None,
         districts=list(route.districts),
-        route_places=[p.name for p in route.places],
+        route_places=_named(route.places),
         peak=peak,
         stop=route.stop.name if route.stop is not None else None,
         spot=route.spot.name if route.spot is not None else None,
         spot_kind=route.spot.kind if route.spot is not None else None,
         spot_km=route.spot_km,
     )
+
+
+#: At most this many places of the route go into the facts.
+MAX_PLACES = 8
+
+
+def _named(places: Sequence[Place]) -> list[str]:
+    """The route's places, most interesting kinds first, unique names, at most 8."""
+    rank = {k: i for i, k in enumerate(KIND_ORDER)}
+    ordered = sorted(places, key=lambda p: rank.get(p.kind, len(rank)))
+    return list(dict.fromkeys(p.name for p in ordered))[:MAX_PLACES]
 
 
 def available_types(f: StoryFacts) -> list[str]:
@@ -262,14 +273,31 @@ def _latin_free(text: str) -> bool:
     return not re.search(r"[A-Za-z]", UNITS.sub("", text))
 
 
-def validate(lines: Sequence[str], poem: Sequence[str], f: StoryFacts, head: str) -> list[str]:
-    """Problems of a narrator's output (empty = valid); see the spec for each rule."""
+def validate(
+    lines: Sequence[str],
+    poem: Sequence[str],
+    f: StoryFacts,
+    head: str,
+    draft: Sequence[str] | None = None,
+) -> list[str]:
+    """Problems of a narrator's output (empty = valid); see the spec for each rule.
+
+    With ``draft`` (the deterministic lines the narrator rephrases) the output may only name
+    the places and quote the numbers the draft does: a rephrasing adds no claim.
+    """
     errors: list[str] = []
     if not MIN_LINES <= len(lines) <= MAX_LINES:
         errors.append(f"{len(lines)} lines")
     if len(poem) != POEM_LINES:
         errors.append(f"{len(poem)} poem lines")
     names, numbers = f.place_names(), f.numbers()
+    if draft is not None:
+        joined = "".join(draft)
+        names = {n for n in names if n in joined}
+        numbers = set(NUMBER.findall(joined))
+        for other in sorted(f.place_names() - names, key=len, reverse=True):
+            if any(other in text for text in [*lines, *poem]):
+                errors.append(f"place {other} is not in the draft")
     for text in [*lines, *poem]:
         if not text.strip():
             errors.append("empty line")
@@ -280,7 +308,7 @@ def validate(lines: Sequence[str], poem: Sequence[str], f: StoryFacts, head: str
                 errors.append(f"forbidden word {word}: {text}")
         for n in NUMBER.findall(text):
             if n not in numbers:
-                errors.append(f"number {n} not in the facts")
+                errors.append(f"number {n} not in the {'draft' if draft is not None else 'facts'}")
         for quoted in QUOTED.findall(text):
             if quoted not in names:
                 errors.append(f"unknown place 「{quoted}」")
