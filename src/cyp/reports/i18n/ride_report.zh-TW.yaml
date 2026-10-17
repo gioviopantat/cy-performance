@@ -37,7 +37,7 @@ intent:
   headline_reps: "{counted}/{planned} 組有效、{achieved:.0f}/{target:.0f} 分鐘在 {lo:.0f}–{hi:.0f} W"
   headline_ceiling: "{over:.0%} 的移動時間超過容許上限 {ceiling:.0f} W（{smooth} 秒平均）"
   headline_overdone: "騎過頭：負荷是計畫的 {ratio:.0%}；"
-  overdone_rule: "恢復／耐力課的負荷超過計畫的 {max:.0%} 就不算達到目的（這趟 {ratio:.0%}），規劃器用同一條規則把隔天改成恢復"
+  overdone_rule: "恢復／耐力課的負荷超過計畫的 {max:.0%}、而且多 {margin:.0f} TSS 以上，就不算達到目的（這趟 {ratio:.0%}）；規劃器用同一條規則，依多出的量把隔天減量"
   headline_too_easy: "，但標準化功率 {np:.0f} W 低於下限 {floor:.0f} W，比計畫輕鬆太多"
   headline_load: "負荷 {actual:.0f}/{planned:.0f}（{ratio:.0%}）"
   headline_no_power: "沒有可信的功率資料，無法判斷是否達到刺激"

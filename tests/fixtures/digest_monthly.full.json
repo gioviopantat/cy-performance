@@ -1353,8 +1353,8 @@
     }
    ],
    "method": {
-    "model_id": "readiness_v2",
-    "version": "readiness_v2",
+    "model_id": "readiness_v2.2",
+    "version": "readiness_v2.2",
     "inputs": {
      "hrv_window_days": 7,
      "hrv_swc_sd": 0.5,
@@ -1484,7 +1484,7 @@
    "doc": "docs/04-analysis-engine.md"
   },
   {
-   "model_id": "readiness_v2",
+   "model_id": "readiness_v2.2",
    "claim_id": "readiness_v1.weights",
    "grade": "C",
    "citation": "Ours; a starting point (readiness_v1 glossary)",

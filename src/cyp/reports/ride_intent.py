@@ -18,7 +18,7 @@ from cyp.analysis.ride import intent as intent_mod
 from cyp.analysis.ride.classify import CLASS_ZH
 from cyp.analysis.run import activity_local_date
 from cyp.core.explain import Explanation, MethodRef, Reason
-from cyp.planning.adapt import OVERDONE_FACTOR
+from cyp.planning.adapt import OVERDONE_FACTOR, OVERDONE_MARGIN_TSS, is_overdone
 from cyp.planning.templates import ResolvedWorkout, Template, TemplateError, load_library, resolve
 from cyp.reports.ride_common import METHOD_DOCS, RideInputs, text
 from cyp.reports.ride_model import Intent, Segment, Verdict
@@ -340,7 +340,7 @@ def build_intent(inp: RideInputs) -> Intent | None:
                 )
             )
     verdict = facts.verdict
-    if ceiling and ratio is not None and ratio > OVERDONE_FACTOR:
+    if ceiling and ratio is not None and is_overdone(load_actual, load_planned):
         # An easy day ridden far past its planned load did not do its job, however easy each
         # minute was; the planner turns the next day into recovery on the same threshold.
         verdict = "missed"
@@ -348,8 +348,17 @@ def build_intent(inp: RideInputs) -> Intent | None:
         rule.insert(
             0,
             Reason(
-                text_zh=text("intent.overdone_rule", ratio=ratio, max=OVERDONE_FACTOR),
-                evidence={"load_ratio": ratio, "overdone_factor": OVERDONE_FACTOR},
+                text_zh=text(
+                    "intent.overdone_rule",
+                    ratio=ratio,
+                    max=OVERDONE_FACTOR,
+                    margin=OVERDONE_MARGIN_TSS,
+                ),
+                evidence={
+                    "load_ratio": ratio,
+                    "overdone_factor": OVERDONE_FACTOR,
+                    "overdone_margin_tss": OVERDONE_MARGIN_TSS,
+                },
             ),
         )
         inputs["overdone_factor"] = OVERDONE_FACTOR

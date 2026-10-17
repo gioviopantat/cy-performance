@@ -151,7 +151,7 @@ weight_kg, power_zones json, hr_zones json, source(icu_sport_settings|icu_eftp|m
 
 ### readiness_daily (ours)
 `athlete_id, date_local PK, score_0_100, status(FRESH|NORMAL|OVERREACHED|SICK; BLUNTED only in v1 rows),
-inputs json (components: hrv {z, raw_z = 7-day z7, n_days, band}, rhr, sleep, tsb, ride {load_vs_plan, feel, rpe}, subjective…),
+inputs json (components: hrv {z, raw_z = 7-day z7, n_days, band}, rhr, sleep, tsb, ride {feel, rpe}, subjective…),
 recommendation(REST|EASY|AS_PLANNED|UPGRADE), explanation json (Explanation), algo_version`
 
 ### goals

@@ -363,6 +363,16 @@ REGISTRY: tuple[Claim, ...] = (
         "(HRV-guided trials use the 7-day mean vs baseline +/- 0.5 SD)",
     ),
     _proposed(
+        "planning.overdone_easing",
+        None,
+        "A day over max(1.3x its slot target, target + 40 TSS) eases the next day by half the "
+        "excess (floor 60 %, hard -> endurance, > +100 TSS -> an easy Z2 hour); no forced "
+        "recovery spin (ADR-0017).",
+        "C",
+        "Ours (ADR-0017); direction from Frandsen J et al. 2025, Br J Sports Med 59(17):1203-1210 "
+        "(single-session spikes matter, week-to-week ratios do not)",
+    ),
+    _proposed(
         "readiness_v1.overreached_rule",
         "readiness_v1",
         "The 7-day HRV mean 1.25 SD or more below baseline and RHR z > +1.5 together mean "

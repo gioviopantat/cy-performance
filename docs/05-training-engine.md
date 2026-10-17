@@ -139,7 +139,8 @@ sync (icu + strava) → analyze new rides → compliance of yesterday's slot →
 → replan(horizon = today .. today+13):
     1. Yesterday done as planned?       → keep progression index
        Partial/skipped HIT?             → re-slot that HIT within 72 h if a day frees; else drop (never stack two HIT)
-       Over-done (TSS > 130 % plan)?    → pull next day to recovery, lower week residual
+       Over-done (TSS > max(130 % slot target, target + 40))? → ease next day: −50 % of the excess,
+                                          ≥ 60 % of its load, hard → endurance (ADR-0017)
        (the plan is what the calendar showed: a later proposal for a frozen day that the
         calendar does not show is not judged; skipped Z2 is dropped, never made up)
     2. Readiness today:

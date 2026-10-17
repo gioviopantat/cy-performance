@@ -19,7 +19,7 @@ from typing import Any
 
 import yaml
 
-from cyp.planning.adapt import OVERDONE_FACTOR
+from cyp.planning.adapt import is_overdone
 from cyp.reports.digest_model import (
     DigestHeadline,
     Load,
@@ -94,12 +94,7 @@ def _case(r: RideReport) -> str:
     i = r.intent
     if i is None:
         return "unplanned" if r.ride.np_w is not None or r.ride.tss is not None else "no_data"
-    if (
-        i.verdict == "missed"
-        and i.kind == "ceiling"
-        and i.load_ratio is not None
-        and i.load_ratio > OVERDONE_FACTOR
-    ):
+    if i.verdict == "missed" and i.kind == "ceiling" and is_overdone(i.load_actual, i.load_planned):
         return "overdone"
     return i.verdict if i.verdict in ("achieved", "partial", "missed") else "no_data"
 

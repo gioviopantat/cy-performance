@@ -332,8 +332,12 @@ def test_month_must_start_on_the_first(world: Any, cfg: AthleteConfig) -> None:
 # ----------------------------------------------------------------------------- rules
 
 
-def _intent(kind: str, ratio: float | None, verdict: str = "achieved") -> Intent:
+def _intent(
+    kind: str, ratio: float | None, verdict: str = "achieved", planned: float = 100.0
+) -> Intent:
     return Intent(
+        load_planned=planned if ratio is not None else None,
+        load_actual=planned * ratio if ratio is not None else None,
         planned_name="x",
         kind=kind,  # type: ignore[arg-type]
         purpose_zh="",
@@ -346,8 +350,13 @@ def _intent(kind: str, ratio: float | None, verdict: str = "achieved") -> Intent
 
 
 def test_overdone_only_for_easy_days_past_the_planner_factor() -> None:
-    assert session_verdict(_intent("ceiling", OVERDONE_FACTOR + 0.01, "missed"), None) == "overdone"
-    assert session_verdict(_intent("ceiling", OVERDONE_FACTOR), None) == "achieved"
+    # Past the factor on a long easy day (200 TSS -> +40 margin is below the factor's +60).
+    long_day = _intent("ceiling", OVERDONE_FACTOR + 0.01, "missed", planned=200)
+    assert session_verdict(long_day, None) == "overdone"
+    assert session_verdict(_intent("ceiling", OVERDONE_FACTOR, planned=200), None) == "achieved"
+    # A short recovery spin needs a real overshoot too: 19 TSS ridden as 50 is not overdone.
+    assert session_verdict(_intent("ceiling", 50 / 19, "missed", planned=19), None) == "missed"
+    assert session_verdict(_intent("ceiling", 74 / 19, "missed", planned=19), None) == "overdone"
     assert session_verdict(_intent("work", 2.0), None) == "achieved"  # a hard day ridden long
     easy = PlannedWorkout(intent="endurance")
     assert session_verdict(_intent("work", 2.0), easy) == "overdone"  # judged on load only

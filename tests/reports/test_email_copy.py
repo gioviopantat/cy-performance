@@ -54,6 +54,8 @@ def test_overdone_easy_day_gets_the_overdone_copy() -> None:
             "kind": "ceiling",
             "verdict": "missed",
             "load_ratio": 3.94,
+            "load_planned": 19.0,
+            "load_actual": 74.9,
             "planned_name": "恢復騎 45 分",
         }
     )

@@ -52,7 +52,7 @@
    "moving_min": 90,
    "outdoor": false,
    "verdict": "overdone",
-   "note_zh": "輕鬆課騎過頭：負荷是計畫的 368%（超過 130% 就沒達到恢復的目的，隔天規劃器會改成恢復）"
+   "note_zh": "輕鬆課騎過頭：負荷是計畫的 368%（超過 130% 而且多 40 TSS 以上，就沒達到輕鬆課的目的；隔天規劃器會依多出的量減量）"
   },
   {
    "day": "2026-10-09",
@@ -591,8 +591,8 @@
     }
    ],
    "method": {
-    "model_id": "readiness_v2",
-    "version": "readiness_v2",
+    "model_id": "readiness_v2.2",
+    "version": "readiness_v2.2",
     "inputs": {
      "hrv_window_days": 7,
      "hrv_swc_sd": 0.5,
@@ -777,14 +777,14 @@
    "doc": "docs/glossary/eftp.md"
   },
   {
-   "model_id": "readiness_v2",
+   "model_id": "readiness_v2.2",
    "claim_id": "readiness_v1.weights",
    "grade": "C",
    "citation": "Ours; a starting point (readiness_v1 glossary)",
    "doc": "docs/glossary/readiness_v1.md"
   },
   {
-   "model_id": "readiness_v2.1",
+   "model_id": "readiness_v2.3",
    "claim_id": "readiness_v1.rpe_surprise",
    "grade": "C",
    "citation": "Inoue A et al. 2022, Sports Med Open 8:35 (meta-analysis, very low certainty)",

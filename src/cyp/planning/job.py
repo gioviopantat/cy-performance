@@ -248,7 +248,12 @@ def plan_horizon(
             planned_y = None
         run.adaptations += adapt.apply_yesterday(
             horizon,
-            adapt.Yesterday(planned_y, ds.loads.get(y), hard_y),
+            adapt.Yesterday(
+                planned_y,
+                ds.loads.get(y),
+                hard_y,
+                reference_tss=next((d.tss for d in all_days if d.date == y), None),
+            ),
             today,
             ctx,
             phase,

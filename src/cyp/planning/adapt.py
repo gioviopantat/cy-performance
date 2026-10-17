@@ -29,7 +29,32 @@ ADAPT_VERSION = "adapt_v1"
 BLOCKING_CATEGORIES = frozenset({"HOLIDAY", "SICK", "INJURED"})
 ATHLETE_OWNS = frozenset({"RACE_A", "RACE_B", "RACE_C", "WORKOUT"})
 EASY_FACTOR = 0.6
+#: A day counts as overdone when its load exceeds both this share of the slot's target ...
 OVERDONE_FACTOR = 1.3
+#: ... and the target plus this many TSS (a 19-TSS recovery spin ridden as a 50-TSS spin is not
+#: "overdone" in any way that matters; this stops the old recovery -> overdone -> recovery loop).
+OVERDONE_MARGIN_TSS = 40.0
+#: Next day's target drops by this share of yesterday's excess load ...
+OVERDONE_CARRY = 0.5
+#: ... but never below this share of what was planned for it.
+OVERDONE_FLOOR = 0.6
+#: A very large excess (more than this many TSS over the target) caps the next day at an easy
+#: endurance ride of about this load (Z2 ~60 min); recovery spins come only from readiness.
+OVERDONE_LARGE_TSS = 100.0
+OVERDONE_EASY_DAY_TSS = 45.0
+
+
+def is_overdone(actual: float | None, target: float | None) -> bool:
+    """Whether ``actual`` overshoots ``target`` by both factor and margin.
+
+    The one rule the planner and the reports share (:data:`OVERDONE_FACTOR`,
+    :data:`OVERDONE_MARGIN_TSS`).
+    """
+    if actual is None or not target or target <= 0:
+        return False
+    return actual > max(OVERDONE_FACTOR * target, target + OVERDONE_MARGIN_TSS)
+
+
 RESLOT_WINDOW_DAYS = 3
 
 
@@ -40,6 +65,9 @@ class Yesterday:
     planned: DayPlan | None
     actual_load: float | None
     completed_hard: bool  # an analysed ride classified hard happened yesterday
+    #: The slot's target before any adaptation (the season's plan for that day). Overdone is
+    #: judged against it, not against a recovery spin an earlier adaptation put there.
+    reference_tss: float | None = None
 
 
 def _expl(kind: str, day: dt.date, headline: str, reasons: list[Reason]) -> Explanation:
@@ -160,26 +188,67 @@ def apply_yesterday(
         return out
     if p.is_hard and not y.completed_hard and (y.actual_load or 0) < 0.5 * p.tss:
         out += reslot_missed_hard(days, p, today, ctx, phase, progress)
-    if y.actual_load is not None and p.tss > 0 and y.actual_load > OVERDONE_FACTOR * p.tss:
+    ref = max(p.tss, y.reference_tss or 0.0)
+    if is_overdone(y.actual_load, ref):
+        assert y.actual_load is not None
         t = next((d for d in days if d.date == today), None)
         if t is not None and t.workout is not None:
-            before = t.template_id
-            fill_endurance(t, 20.0, ctx, phase, prefer_cadence=False)
-            t.notes.append("昨天負荷超過計畫 130 %，今天改恢復")
-            out.append(
-                _expl(
-                    "overdone",
-                    today,
-                    f"{today.isoformat()}：{before} → {t.template_id}",
-                    [
-                        Reason(
-                            text_zh=f"昨天實際 {y.actual_load:.0f} TSS，計畫 {p.tss:.0f}",
-                            evidence={"actual": y.actual_load, "planned": round(p.tss)},
-                        )
-                    ],
-                )
-            )
+            out.append(_ease_after_overdone(t, y.actual_load, ref, today, ctx, phase))
     return out
+
+
+def _ease_after_overdone(
+    t: DayPlan, actual: float, ref: float, today: dt.date, ctx: PlanContext, phase: str
+) -> Explanation:
+    """Take half of yesterday's excess off today, keep it an endurance ride, never a spin.
+
+    A hard session becomes endurance (no second hard day on tired legs); a large excess caps
+    the day at an easy hour of Z2. Readiness can still lower it further from body signals.
+    """
+    excess = actual - ref
+    before, before_tss, was_hard = t.template_id, t.tss, t.is_hard
+    target = max(before_tss - OVERDONE_CARRY * excess, OVERDONE_FLOOR * before_tss)
+    if excess > OVERDONE_LARGE_TSS:
+        target = min(target, OVERDONE_EASY_DAY_TSS)
+    changed = was_hard or target < before_tss - 1
+    if changed:
+        fill_endurance(t, target, ctx, phase, prefer_cadence=False)
+        t.notes.append(f"昨天多騎了 {excess:.0f} TSS，今天減量")
+    reasons = [
+        Reason(
+            text_zh=f"昨天實際 {actual:.0f} TSS，原本這天排 {ref:.0f}（多 {excess:.0f}）",
+            evidence={"actual": round(actual), "reference": round(ref), "excess": round(excess)},
+        ),
+        Reason(
+            text_zh=(
+                f"今天扣掉多出負荷的 {OVERDONE_CARRY:.0%}，最少保留原計畫的 {OVERDONE_FLOOR:.0%}"
+                + (
+                    "；強度課改成耐力騎"
+                    if before_tss and t.intent != "recovery" and changed
+                    else ""
+                )
+                + (
+                    f"；多出超過 {OVERDONE_LARGE_TSS:.0f} TSS，今天最多一小時輕鬆 Z2"
+                    if excess > OVERDONE_LARGE_TSS
+                    else ""
+                )
+            ),
+            evidence={
+                "carry": OVERDONE_CARRY,
+                "floor": OVERDONE_FLOOR,
+                "large_tss": OVERDONE_LARGE_TSS,
+                "target_tss": round(target),
+            },
+        ),
+    ]
+    return _expl(
+        "overdone",
+        today,
+        f"{today.isoformat()}：{before} → {t.template_id}"
+        if changed
+        else f"{today.isoformat()}：照計畫",
+        reasons,
+    )
 
 
 def apply_readiness(

@@ -49,9 +49,10 @@ def test_tsb_and_ride_components() -> None:
     assert rd.tsb_component(10) == pytest.approx(1)
     assert rd.tsb_component(-90) == -2.0
     assert rd.tsb_component(None) is None
+    # Load vs plan is not a body signal any more (ADR-0017): only feel / RPE count.
     z, parts = rd.ride_component(rd.YesterdayRide(load=130, planned_load=100, feel=3))
-    assert parts == {"load_vs_plan": pytest.approx(-1.0), "feel": 0.0}
-    assert z == pytest.approx(-0.5)
+    assert parts == {"feel": 0.0}
+    assert z == pytest.approx(0.0)
     nothing, _ = rd.ride_component(rd.YesterdayRide(classification="endurance"))
     assert nothing is None
 
@@ -133,12 +134,13 @@ def test_sick_event_and_injury_force_rest() -> None:
     assert rd.compute_readiness(rd.ReadinessInputs(DAY, hurt, hist)).recommendation == "REST"
 
 
-def test_overload_caps_at_easy() -> None:
+def test_load_over_plan_alone_does_not_cap_readiness() -> None:
+    """The planner eases the day after an overdone ride; readiness judges the body only."""
     hist = _history()
     today = rd.WellnessPoint(DAY, hrv=72.0, resting_hr=45, sleep_s=8 * 3600, sleep_score=88)
     over = rd.YesterdayRide(load=150, planned_load=100)
     r2 = rd.compute_readiness(rd.ReadinessInputs(DAY, today, hist, tsb=5.0, yesterday=over))
-    assert r2.recommendation == "EASY"
+    assert r2.recommendation in ("AS_PLANNED", "UPGRADE")
 
 
 def test_short_baseline_and_no_data() -> None:

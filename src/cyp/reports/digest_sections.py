@@ -23,7 +23,7 @@ from cyp.analysis.longitudinal import tid as tid_mod
 from cyp.analysis.ride import context as ctx_mod
 from cyp.core.explain import Explanation, MethodRef, Reason
 from cyp.core.timeutil import week_start
-from cyp.planning.adapt import OVERDONE_FACTOR
+from cyp.planning.adapt import OVERDONE_FACTOR, OVERDONE_MARGIN_TSS, is_overdone
 from cyp.planning.season import PHASE_ZH, season_projection
 from cyp.planning.templates import CEILING_INTENTS
 from cyp.reports.digest_common import DigestInputs, days, join, list_join, text
@@ -163,8 +163,7 @@ def session_verdict(intent: Intent | None, pw: PlannedWorkout | None) -> Session
     """The ride's intent verdict; ``overdone`` for an easy day past the planner's factor."""
     if intent is None:
         return "unplanned"
-    ratio = intent.load_ratio
-    if _is_easy(intent, pw) and ratio is not None and ratio > OVERDONE_FACTOR:
+    if _is_easy(intent, pw) and is_overdone(intent.load_actual, intent.load_planned):
         return "overdone"
     v = intent.verdict
     return "no_data" if v == "unplanned" else v
@@ -193,7 +192,14 @@ def _ride_line(r: RideInputs) -> tuple[SessionLine, tuple[str, int] | None]:
     if intent is None:
         notes.append(text("session.unplanned", cls=fact["classification_zh"] or fact["sport"]))
     elif verdict == "overdone":
-        notes.append(text("session.overdone", ratio=intent.load_ratio, max=OVERDONE_FACTOR))
+        notes.append(
+            text(
+                "session.overdone",
+                ratio=intent.load_ratio,
+                max=OVERDONE_FACTOR,
+                margin=OVERDONE_MARGIN_TSS,
+            )
+        )
     else:
         notes.append(str((intent.explanation or {}).get("headline_zh", "")))
     if intent is not None and intent.excused:

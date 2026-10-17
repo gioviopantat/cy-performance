@@ -29,7 +29,7 @@ verdict:
 
 session:
   unplanned: "沒有排課的自由騎：{cls}"
-  overdone: "輕鬆課騎過頭：負荷是計畫的 {ratio:.0%}（超過 {max:.0%} 就沒達到恢復的目的，隔天規劃器會改成恢復）"
+  overdone: "輕鬆課騎過頭：負荷是計畫的 {ratio:.0%}（超過 {max:.0%} 而且多 {margin:.0f} TSS 以上，就沒達到輕鬆課的目的；隔天規劃器會依多出的量減量）"
   excused: "{n} 段停車／滑行／下坡不扣分"
   stops: "停車 {n} 次、共 {minutes} 分鐘，間歇結構不可靠"
   heat: "均溫 {temp} °C，心率類指標不和平常比較"

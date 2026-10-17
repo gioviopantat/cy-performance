@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import datetime as dt
 import itertools
 
@@ -343,3 +344,76 @@ def test_yesterday_missed_and_overdone(cfg: AthleteConfig, ctx: PlanContext) -> 
         rest_days, adapt.Yesterday(missed, missed.tss * 1.5, True), wed, ctx, "build", 0.0
     )
     assert over and over[-1].key == f"plan.adapt.overdone.{wed}"
+
+
+def test_overdone_eases_the_next_day_without_a_recovery_spin(
+    cfg: AthleteConfig, ctx: PlanContext
+) -> None:
+    """ADR-0017: judged against the slot's own target; the next day is eased, not replaced."""
+    days = _week_plan(cfg, ctx, 9)
+    y, today = days[1], days[2]
+    rest = [d for d in days if d.date >= today.date]
+    before = today.tss
+    # A little over the target (and under +40 TSS) is not overdone.
+    assert (
+        adapt.apply_yesterday(
+            rest,
+            adapt.Yesterday(y, y.tss + 30, True, reference_tss=y.tss),
+            today.date,
+            ctx,
+            "build",
+            0.0,
+        )
+        == []
+    )
+    # A recovery spin put there by an earlier adaptation does not lower the bar.
+    spin = copy.deepcopy(y)
+    adapt.fill_endurance(spin, 20.0, ctx, "build", prefer_cadence=False)
+    assert (
+        adapt.apply_yesterday(
+            rest,
+            adapt.Yesterday(spin, y.tss + 30, False, reference_tss=y.tss),
+            today.date,
+            ctx,
+            "build",
+            0.0,
+        )
+        == []
+    )
+    # Clearly overdone: today keeps at least 60 % of its load and is never a recovery spin.
+    out = adapt.apply_yesterday(
+        rest,
+        adapt.Yesterday(y, y.tss + 80, True, reference_tss=y.tss),
+        today.date,
+        ctx,
+        "build",
+        0.0,
+    )
+    assert out and out[-1].key == f"plan.adapt.overdone.{today.date}"
+    assert today.intent != "recovery" and not today.is_hard
+    assert today.tss >= 0.6 * before - 15  # nearest template to the eased target
+
+
+def test_very_large_overshoot_caps_the_next_day_at_an_easy_hour(
+    cfg: AthleteConfig, ctx: PlanContext
+) -> None:
+    days = _week_plan(cfg, ctx, 9)
+    y, today = days[1], days[2]
+    rest = [d for d in days if d.date >= today.date]
+    adapt.apply_yesterday(
+        rest,
+        adapt.Yesterday(y, y.tss + 150, True, reference_tss=y.tss),
+        today.date,
+        ctx,
+        "build",
+        0.0,
+    )
+    assert today.intent != "recovery" and today.tss <= adapt.OVERDONE_EASY_DAY_TSS + 10
+
+
+def test_is_overdone_needs_factor_and_margin() -> None:
+    assert not adapt.is_overdone(50, 19)  # 263 % but only +31 TSS
+    assert adapt.is_overdone(74, 19)
+    assert not adapt.is_overdone(125, 100)
+    assert adapt.is_overdone(141, 100)
+    assert not adapt.is_overdone(None, 100) and not adapt.is_overdone(80, 0)

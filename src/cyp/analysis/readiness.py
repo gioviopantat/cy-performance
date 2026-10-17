@@ -31,7 +31,7 @@ dropped, weights renormalised, but when the present weights sum to less than
 | ``rhr`` | −z of resting HR | 0.15 |
 | ``sleep`` | mean of z(sleep hours), z(sleep score) | 0.20 |
 | ``tsb`` | piecewise: −30 → −1, 0 → 0, +10 → +1 | 0.15 |
-| ``ride`` | mean of yesterday's load-vs-plan / feel / RPE signals | 0.20 |
+| ``ride`` | mean of yesterday's feel / RPE signals (body only, ADR-0017) | 0.20 |
 | ``subjective`` | −mean z of soreness, fatigue, stress, mood (icu 1–4, 1 = best) | 0.20 |
 
 Baselines: the :data:`BASELINE_DAYS` days before the day (the day itself excluded); a component
@@ -54,9 +54,9 @@ from typing import Any, Literal
 from cyp.core.explain import Explanation, MethodRef, Reason
 from cyp.core.load import Readiness, ReadinessStatus, Recommendation
 
-ALGO_VERSION = "readiness_v2"
+ALGO_VERSION = "readiness_v2.2"
 #: Same algorithm, with post-ride RPE / feel among the inputs (flag ``readiness.ride_feel``).
-ALGO_VERSION_FEEL = "readiness_v2.1"
+ALGO_VERSION_FEEL = "readiness_v2.3"
 BASELINE_DAYS = 60
 MIN_BASELINE_N = 14
 #: HRV is read as the rolling mean of ln(rMSSD) over this many days (Plews 2013).
@@ -212,9 +212,8 @@ def ride_component(y: YesterdayRide | None) -> tuple[float | None, dict[str, flo
     if y is None:
         return None, {}
     parts: dict[str, float] = {}
-    if y.load is not None and y.planned_load:
-        ratio = y.load / y.planned_load
-        parts["load_vs_plan"] = clip(-max(ratio - 1.1, 0.0) / 0.2)
+    # Load vs plan is not a body signal: TSB already carries the load, and the planner reacts
+    # to an overdone day itself (planning/adapt.py, ADR-0017). Only how the ride felt counts.
     if y.feel is not None:
         # icu feel: 1 strong … 3 normal … 5 weak -> +1 … 0 … −1.
         parts["feel"] = clip((3 - y.feel) / 2.0)
@@ -460,16 +459,6 @@ def compute_readiness(inp: ReadinessInputs) -> Readiness:
                     evidence={"rpe": y.rpe, "feel": y.feel, "classification": y.classification},
                 )
             )
-        if y and y.load is not None and y.planned_load and y.load > 1.3 * y.planned_load:
-            rec = _cap(rec, "EASY")
-            rules.append(
-                Reason(
-                    text_zh=(
-                        f"昨天負荷 {y.load:.0f} 超過計畫 {y.planned_load:.0f} 的 130 % → 最多輕鬆騎"
-                    ),
-                    evidence={"load": y.load, "planned_load": y.planned_load},
-                )
-            )
 
     return Readiness(
         date_local=inp.date,
@@ -527,7 +516,7 @@ def _component_text(c: Component) -> str:
         return f"進入今天的 TSB {c.raw.get('tsb'):+.1f}，換算 {c.z:+.2f}（{effect}）"
     if c.name == "ride":
         parts = c.raw.get("parts") or {}
-        names = {"load_vs_plan": "負荷對計畫", "feel": "騎完感覺", "rpe": "RPE"}
+        names = {"feel": "騎完感覺", "rpe": "RPE"}
         detail = "、".join(f"{names.get(k, k)} {v:+.1f}" for k, v in parts.items())
         return f"昨天騎乘反應 {c.z:+.2f}（{detail}；{effect}）"
     return f"{COMPONENT_ZH[c.name]} {c.z:+.2f}（主觀分數相對基準；{effect}）"

@@ -461,7 +461,7 @@
    "doc": "docs/04-analysis-engine.md"
   },
   {
-   "model_id": "readiness_v2.1",
+   "model_id": "readiness_v2.3",
    "claim_id": "readiness_v1.rpe_surprise",
    "grade": "C",
    "citation": "Inoue A et al. 2022, Sports Med Open 8:35 (meta-analysis, very low certainty)",
