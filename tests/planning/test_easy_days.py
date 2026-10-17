@@ -50,11 +50,20 @@ def test_never_lowers_and_leaves_hard_and_long_days(ctx: PlanContext) -> None:
     assert _apply(ctx, [hard]) == []
 
 
-def test_no_widening_without_a_learned_habit_or_for_masters(ctx: PlanContext) -> None:
+def test_no_widening_without_a_learned_habit(ctx: PlanContext) -> None:
     spin = _day(ctx, MON + dt.timedelta(days=1), 19)
     assert _apply(ctx, [spin], replace(HABIT, source="default")) == []
-    assert _apply(replace(ctx, masters=True), [spin]) == []
     assert spin.template_id == "recovery_spin"
+
+
+def test_masters_follow_the_habit_with_a_lower_if_cap(ctx: PlanContext) -> None:
+    """Roger, 2026-10-17: dad's easy days follow his habit, intensity stays conservative."""
+    spin = _day(ctx, MON + dt.timedelta(days=1), 19)
+    out = _apply(replace(ctx, masters=True), [spin])
+    assert out and spin.template_id in adapt.EASY_DAY_POOL
+    assert spin.workout is not None and spin.workout.if_ <= adapt.MASTERS_EASY_DAY_IF_CAP
+    assert adapt.MASTERS_EASY_DAY_IF_CAP < adapt.EASY_DAY_IF_CAP
+    assert "60 歲以上" in out[0].because[1].text_zh
 
 
 def test_skips_frozen_today_ahead_weeks_and_short_days(ctx: PlanContext) -> None:

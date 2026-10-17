@@ -47,3 +47,8 @@ IF .62–.81), so the plan-vs-actual record says "overdone" for ordinary days.
 - The easy-day pool tops out at 90 min (≈ 66 TSS); a learned habit above that cannot be met by
   widening alone (Roger: 78 TSS learned) — the residual distribution already plans his easy days
   at 65–93 TSS.
+
+## Amendment · 2026-10-17
+Roger decided dad's easy days follow his habit too: athletes ≥ 60 now get the easy-day habit
+with a lower cap, IF ≤ 0.67 (`adapt.MASTERS_EASY_DAY_IF_CAP`: plain Z2, nothing harder);
+masters rules for hard days are unchanged.

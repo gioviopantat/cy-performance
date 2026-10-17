@@ -354,6 +354,9 @@ def apply_readiness(
 EASY_DAY_POOL = ("z2_endurance_60", "z2_endurance_90", "z2_cadence_90")
 #: ... whose intensity stays explicitly capped (IF), so a longer easy day is still easy.
 EASY_DAY_IF_CAP = 0.70
+#: Athletes 60+ follow their habit too (Roger, 2026-10-17) but with a lower cap: plain Z2
+#: (the easy-day templates sit at IF ~0.66), nothing harder; longer, not harder.
+MASTERS_EASY_DAY_IF_CAP = 0.67
 
 
 def easy_day_default_tss(library: Mapping[str, Template] | None = None) -> float:
@@ -378,11 +381,13 @@ def apply_easy_days(
     :data:`EASY_DAY_POOL` ride closest to it (IF ≤ :data:`EASY_DAY_IF_CAP`, within the day's
     minutes); never lower than planned. Skipped: frozen days, ``skip`` (today when readiness is
     below AS_PLANNED or another adaptation already changed it), days in ``ahead_weeks`` (the
-    athlete is already ahead of the week's plan), masters (≥ 60: no widening) and a value that
-    is only the default (no learned habit yet).
+    athlete is already ahead of the week's plan) and a value that is only the default (no
+    learned habit yet). Masters (≥ 60) get the habit too, capped at
+    :data:`MASTERS_EASY_DAY_IF_CAP`.
     """
-    if ctx.masters or easy.source == "default":
+    if easy.source == "default":
         return []
+    if_cap = MASTERS_EASY_DAY_IF_CAP if ctx.masters else EASY_DAY_IF_CAP
     out: list[Explanation] = []
     for d in days:
         week = d.date - dt.timedelta(days=d.date.weekday())
@@ -400,7 +405,7 @@ def apply_easy_days(
             phase_of(d.date),
             prefer_cadence=False,
             pool=EASY_DAY_POOL,
-            max_if=EASY_DAY_IF_CAP,
+            max_if=if_cap,
         ):
             continue
         if probe.workout is None or probe.tss <= d.tss + 1:
@@ -418,7 +423,7 @@ def apply_easy_days(
             if easy.source == "learned" and easy.raw is not None
             else f"你在 athlete.yaml 設定的輕鬆日負荷 {easy.value:.0f} TSS"
         )
-        d.notes.append(f"依{habit}排輕鬆日，強度上限 IF {EASY_DAY_IF_CAP:.2f}")
+        d.notes.append(f"依{habit}排輕鬆日，強度上限 IF {if_cap:.2f}")
         out.append(
             Explanation(
                 key=f"plan.learn.easy_day_tss.{d.date.isoformat()}",
@@ -439,10 +444,11 @@ def apply_easy_days(
                     ),
                     Reason(
                         text_zh=(
-                            f"只排 60–90 分 Z2、強度上限 IF {EASY_DAY_IF_CAP:.2f}；"
-                            "準備度低於照表、本週已超前或 60 歲以上不放寬"
+                            f"只排 60–90 分 Z2、強度上限 IF {if_cap:.2f}"
+                            + ("（60 歲以上強度更保守）" if ctx.masters else "")
+                            + "；準備度低於照表或本週已超前時不放寬"
                         ),
-                        evidence={"if_cap": EASY_DAY_IF_CAP, "pool": list(EASY_DAY_POOL)},
+                        evidence={"if_cap": if_cap, "pool": list(EASY_DAY_POOL)},
                     ),
                 ],
                 method=MethodRef(

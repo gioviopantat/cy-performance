@@ -19,11 +19,11 @@ the reports, deterministic and replayable (ADR-0004), verdicts on A/B evidence (
 | # | Question (review §7) | Decision |
 |---|----------------------|----------|
 | D1 | Overdone rule | A + C shipped (ADR-0017); B (weekly accumulation) joins the progression gate below |
-| D2 | Easy days | Planned from the athlete's own habit: median load of their last 28 days' non-hard days (≥ 6 days, shrunk to the template default, bounds default × [1, 1.8]), as Z2 60–90 min with an explicit IF cap 0.70; only when readiness ≥ AS_PLANNED and the week is not ahead of target. Masters (≥ 60): no widening |
+| D2 | Easy days | Planned from the athlete's own habit: median load of their last 28 days' non-hard days (≥ 6 days, shrunk to the template default, bounds default × [1, 1.8]), as Z2 60–90 min with an explicit IF cap 0.70; only when readiness ≥ AS_PLANNED and the week is not ahead of target. Masters (≥ 60): the habit too (Roger, 2026-10-17), IF cap 0.67 (plain Z2, nothing harder) |
 | D3 | Gate automation | Fully automatic (no approval UI exists yet), conservative bounds, every change explained in the weekly digest and its email; dad's profile always takes the conservative branch on ties |
 | D4 | Weekly feedback question | Not now |
 | D5 | Learned parameters | New table `learned_params(athlete, param, value, n, as_of, algo_version, source)`; priority yaml > learned > default |
-| D6 | Dad's intensity | Hold him back (masters rules stay), the digest notes when his easy days run hard |
+| D6 | Dad's intensity | Revised by Roger 2026-10-17: his easy days follow his habit (D2), intensity stays conservative (IF cap 0.67, masters rules for hard days unchanged) |
 | D7 | Personal dose-response model | No |
 | D8 | Validation | A read-only `cyp plan replay --from --to` first; the gate ships behind a flag that turns on only after the replay acceptance below passes |
 
