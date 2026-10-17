@@ -100,6 +100,8 @@ Pure functions over stored data. Details in [04-analysis-engine](04-analysis-eng
   counted, outdoor interruptions excused); `ride/context.py` — stops, coasting, heat and which
   numbers they make unreliable; `longitudinal/goal.py` — FTP trend and projected date to the
   season target (all for the per-ride report, [specs/ride-report.md](specs/ride-report.md)).
+- `wellness_quality.py` — flags an overnight resting-HR level shift (≥ 10 bpm between 5-reading
+  medians), a likely source change (battery swap, new device); reports mark comparisons across it.
 - `compliance.py` *(planned)* — planned vs executed workout (paired via intervals.icu `paired_event_id`).
 
 ### 5.5 `planning/`

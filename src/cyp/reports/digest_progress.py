@@ -25,6 +25,7 @@ from cyp.analysis import readiness as readiness_mod
 from cyp.analysis import readiness_job
 from cyp.analysis.longitudinal import goal as goal_mod
 from cyp.analysis.longitudinal.ftp import FtpStatus
+from cyp.analysis.wellness_quality import RHR_STEP_BPM, step_change
 from cyp.core.explain import Explanation, MethodRef, Reason
 from cyp.planning.season import PHASE_ZH
 from cyp.planning.templates import CEILING_INTENTS, load_library
@@ -317,6 +318,28 @@ def build_recovery(inp: DigestInputs, start: dt.date, end: dt.date) -> Recovery 
                     "rhr_mean": round(rhr, 1),
                     "rhr_base": round(rhr_base, 1) if rhr_base is not None else None,
                     "baseline_days": BASELINE_DAYS,
+                },
+            )
+        )
+    rhr_series = [(w.date, w.resting_hr) for w in base if w.resting_hr is not None] + [
+        (x.day, x.rhr) for x in out if x.rhr is not None
+    ]
+    step = step_change(rhr_series)
+    if step is not None:
+        reasons.append(
+            Reason(
+                text_zh=text(
+                    "recovery.rhr_step",
+                    day=f"{step.day.month}/{step.day.day}",
+                    before=step.before,
+                    after=step.after,
+                    jump=step.jump,
+                ),
+                evidence={
+                    "step_day": step.day.isoformat(),
+                    "before_median": step.before,
+                    "after_median": step.after,
+                    "threshold_bpm": RHR_STEP_BPM,
                 },
             )
         )

@@ -69,6 +69,7 @@ recovery:
   hrv: "HRV 7 日平均有 {n} 天資料：{within} 天在正常範圍（基準 ±{swc} 個標準差）、{below} 天低於、{above} 天高於，最低 {low:+.1f} 個標準差"
   rhr: "安靜心率平均 {mean:.1f}，前 4 週平均 {base:.1f}（{diff:+.1f}）"
   rhr_no_base: "安靜心率平均 {mean:.1f}（前 4 週沒有資料可比）"
+  rhr_step: "⚠ 安靜心率在 {day} 前後一夕之間差了 {jump:+.0f} bpm（之前約 {before:.0f}、之後約 {after:.0f}）。這麼大的跳動通常是量測來源改變，例如手錶沒電換電池、換裝置或改設定，不是體能變化；跨過這一天的比較請只當參考"
   sleep: "睡眠平均 {mean:.1f} 小時，前 4 週平均 {base:.1f} 小時"
   sleep_no_base: "睡眠平均 {mean:.1f} 小時（前 4 週沒有資料可比）"
   feel: "{n} 趟有評分，RPE 平均比預期 {gap:+.1f}；{harder} 趟比預期累很多（≥ {surprise:.0f}）"
