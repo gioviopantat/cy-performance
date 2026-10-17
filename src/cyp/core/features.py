@@ -154,6 +154,29 @@ REGISTRY: tuple[Feature, ...] = (
         requires=("plan.horizon",),
     ),
     Feature(
+        "plan.personal_scales",
+        "plan",
+        True,
+        "個人量表",
+        "Learn the athlete's own RPE offset per ride class, usual post-ride feel and easy-day "
+        "load (shrunk to defaults, bounded; athlete.yaml planner.scales wins); readiness reads "
+        "RPE / feel against them and easy days are planned near the athlete's habit (not for "
+        "athletes 60+). Stored in learned_params.",
+        requires=("analysis.rides",),
+    ),
+    Feature(
+        "plan.progression_gate",
+        "plan",
+        False,
+        "每週進程閘門",
+        "Each Monday decide this week from last week (key sessions, personal RPE, HRV band, "
+        "EASY/REST days, completion): up +1 step (two easy ups: +1 extra, <= 2 per block), "
+        "hold, down -1 step and TSS x0.85, early recovery week, back from a >= 10-day break; "
+        "from Friday a week >= 15 % ahead eases its remaining easy days. Explained in the plan "
+        "and the weekly digest. Off until the replay acceptance passes (ADR-0018).",
+        requires=("plan.horizon",),
+    ),
+    Feature(
         "readiness.ride_feel",
         "analysis",
         True,

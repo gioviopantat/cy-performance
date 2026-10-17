@@ -5,11 +5,15 @@
 1. Season skeleton from the athlete config.
 2. Horizon ``today .. today + horizon_days - 1`` clipped to the season.
 3. Week targets from the CTL going into each week (store for the current week, simulation of
-   the planned week for the next).
+   the planned week for the next); with :class:`Adaptive` ``gate`` the weekly progression gate
+   (:mod:`cyp.planning.gate`, ADR-0018) sets each week's progression index, TSS factor or early
+   recovery first.
 4. :func:`~cyp.planning.planner.plan_week` per week with limiter bias, availability overrides
    (icu NOTE ``training_availability=LIMITED`` + ``max_training_time`` in seconds;
    HOLIDAY/SICK/INJURED -> 0) and any :class:`PlanOverrides` (UI what-ifs).
-5. Adapt today (calendar, yesterday, readiness) and enforce guardrails on mutable days.
+5. Adapt today (calendar, yesterday, readiness; with :class:`Adaptive` also the weekly
+   accumulation rule and easy days from the athlete's habit) and enforce guardrails on
+   mutable days.
 
 :func:`build_plan` = cached dataset -> :func:`plan_horizon` -> (optionally) persist
 ``seasons`` / ``blocks`` / ``week_plans`` / ``planned_workouts`` (``proposed``; superseding
@@ -21,7 +25,7 @@ Nothing here talks to intervals.icu; publishing is :mod:`cyp.publish` and needs 
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -29,12 +33,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from cyp.analysis.longitudinal.pmc import PMCState, simulate
+from cyp.analysis.personal_scales import Learned
 from cyp.core.errors import AnalysisError
 from cyp.core.explain import Explanation
 from cyp.core.ids import external_id
 from cyp.core.timeutil import iso_utc, now_utc
 from cyp.dataset import CACHE, Dataset, PlannedRow
 from cyp.planning import adapt
+from cyp.planning import gate as gate_mod
 from cyp.planning.athlete_rules import is_senior
 from cyp.planning.guardrails import RULE_ZH, GuardrailInputs, Repair, Violation, enforce
 from cyp.planning.planner import DayPlan, PlanContext, Role, explain_day, plan_week
@@ -88,6 +94,21 @@ class PlanOverrides:
         return cfg.model_copy(update=update) if update else cfg
 
 
+@dataclass(frozen=True)
+class Adaptive:
+    """Inputs learned from the athlete's history (spec adaptive-planning); empty = plain planner.
+
+    ``easy_day``: the learned easy-day load (flag ``plan.personal_scales``, decision D2).
+    ``gate``: run the weekly progression gate and the weekly accumulation rule (flag
+    ``plan.progression_gate``, ADR-0018); ``rpe_offset_at``: the personal RPE offsets learned
+    before a given Monday, which the gate reads (``None`` = the fixed table).
+    """
+
+    easy_day: Learned | None = None
+    gate: bool = False
+    rpe_offset_at: Callable[[dt.date], Mapping[str, float]] | None = None
+
+
 @dataclass
 class PlanRun:
     """Result of one planning run."""
@@ -102,6 +123,11 @@ class PlanRun:
     changes: dict[str, list[str]] = field(default_factory=dict)
     revision_id: int | None = None
     mutable_from: dt.date | None = None
+    #: The weekly progression gate's decisions (flag ``plan.progression_gate``), by week start.
+    gate: dict[dt.date, gate_mod.GateDecision] = field(default_factory=dict)
+    #: Each planned day's load before any adaptation (the season plan's slot target, ADR-0017);
+    #: stored as ``steps.reference_tss`` so compliance judges against it.
+    reference_tss: dict[dt.date, float] = field(default_factory=dict)
 
     @property
     def needs_review(self) -> bool:
@@ -180,9 +206,11 @@ def plan_horizon(
     bias: Mapping[str, float] | None = None,
     library: Mapping[str, Template] | None = None,
     overrides: PlanOverrides | None = None,
+    adaptive: Adaptive | None = None,
 ) -> PlanRun:
     """Plan the horizon starting ``today`` (pure; see module docstring)."""
     ov = overrides or PlanOverrides()
+    ad = adaptive or Adaptive()
     cfg = ov.apply_to(cfg)
     lib = library if library is not None else load_library()
     sk = build_skeleton(cfg)
@@ -214,13 +242,29 @@ def plan_horizon(
         atl = ov.atl if ov.atl is not None else ctl
     prev_loading: float | None = None
     all_days: list[DayPlan] = []
+    if ad.gate:
+        run.gate = gate_mod.gate_chain(
+            ds,
+            sk,
+            cfg.availability.weekly_max_minutes,
+            until=today,
+            rpe_offset_at=ad.rpe_offset_at,
+            conservative=ctx.masters,
+        )
+    planned_weeks: dict[dt.date, SeasonWeek] = {}
     for w in weeks:
-        t = week_targets(
-            w,
-            ctl,
-            weekly_max_minutes=cfg.availability.weekly_max_minutes,
-            prev_loading_tss=prev_loading,
-            atl_start=atl,
+        g = _gate_for(run.gate, w) if ad.gate else None
+        w = gate_mod.gated_week(w, g)
+        planned_weeks[w.start] = w
+        t = gate_mod.gated_targets(
+            week_targets(
+                w,
+                ctl,
+                weekly_max_minutes=cfg.availability.weekly_max_minutes,
+                prev_loading_tss=prev_loading,
+                atl_start=atl,
+            ),
+            g,
         )
         run.week_targets[w.start] = t
         days = plan_week(w, t, ctx)
@@ -233,9 +277,16 @@ def plan_horizon(
         if not w.recovery and w.phase != "test":
             prev_loading = t.target_tss
     horizon = [d for d in all_days if first <= d.date <= last]
+    run.reference_tss = {d.date: round(d.tss, 1) for d in all_days}
 
     run.adaptations += adapt.apply_calendar(horizon, athlete_events)
     week_today = sk.week_of(today)
+    if week_today is not None:
+        week_today = planned_weeks.get(week_today.start, week_today)
+        decided = run.gate.get(week_today.start)
+        if decided is not None and decided.explanation is not None:
+            run.adaptations.append(decided.explanation)
+    rec: str | None = None
     if week_today is not None:
         phase, progress, step = _progress(week_today)
         y = today - dt.timedelta(days=1)
@@ -275,6 +326,31 @@ def plan_horizon(
                 progress_step=step,
             )
 
+    if ad.gate and week_today is not None:
+        run.adaptations += gate_mod.ease_accumulation(
+            horizon,
+            today,
+            actual_to_date=_to_date(ds.loads, today),
+            planned_to_date=_to_date(run.reference_tss, today),
+            mutable_from=mutable_from,
+            ctx=ctx,
+            phase=week_today.phase,
+        )
+    if ad.easy_day is not None:
+        touched = {
+            e.key.rsplit(".", 1)[-1] for e in run.adaptations if e.key.startswith("plan.adapt.")
+        }
+        low_today = rec not in (None, "AS_PLANNED", "UPGRADE")
+        run.adaptations += adapt.apply_easy_days(
+            horizon,
+            ad.easy_day,
+            mutable_from=mutable_from,
+            skip={today} if low_today or today.isoformat() in touched else set(),
+            ahead_weeks=_ahead_weeks(ds, run, today),
+            ctx=ctx,
+            phase_of=lambda d: (sk.week_of(d) or weeks[0]).phase,
+        )
+
     seed_day = first - dt.timedelta(days=1)
     c0, a0 = ds.ctl_atl(seed_day)
     if ov.ctl is not None:
@@ -287,7 +363,8 @@ def plan_horizon(
     gi = GuardrailInputs(
         seed=PMCState(seed_day, c0, a0),
         phase_of=lambda d: (sk.week_of(d) or weeks[0]).phase,
-        recovery_weeks=frozenset(w.start for w in sk.weeks if w.recovery or w.phase == "test"),
+        recovery_weeks=frozenset(w.start for w in sk.weeks if w.recovery or w.phase == "test")
+        | frozenset(w.start for w in planned_weeks.values() if w.recovery),
         history_loads={d: v for d, v in ds.loads.items() if d < first},
         longest_ride_min_6w=_longest_ride_min(ds, today),
         low_readiness_days=low,
@@ -299,6 +376,35 @@ def plan_horizon(
     _refresh_explanations(horizon, run, sk, ctx)
     run.days = horizon
     return run
+
+
+def _gate_for(
+    decided: Mapping[dt.date, gate_mod.GateDecision], w: SeasonWeek
+) -> gate_mod.GateDecision | None:
+    """The gate's decision for ``w``, or the last decision carried forward (projected)."""
+    if w.start in decided:
+        return decided[w.start]
+    last = max(
+        (g for g in decided.values() if g.week_start < w.start),
+        default=None,
+        key=lambda g: g.week_start,
+    )
+    return gate_mod.projected(w, last) if last is not None else None
+
+
+def _to_date(values: Mapping[dt.date, float], today: dt.date) -> float:
+    """Sum of ``values`` from this week's Monday up to yesterday."""
+    start = today - dt.timedelta(days=today.weekday())
+    return sum(values.get(start + dt.timedelta(days=i), 0.0) for i in range(today.weekday()))
+
+
+def _ahead_weeks(ds: Dataset, run: PlanRun, today: dt.date) -> frozenset[dt.date]:
+    """This week, when the load ridden before today already exceeds the plan for those days."""
+    start = today - dt.timedelta(days=today.weekday())
+    past = [start + dt.timedelta(days=i) for i in range(today.weekday())]
+    actual = sum(ds.loads.get(d, 0.0) for d in past)
+    planned = sum(run.reference_tss.get(d, 0.0) for d in past)
+    return frozenset({start}) if past and actual > planned else frozenset()
 
 
 def _refresh_explanations(
@@ -339,7 +445,7 @@ def _refresh_explanations(
         week = sk.week_of(day.date)
         targets = run.week_targets.get(week.start) if week is not None else None
         if week is not None and targets is not None:
-            day.explanation = explain_day(day, week, targets, ctx)
+            day.explanation = explain_day(day, targets.week, targets, ctx)
 
 
 def build_plan(
@@ -353,6 +459,7 @@ def build_plan(
     persist: bool = True,
     trigger: str = "manual",
     overrides: PlanOverrides | None = None,
+    adaptive: Adaptive | None = None,
 ) -> PlanRun:
     """Plan from the cached dataset and (optionally) persist.
 
@@ -363,7 +470,14 @@ def build_plan(
     if ds is None:
         raise AnalysisError("no athlete in the store; run `cyp sync` first")
     run = plan_horizon(
-        ds, cfg, today=today, now_local=now_local, bias=bias, library=library, overrides=overrides
+        ds,
+        cfg,
+        today=today,
+        now_local=now_local,
+        bias=bias,
+        library=library,
+        overrides=overrides,
+        adaptive=adaptive,
     )
     if persist and run.days:
         with factory() as s:
@@ -498,7 +612,12 @@ def _persist(
             template_version=str(d.workout.template_version),
             name=d.workout.name_zh,
             intent=d.intent,
-            steps={"params": dict(d.params), "role": d.role, "outdoor": d.outdoor},
+            steps={
+                "params": dict(d.params),
+                "role": d.role,
+                "outdoor": d.outdoor,
+                "reference_tss": run.reference_tss.get(d.date),
+            },
             target_tss=round(d.tss, 1),
             target_duration_s=d.workout.duration_s,
             target_if=round(d.workout.if_, 3),

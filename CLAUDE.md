@@ -80,6 +80,7 @@ uv run cyp --profile <name> watch --json # one ride-watcher tick (emails new rid
 uv run cyp --profile <name> ride-report  # newest ride's PDF, no email
 uv run cyp --profile <name> digest weekly --period <monday>  # one weekly digest PDF, no email
 uv run cyp --profile <name> doctor       # config, DB, tokens, last job runs
+uv run cyp --profile <name> plan replay --from <D> --to <D> --json  # read-only replay of the planner
 ```
 Morning run failed? `docs/runbooks/README.md`. Never run `cyp ride-log push --confirm-write`,
 `cyp run` without `--no-write`,

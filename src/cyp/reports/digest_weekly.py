@@ -19,6 +19,7 @@ from cyp.analysis.ride import context as ctx_mod
 from cyp.analysis.ride import intent as intent_mod
 from cyp.core.explain import Explanation, MethodRef, Reason
 from cyp.planning.adapt import OVERDONE_FACTOR
+from cyp.planning.gate import GATE_VERSION, GateDecision
 from cyp.reports.digest_common import DigestInputs, join, method, text
 from cyp.reports.digest_model import (
     DigestHeadline,
@@ -27,6 +28,7 @@ from cyp.reports.digest_model import (
     Highlights,
     Load,
     NextPlan,
+    PlanReason,
     Recovery,
     SessionLine,
     WeeklyDigest,
@@ -321,11 +323,36 @@ def _methods(d: WeeklyDigest) -> list[MethodUsed]:
         ids.append(ctx_mod.CONTEXT_VERSION)
     if d.next_week is not None and d.next_week.sessions:
         ids.append("planner")
+    if d.plan_reason is not None:
+        ids.append(GATE_VERSION)
     return [method(i) for i in ids]
 
 
-def build(inp: DigestInputs, week_start: dt.date, *, generated_at: dt.datetime) -> WeeklyDigest:
-    """Every section of one ISO week (``week_start`` a Monday)."""
+def build_plan_reason(gate: GateDecision | None) -> PlanReason | None:
+    """Why next week is planned so: the progression gate's explanation (``None`` without)."""
+    if gate is None or gate.explanation is None:
+        return None
+    e = gate.explanation
+    return PlanReason(
+        decision=gate.decision,
+        headline_zh=e.headline_zh,
+        reasons_zh=[r.text_zh for r in e.because],
+        explanation=e.to_json_dict(),
+    )
+
+
+def build(
+    inp: DigestInputs,
+    week_start: dt.date,
+    *,
+    generated_at: dt.datetime,
+    gate: GateDecision | None = None,
+) -> WeeklyDigest:
+    """Every section of one ISO week (``week_start`` a Monday).
+
+    ``gate``: the progression gate's decision for the week after (flag
+    ``plan.progression_gate``; ``None`` leaves the section out).
+    """
     start, end = week_start, week_start + dt.timedelta(days=6)
     period = build_period(inp, start, end, week_label(inp, start))
     sessions = build_sessions(inp, start, end)
@@ -367,6 +394,7 @@ def build(inp: DigestInputs, week_start: dt.date, *, generated_at: dt.datetime) 
         recovery=recovery,
         highlights=highlights,
         next_week=next_week,
+        plan_reason=build_plan_reason(gate) if nxt >= inp.today else None,
     )
     d.methods = _methods(d)
     return d

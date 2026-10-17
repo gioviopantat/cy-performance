@@ -55,6 +55,7 @@ DIGEST_METHODS: dict[str, tuple[str, str | None]] = {
     "power_curve": ("docs/04-analysis-engine.md", None),
     SEASON_VERSION: ("docs/glossary/periodization_3_1.md", "periodization_3_1.ratio_3_1"),
     "research_review": ("docs/specs/research-review.md", None),
+    "gate_v1": ("docs/adr/0018-progression-gate.md", "planning.progression_gate"),
 }
 
 

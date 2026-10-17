@@ -451,13 +451,24 @@ def _fill_long(
 
 
 def fill_endurance(
-    day: DayPlan, target_tss: float, ctx: PlanContext, phase: str, prefer_cadence: bool
+    day: DayPlan,
+    target_tss: float,
+    ctx: PlanContext,
+    phase: str,
+    prefer_cadence: bool,
+    *,
+    pool: Sequence[str] | None = None,
+    max_if: float | None = None,
 ) -> bool:
-    """Put the endurance / recovery template closest to ``target_tss`` that fits the day."""
+    """Put the endurance / recovery template closest to ``target_tss`` that fits the day.
+
+    ``pool`` replaces the endurance pool; ``max_if`` skips templates above that IF.
+    """
     best: tuple[float, str, ResolvedWorkout, bool] | None = None
-    pool: tuple[str, ...] = ENDURANCE_POOL
-    if ctx.cfg.planner.menus == "goal":
-        pool = ENDURANCE_POOL + GOAL_ENDURANCE_EXTRA
+    if pool is None:
+        pool = ENDURANCE_POOL
+        if ctx.cfg.planner.menus == "goal":
+            pool = ENDURANCE_POOL + GOAL_ENDURANCE_EXTRA
     for tid in pool:
         t = ctx.library.get(tid)
         if t is None or not eligible(t, phase):
@@ -469,7 +480,7 @@ def fill_endurance(
             w = resolve(t, None, outdoor=outdoor)
         except TemplateError:
             continue
-        if w.duration_s > day.max_minutes * 60:
+        if w.duration_s > day.max_minutes * 60 or (max_if is not None and w.if_ > max_if):
             continue
         cost = abs(w.tss - target_tss) - (3.0 if prefer_cadence and "cadence" in tid else 0.0)
         if best is None or cost < best[0]:

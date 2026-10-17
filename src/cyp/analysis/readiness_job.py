@@ -72,7 +72,17 @@ Feedback = Mapping[int, tuple[float | None, int | None]]
 
 def _yesterday(ds: Dataset, day: dt.date, feedback: Feedback | None = None) -> YesterdayRide | None:
     """Yesterday's response. ``feedback`` is ``None`` when ``readiness.ride_feel`` is off."""
-    y = day - dt.timedelta(days=1)
+    return ride_response(ds, day - dt.timedelta(days=1), feedback)
+
+
+def ride_response(
+    ds: Dataset, y: dt.date, feedback: Feedback | None = None
+) -> YesterdayRide | None:
+    """The response of day ``y``: its rides' hardest class, load, plan and rated RPE / feel.
+
+    Readiness reads it for yesterday; plan compliance (``services/compliance.py``) for the day
+    it judges. ``feedback`` is ``None`` when ``readiness.ride_feel`` is off.
+    """
     rides = [a for a in ds.on(y) if a.is_ride and a.analysed]
     planned = _planned_load(ds, y)
     if not rides:
@@ -118,8 +128,19 @@ def _tsb(ds: Dataset, day: dt.date) -> float | None:
     return row.tsb if row is not None else None
 
 
-def inputs_for(ds: Dataset, day: dt.date, feedback: Feedback | None = None) -> ReadinessInputs:
-    """Assemble :class:`ReadinessInputs` for ``day`` (pure; ``feedback`` None = RPE/feel off)."""
+def inputs_for(
+    ds: Dataset,
+    day: dt.date,
+    feedback: Feedback | None = None,
+    *,
+    rpe_offset: Mapping[str, float] | None = None,
+    feel_baseline: float | None = None,
+) -> ReadinessInputs:
+    """Assemble :class:`ReadinessInputs` for ``day`` (pure; ``feedback`` None = RPE/feel off).
+
+    ``rpe_offset`` / ``feel_baseline``: the athlete's personal scales (flag
+    ``plan.personal_scales``, ``analysis/personal_scales.py``); omitted = the fixed table.
+    """
     lo = day - dt.timedelta(days=BASELINE_DAYS)
     history = [_point(w) for d, w in sorted(ds.wellness.items()) if lo <= d < day]
     today = ds.wellness.get(day)
@@ -130,12 +151,23 @@ def inputs_for(ds: Dataset, day: dt.date, feedback: Feedback | None = None) -> R
         tsb=_tsb(ds, day),
         yesterday=_yesterday(ds, day, feedback),
         sick_or_injured=_sick(ds, day),
+        rpe_offset=dict(rpe_offset or {}),
+        feel_baseline=feel_baseline,
     )
 
 
-def readiness_for(ds: Dataset, day: dt.date, feedback: Feedback | None = None) -> Readiness:
+def readiness_for(
+    ds: Dataset,
+    day: dt.date,
+    feedback: Feedback | None = None,
+    *,
+    rpe_offset: Mapping[str, float] | None = None,
+    feel_baseline: float | None = None,
+) -> Readiness:
     """Score one day (pure). Pass ``feedback`` (may be empty) to use post-ride RPE / feel."""
-    return compute_readiness(inputs_for(ds, day, feedback))
+    return compute_readiness(
+        inputs_for(ds, day, feedback, rpe_offset=rpe_offset, feel_baseline=feel_baseline)
+    )
 
 
 def persist(session: Session, athlete_id: int, verdicts: Iterable[Readiness]) -> None:

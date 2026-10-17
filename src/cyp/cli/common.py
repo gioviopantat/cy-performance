@@ -48,13 +48,17 @@ NoSyncOpt = Annotated[
 JsonOpt = Annotated[bool, typer.Option("--json", help="Print JSON instead of text.")]
 
 
-def cli_settings() -> Settings:
-    """Settings from env / ``.env`` with file logging configured (console stays quiet)."""
+def cli_settings(*, file_log: bool = True) -> Settings:
+    """Settings from env / ``.env`` with file logging configured (console stays quiet).
+
+    ``file_log=False`` leaves the profile's log directory untouched (read-only commands).
+    """
     try:
         settings = with_feature_switches(get_settings())
     except ConfigError as exc:  # unknown profile, bad CYP_FEATURES, ...
         fail(str(exc), code=2)
-    configure_logging(settings.logs_dir, console=False)
+    if file_log:
+        configure_logging(settings.logs_dir, console=False)
     return settings
 
 
@@ -64,13 +68,18 @@ def app_context(
     athlete_config: Path | str | None = None,
     *,
     check_schema: bool = True,
+    read_only: bool = False,
 ) -> Iterator[AppContext]:
     """An :class:`AppContext` for one command; the engine is disposed on exit.
 
     Exits 2 with "run `cyp db upgrade`" when migrations are pending (unless ``check_schema``
-    is off, for commands that migrate themselves or never touch the DB).
+    is off, for commands that migrate themselves or never touch the DB). ``read_only`` opens
+    the database with ``mode=ro`` (exits 2 when there is no database file).
     """
-    ctx = AppContext.from_settings(settings, athlete_config=athlete_config)
+    try:
+        ctx = AppContext.from_settings(settings, athlete_config=athlete_config, read_only=read_only)
+    except ValueError as exc:
+        fail(str(exc), code=2)
     try:
         if check_schema:
             try:

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from cyp.core.errors import AnalysisError
 from cyp.core.timeutil import DEFAULT_TZ, local_date, now_utc
 from cyp.dataset import load_dataset
+from cyp.planning.gate import GateDecision
 from cyp.planning.season import SeasonSkeleton, build_skeleton
 from cyp.reports import digest_monthly, digest_weekly
 from cyp.reports.digest_common import DigestInputs
@@ -68,10 +69,12 @@ def build_weekly(
     profile: str,
     cfg: AthleteConfig | None,
     reports_dir: Path,
+    gate: GateDecision | None = None,
 ) -> WeeklyDigest:
     """Read stored results for the ISO week starting ``week_start`` (a Monday).
 
-    ``reports_dir`` is the profile's reports directory (ride facts JSON, trends JSON).
+    ``reports_dir`` is the profile's reports directory (ride facts JSON, trends JSON);
+    ``gate`` the progression gate's decision for the week after (flag-gated by the caller).
 
     Raises:
         AnalysisError: no athlete in the store.
@@ -81,7 +84,7 @@ def build_weekly(
         raise ValueError(f"{week_start} is not a Monday")
     now = now_utc()
     inp = _inputs(session, store, profile=profile, cfg=cfg, reports_dir=reports_dir, now=now)
-    return digest_weekly.build(inp, week_start, generated_at=now)
+    return digest_weekly.build(inp, week_start, generated_at=now, gate=gate)
 
 
 def build_monthly(

@@ -153,6 +153,7 @@ uv run cyp daily [--no-sync]                 # sync -> analyze -> trends -> read
 uv run cyp weekly [--no-sync]                # trends -> weekly report
 uv run cyp plan [--date D] [--dry-run]       # 14-day horizon, stored as proposals (never writes icu)
 uv run cyp plan --publish                    # + read-only diff against the live icu calendar
+uv run cyp plan replay --from D --to D [--json]  # replay readiness + planner on stored data (DB read-only)
 uv run cyp publish spike --date YYYY-MM-DD   # dry run; --confirm-write runs the upsert spike
 uv run cyp plan --apply --confirm-write      # writes to icu (needs the spike result first)
 uv run cyp explain <key>                     # e.g. readiness.2026-10-06, ftp.proposal, plan.day.2026-10-07

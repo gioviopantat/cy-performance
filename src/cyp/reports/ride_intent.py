@@ -115,9 +115,15 @@ def _verdict_rules() -> dict[str, float]:
     return {"achieved": intent_mod.ACHIEVED_FRAC, "partial": intent_mod.PARTIAL_FRAC}
 
 
-def build_intent(inp: RideInputs) -> Intent | None:
-    """Section 2 (``None`` when nothing was planned for this ride)."""
-    pw, ev = planned_for(inp)
+def build_intent(
+    inp: RideInputs, planned: tuple[PlannedWorkout | None, IcuEvent | None] | None = None
+) -> Intent | None:
+    """Section 2 (``None`` when nothing was planned for this ride).
+
+    ``planned`` replaces the stored plan lookup (:func:`planned_for`); ``cyp plan replay``
+    judges rides against its replayed plan this way.
+    """
+    pw, ev = planned if planned is not None else planned_for(inp)
     if pw is None and ev is None:
         return None
     fact = inp.fact

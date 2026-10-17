@@ -57,6 +57,8 @@ from cyp.core.load import Readiness, ReadinessStatus, Recommendation
 ALGO_VERSION = "readiness_v2.2"
 #: Same algorithm, with post-ride RPE / feel among the inputs (flag ``readiness.ride_feel``).
 ALGO_VERSION_FEEL = "readiness_v2.3"
+#: v2.3 with the athlete's personal RPE offsets / feel baseline (flag ``plan.personal_scales``).
+ALGO_VERSION_PERSONAL = "readiness_v2.4"
 BASELINE_DAYS = 60
 MIN_BASELINE_N = 14
 #: HRV is read as the rolling mean of ln(rMSSD) over this many days (Plews 2013).
@@ -157,15 +159,45 @@ EXPECTED_RPE: dict[str, float] = {
 #: RPE this far above the session's intent caps today at EASY.
 RPE_SURPRISE = 3.0
 FEEL_WEAK = 5
+#: With a personal feel baseline, a feel is bad only this many points worse than it (and never
+#: below :data:`FEEL_WEAK`): personal scales relax the fixed rule, they never tighten it.
+FEEL_BAD_MARGIN = 2.0
 #: Rides longer than this feel harder at the same intent: +1 expected RPE per extra hour, ≤ +2.
 LONG_RIDE_RPE_MIN = 180.0
 LONG_RIDE_RPE_MAX_EXTRA = 2.0
 
 
-def expected_rpe(y: YesterdayRide) -> float:
-    """The RPE the rated ride was meant to feel like (its class, plus a long-ride allowance)."""
-    base = EXPECTED_RPE.get(y.rated_classification or y.classification or "", 4.0)
-    extra = max((y.rated_minutes or 0.0) - LONG_RIDE_RPE_MIN, 0.0) / 60.0
+def expected_rpe(y: YesterdayRide, offsets: Mapping[str, float] | None = None) -> float:
+    """The RPE the rated ride was meant to feel like (its class, plus a long-ride allowance).
+
+    ``offsets``: the athlete's personal offset per class (``analysis/personal_scales.py``).
+    """
+    cls = y.rated_classification or y.classification
+    return expected_rpe_for(cls, y.rated_minutes) + rpe_offset_of(offsets, cls)
+
+
+def rpe_offset_of(offsets: Mapping[str, float] | None, classification: str | None) -> float:
+    """The personal offset of a table class (:data:`EXPECTED_RPE`); 0 for any other class.
+
+    A class outside the table (``mixed``) has only a guessed expectation, so a learned offset
+    is not extrapolated onto it.
+    """
+    if classification not in EXPECTED_RPE:
+        return 0.0
+    return (offsets or {}).get(classification, 0.0)
+
+
+def feel_bad_at(baseline: float | None) -> float:
+    """The feel (1 strong … 5 weak) from which a ride counts as bad."""
+    if baseline is None:
+        return FEEL_WEAK
+    return max(float(FEEL_WEAK), baseline + FEEL_BAD_MARGIN)
+
+
+def expected_rpe_for(classification: str | None, minutes: float | None) -> float:
+    """:data:`EXPECTED_RPE` of ``classification`` plus the long-ride allowance for ``minutes``."""
+    base = EXPECTED_RPE.get(classification or "", 4.0)
+    extra = max((minutes or 0.0) - LONG_RIDE_RPE_MIN, 0.0) / 60.0
     return base + min(extra, LONG_RIDE_RPE_MAX_EXTRA)
 
 
@@ -179,6 +211,10 @@ class ReadinessInputs:
     tsb: float | None = None
     yesterday: YesterdayRide | None = None
     sick_or_injured: str | None = None  # icu event category, if any
+    #: Personal RPE offset per ride class and feel baseline (flag ``plan.personal_scales``);
+    #: empty / ``None`` = the fixed table and rule.
+    rpe_offset: Mapping[str, float] = field(default_factory=dict)
+    feel_baseline: float | None = None
 
 
 # ---------------------------------------------------------------------------- components
@@ -207,8 +243,16 @@ def tsb_component(tsb: float | None) -> float | None:
     return clip(tsb / 30.0 if tsb < 0 else tsb / 10.0)
 
 
-def ride_component(y: YesterdayRide | None) -> tuple[float | None, dict[str, float]]:
-    """Mean of yesterday's response signals (positive = good) and the parts used."""
+def ride_component(
+    y: YesterdayRide | None,
+    offsets: Mapping[str, float] | None = None,
+    feel_baseline: float | None = None,
+) -> tuple[float | None, dict[str, float]]:
+    """Mean of yesterday's response signals (positive = good) and the parts used.
+
+    ``offsets`` / ``feel_baseline``: personal scales. The feel is read against the athlete's
+    usual feel only when that is worse than the scale's middle (relax, never tighten).
+    """
     if y is None:
         return None, {}
     parts: dict[str, float] = {}
@@ -216,9 +260,10 @@ def ride_component(y: YesterdayRide | None) -> tuple[float | None, dict[str, flo
     # to an overdone day itself (planning/adapt.py, ADR-0017). Only how the ride felt counts.
     if y.feel is not None:
         # icu feel: 1 strong … 3 normal … 5 weak -> +1 … 0 … −1.
-        parts["feel"] = clip((3 - y.feel) / 2.0)
+        usual = max(3.0, feel_baseline) if feel_baseline is not None else 3.0
+        parts["feel"] = clip((usual - y.feel) / 2.0)
     if y.rpe is not None:
-        expected = expected_rpe(y)
+        expected = expected_rpe(y, offsets)
         # Every 2 RPE points harder than the session intended cost one "z"; easier helps.
         parts["rpe"] = clip(-(y.rpe - expected) / 2.0)
     if not parts:
@@ -340,7 +385,7 @@ def components(inp: ReadinessInputs) -> tuple[list[Component], dict[str, float |
     tz = tsb_component(inp.tsb)
     if tz is not None:
         out.append(Component("tsb", tz, WEIGHTS["tsb"], {"tsb": inp.tsb}))
-    rz, rparts = ride_component(inp.yesterday)
+    rz, rparts = ride_component(inp.yesterday, inp.rpe_offset, inp.feel_baseline)
     if rz is not None:
         out.append(Component("ride", rz, WEIGHTS["ride"], {"parts": rparts}))
     subj = [
@@ -440,9 +485,10 @@ def compute_readiness(inp: ReadinessInputs) -> Readiness:
             )
         )
     else:
-        surprise = y.rpe - expected_rpe(y) if y and y.rpe is not None else None
+        surprise = y.rpe - expected_rpe(y, inp.rpe_offset) if y and y.rpe is not None else None
         rpe_hit = surprise is not None and surprise >= RPE_SURPRISE
-        if y and ((y.feel is not None and y.feel >= FEEL_WEAK) or rpe_hit):
+        feel_hit = y is not None and y.feel is not None and y.feel >= feel_bad_at(inp.feel_baseline)
+        if y and (feel_hit or rpe_hit):
             rec = _cap(rec, "EASY")
             rules.append(
                 Reason(
@@ -475,7 +521,44 @@ def compute_readiness(inp: ReadinessInputs) -> Readiness:
             "rule_hits": [r.text_zh for r in rules],
         },
         explanation=_explain(inp, comps, total_w, s, score, rec, status, rules),
-        algo_version=ALGO_VERSION_FEEL if _rated(inp.yesterday) else ALGO_VERSION,
+        algo_version=_version(inp),
+    )
+
+
+def _version(inp: ReadinessInputs) -> str:
+    if not _rated(inp.yesterday):
+        return ALGO_VERSION
+    personal = inp.feel_baseline is not None or any(inp.rpe_offset.values())
+    return ALGO_VERSION_PERSONAL if personal else ALGO_VERSION_FEEL
+
+
+def _personal_reason(inp: ReadinessInputs) -> Reason | None:
+    """How the athlete's own scales read yesterday's rating (``None`` when nothing applies)."""
+    y = inp.yesterday
+    if y is None or (y.rpe is None and y.feel is None):
+        return None
+    cls = y.rated_classification or y.classification or ""
+    offset = rpe_offset_of(inp.rpe_offset, cls)
+    parts: list[str] = []
+    if y.rpe is not None and offset:
+        parts.append(
+            f"你騎這類課平常的 RPE 比表定{'高' if offset > 0 else '低'} {abs(offset):.1f}，"
+            f"所以這趟預期 RPE 約 {expected_rpe(y, inp.rpe_offset):.1f}"
+        )
+    if y.feel is not None and inp.feel_baseline is not None:
+        parts.append(
+            f"你平常的騎後感覺約 {inp.feel_baseline:.0f}/5，"
+            f"差到 {feel_bad_at(inp.feel_baseline):.0f}/5 才算感受很差"
+        )
+    if not parts:
+        return None
+    return Reason(
+        text_zh="個人量表：" + "；".join(parts),
+        evidence={
+            "classification": cls,
+            "rpe_offset": offset,
+            "feel_baseline": inp.feel_baseline,
+        },
     )
 
 
@@ -533,6 +616,9 @@ def _explain(
     rules: list[Reason],
 ) -> Explanation:
     because: list[Reason] = list(rules)
+    personal = _personal_reason(inp)
+    if personal is not None:
+        because.append(personal)
     divisor = max(total_w, MIN_TOTAL_WEIGHT)
     for c in sorted(comps, key=lambda c: -abs(c.weight * c.z)):
         share = c.weight / divisor if total_w else 0.0

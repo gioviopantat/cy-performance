@@ -172,15 +172,28 @@ icu_event_id, priority, notes`
 | external_id | `cyp:{season}:{date}:{slot}` — the idempotency key on icu |
 | template_id, template_version | |
 | name, intent(endurance|tempo|sweetspot|threshold|vo2|anaerobic|recovery|opener|test|race) | |
-| steps json | our structured steps (duration_s, target_pct_lo/hi, cadence, kind) |
+| steps json | `{params, role, outdoor, reference_tss}`: the template parameters, the planner's role for the day and the slot's load before any adaptation (the season plan's target; compliance and ADR-0017 judge against it) |
 | workout_text | rendered icu grammar |
 | target_tss, target_duration_s, target_if | |
 | indoor bool, target_mode(POWER|HR) | |
 | status | `proposed` → `published` → `completed` / `skipped` / `modified` / `superseded` |
 | icu_event_id, icu_training_load_readback | verify after publish |
-| executed_activity_id, compliance json | filled by `analysis/compliance.py` |
+| executed_activity_id, compliance json | `compliance` is filled each morning for the 7 days before today by `services/compliance.py` (`planning/compliance.py` `compliance_record`, `compliance_v1`): `{actual_tss, planned_tss, ratio, reference_tss, intent_verdict, overdone, rpe, feel, rpe_delta, rated_class, skipped, role, intent}`; `intent_verdict` is the per-ride intent check of the ride that carried the plan, `rpe_delta` is RPE − the class's table value (personal offsets are applied by the reader), `overdone` is ADR-0017's rule against `reference_tss` |
 | created_by(planner|llm|athlete), revision | |
 | explanation | json | why this workout today (Explanation) |
+
+### learned_params
+Personal parameters learned from the athlete's history (spec adaptive-planning D5, ADR-0019),
+one row per parameter holding the latest value; written by the morning run
+(`services/adaptive.record`, flag `plan.personal_scales`).
+
+| column | notes |
+|--------|-------|
+| athlete_id, param PK | `rpe_offset.<class>`, `rpe_offset.all`, `feel_baseline`, `easy_day_tss` |
+| value, n | the value used and how many observations back it |
+| as_of | the day it was computed for (rides before it) |
+| algo_version | `personal_scales_v1` |
+| source | `learned` / `default` / `yaml` (athlete.yaml `planner.scales` wins) |
 
 ### plan_revisions
 `id, season_id, created_at, trigger(daily|weekly|manual|llm|goal_change), reason text,

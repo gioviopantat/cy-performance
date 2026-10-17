@@ -376,6 +376,26 @@ class ReadinessDaily(Base):
     algo_version: Mapped[str | None] = mapped_column(String(32))
 
 
+class LearnedParam(Base):
+    """A personal parameter learned from the athlete's history (spec adaptive-planning, D5).
+
+    One row per ``(athlete, param)`` holding the latest value: ``param`` e.g.
+    ``rpe_offset.endurance``, ``feel_baseline``, ``easy_day_tss``; ``n`` observations behind
+    it; ``as_of`` the day it was computed for; ``source`` ``learned`` / ``default`` / ``yaml``
+    (the written value wins: yaml > learned > default).
+    """
+
+    __tablename__ = "learned_params"
+
+    athlete_id: Mapped[int] = mapped_column(ForeignKey("athletes.id"), primary_key=True)
+    param: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[float] = mapped_column(Float)
+    n: Mapped[int] = mapped_column(Integer, default=0)
+    as_of: Mapped[dt.date] = mapped_column(Date)
+    algo_version: Mapped[str] = mapped_column(String(32))
+    source: Mapped[str] = mapped_column(String(16))
+
+
 # ------------------------------------------------------------------------------------ planning
 
 

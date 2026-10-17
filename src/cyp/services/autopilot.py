@@ -2,8 +2,9 @@
 
 Stages, each switchable by a feature flag (ADR-0008) and isolated from the others:
 
-    sync -> analyze (rides, trends, readiness) -> report.daily -> report.weekly (Mondays)
-         -> plan (rolling horizon) -> publish (diff; writes only in planner.mode=apply)
+    sync -> analyze (rides, trends, readiness, compliance) -> report.daily
+         -> report.weekly (Mondays) -> plan (rolling horizon)
+         -> publish (diff; writes only in planner.mode=apply)
 
 A failed stage is recorded and the run continues where that is still meaningful (a failed sync
 still plans from stored data; a failed plan skips publishing). Publishing never writes a plan
@@ -25,6 +26,8 @@ from cyp.analysis.longitudinal.run import load_latest_report
 from cyp.core.errors import ConfigError, CypError
 from cyp.logging import get_logger
 from cyp.planning.job import PlanRun, build_plan
+from cyp.services import adaptive as adaptive_service
+from cyp.services import compliance as compliance_service
 from cyp.services import pipeline
 from cyp.services import publish as publish_service
 from cyp.services import readiness as readiness_service
@@ -133,8 +136,10 @@ def run_autopilot(
         counts = pipeline.analyze(ctx)
         trends = trends_service.recompute(ctx, as_of=today)
         readiness_service.recompute(ctx, [today])
+        compliance = compliance_service.record(ctx, today)
+        learned = adaptive_service.record(ctx, today)
         limiters = ", ".join(lim["id"] for lim in trends.get("limiters", [])) or "none"
-        return f"{_brief(counts)}; limiters {limiters}"
+        return f"{_brief(counts)}; limiters {limiters}; compliance {compliance}; learned {learned}"
 
     def do_daily() -> str:
         return reports_service.build(ctx, "daily", today).stem
@@ -147,7 +152,15 @@ def run_autopilot(
     def do_plan() -> str:
         bias = (load_latest_report(ctx.reports_dir) or {}).get("planner_bias", {})
         with ctx.write_lock:
-            run = build_plan(ctx.factory, cfg, today=today, now_local=now, bias=bias, trigger=JOB)
+            run = build_plan(
+                ctx.factory,
+                cfg,
+                today=today,
+                now_local=now,
+                bias=bias,
+                trigger=JOB,
+                adaptive=adaptive_service.plan_inputs(ctx, today),
+            )
         plan_holder.append(run)
         changes = ", ".join(f"{k} {len(v)}" for k, v in run.changes.items()) or "no changes"
         review = f"; NEEDS REVIEW ({len(run.violations)})" if run.needs_review else ""

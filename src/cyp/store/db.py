@@ -48,9 +48,28 @@ def make_engine(db_url: str, *, echo: bool = False) -> Engine:
     return engine
 
 
-def engine_from_settings(settings: Settings, *, echo: bool = False) -> Engine:
-    """Engine for ``settings.cyp_db_url``."""
+def engine_from_settings(
+    settings: Settings, *, echo: bool = False, read_only: bool = False
+) -> Engine:
+    """Engine for ``settings.cyp_db_url`` (``read_only``: see :func:`make_readonly_engine`)."""
+    if read_only:
+        return make_readonly_engine(settings.cyp_db_url, echo=echo)
     return make_engine(settings.cyp_db_url, echo=echo)
+
+
+def make_readonly_engine(db_url: str, *, echo: bool = False) -> Engine:
+    """A file SQLite database opened with ``mode=ro``: any write raises, nothing is created.
+
+    No pragmas are set (``journal_mode`` would need a write). Used by commands that promise to
+    write nothing (``cyp plan replay``).
+
+    Raises:
+        ValueError: ``db_url`` is not a file SQLite URL, or the file does not exist.
+    """
+    path = _sqlite_path(db_url)
+    if path is None or not path.is_file():
+        raise ValueError(f"read-only mode needs an existing SQLite file, got {db_url!r}")
+    return create_engine(f"sqlite:///file:{path.resolve()}?mode=ro&uri=true", echo=echo)
 
 
 def session_factory(engine: Engine) -> sessionmaker[Session]:

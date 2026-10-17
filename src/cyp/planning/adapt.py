@@ -8,6 +8,8 @@ Applied to freshly planned days before the guardrails:
 - **Yesterday**: a missed hard session is re-slotted within 72 h onto an endurance day that
   keeps 48 h from other hard days, else dropped (never stacked); a ride > 130 % of its plan
   turns today into recovery.
+- **Easy days** (flag ``plan.personal_scales``, :func:`apply_easy_days`): an easy day below the
+  athlete's learned easy-day load is planned as a 60–90 min Z2 ride near it (IF ≤ 0.70).
 - **Readiness today**: ``REST`` -> rest (a hard session moves ≥ 48 h later if possible);
   ``EASY`` -> at most Z2 at 60 % of the planned TSS; ``UPGRADE`` -> one progression step more on
   a hard day if TSB > −10 and yesterday was not hard (never adds a new hard session);
@@ -19,11 +21,13 @@ Every change appends an Explanation to the returned list (key ``plan.adapt.<what
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass
 
+from cyp.analysis.personal_scales import Learned
 from cyp.core.explain import Explanation, MethodRef, Reason
 from cyp.planning.planner import DayPlan, PlanContext, fill_endurance, pick_params
+from cyp.planning.templates import Template, load_library, resolve
 
 ADAPT_VERSION = "adapt_v1"
 BLOCKING_CATEGORIES = frozenset({"HOLIDAY", "SICK", "INJURED"})
@@ -344,3 +348,112 @@ def apply_readiness(
             )
         ]
     return []
+
+
+#: Easy days planned from the athlete's habit (decision D2) are Z2 rides of 60–90 min ...
+EASY_DAY_POOL = ("z2_endurance_60", "z2_endurance_90", "z2_cadence_90")
+#: ... whose intensity stays explicitly capped (IF), so a longer easy day is still easy.
+EASY_DAY_IF_CAP = 0.70
+
+
+def easy_day_default_tss(library: Mapping[str, Template] | None = None) -> float:
+    """The template default an easy day is shrunk to: the first easy-pool ride's load (Z2 60)."""
+    lib = library if library is not None else load_library()
+    return resolve(lib[EASY_DAY_POOL[0]], None, outdoor=True).tss
+
+
+def apply_easy_days(
+    days: Sequence[DayPlan],
+    easy: Learned,
+    *,
+    mutable_from: dt.date,
+    skip: Collection[dt.date],
+    ahead_weeks: Collection[dt.date],
+    ctx: PlanContext,
+    phase_of: Callable[[dt.date], str],
+) -> list[Explanation]:
+    """Plan easy days near the athlete's own easy-day load (decision D2, ADR-0019).
+
+    An endurance / recovery day below the learned ``easy_day_tss`` becomes the
+    :data:`EASY_DAY_POOL` ride closest to it (IF ≤ :data:`EASY_DAY_IF_CAP`, within the day's
+    minutes); never lower than planned. Skipped: frozen days, ``skip`` (today when readiness is
+    below AS_PLANNED or another adaptation already changed it), days in ``ahead_weeks`` (the
+    athlete is already ahead of the week's plan), masters (≥ 60: no widening) and a value that
+    is only the default (no learned habit yet).
+    """
+    if ctx.masters or easy.source == "default":
+        return []
+    out: list[Explanation] = []
+    for d in days:
+        week = d.date - dt.timedelta(days=d.date.weekday())
+        if d.date < mutable_from or d.date in skip or week in ahead_weeks:
+            continue
+        if d.workout is None or d.is_hard or d.role not in ("endurance", "recovery"):
+            continue
+        if d.tss >= easy.value:
+            continue
+        probe = DayPlan(date=d.date, role="endurance", max_minutes=d.max_minutes)
+        if not fill_endurance(
+            probe,
+            easy.value,
+            ctx,
+            phase_of(d.date),
+            prefer_cadence=False,
+            pool=EASY_DAY_POOL,
+            max_if=EASY_DAY_IF_CAP,
+        ):
+            continue
+        if probe.workout is None or probe.tss <= d.tss + 1:
+            continue
+        before, before_tss = d.template_id, d.tss
+        d.template_id, d.workout, d.params, d.outdoor = (
+            probe.template_id,
+            probe.workout,
+            probe.params,
+            probe.outdoor,
+        )
+        d.intent, d.role = probe.intent, probe.role
+        habit = (
+            f"你最近 4 週的輕鬆日中位數 {easy.raw:.0f} TSS（{easy.n} 天）"
+            if easy.source == "learned" and easy.raw is not None
+            else f"你在 athlete.yaml 設定的輕鬆日負荷 {easy.value:.0f} TSS"
+        )
+        d.notes.append(f"依{habit}排輕鬆日，強度上限 IF {EASY_DAY_IF_CAP:.2f}")
+        out.append(
+            Explanation(
+                key=f"plan.learn.easy_day_tss.{d.date.isoformat()}",
+                headline_zh=f"{d.date.isoformat()}：{before} → {d.template_id}（依你的輕鬆日習慣）",
+                because=[
+                    Reason(
+                        text_zh=(
+                            f"{habit}；收斂到模板預設後取 {easy.value:.0f} TSS，"
+                            f"原本這天只排 {before_tss:.0f}"
+                        ),
+                        evidence={
+                            "easy_day_tss": easy.value,
+                            "n": easy.n,
+                            "source": easy.source,
+                            "median": easy.raw,
+                            "before_tss": round(before_tss, 1),
+                        },
+                    ),
+                    Reason(
+                        text_zh=(
+                            f"只排 60–90 分 Z2、強度上限 IF {EASY_DAY_IF_CAP:.2f}；"
+                            "準備度低於照表、本週已超前或 60 歲以上不放寬"
+                        ),
+                        evidence={"if_cap": EASY_DAY_IF_CAP, "pool": list(EASY_DAY_POOL)},
+                    ),
+                ],
+                method=MethodRef(
+                    model_id="plan.learn.easy_day_tss",
+                    version=ADAPT_VERSION,
+                    inputs={},
+                    doc="docs/specs/adaptive-planning.md",
+                    claim="planning.easy_day_habit",
+                ),
+                confidence="medium",
+                glossary_terms=["workout_library", "guardrails"],
+            )
+        )
+    return out

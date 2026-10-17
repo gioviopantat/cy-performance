@@ -100,9 +100,11 @@ Pure functions over stored data. Details in [04-analysis-engine](04-analysis-eng
   counted, outdoor interruptions excused); `ride/context.py` — stops, coasting, heat and which
   numbers they make unreliable; `longitudinal/goal.py` — FTP trend and projected date to the
   season target (all for the per-ride report, [specs/ride-report.md](specs/ride-report.md)).
+- `personal_scales.py` — the athlete's own RPE offset per ride class, usual feel and easy-day
+  load, shrunk and bounded (ADR-0019); readiness and the planner read them through
+  `services/adaptive.py`.
 - `wellness_quality.py` — flags an overnight resting-HR level shift (≥ 10 bpm between 5-reading
   medians), a likely source change (battery swap, new device); reports mark comparisons across it.
-- `compliance.py` *(planned)* — planned vs executed workout (paired via intervals.icu `paired_event_id`).
 
 ### 5.5 `planning/`
 Details in [05-training-engine](05-training-engine.md).
@@ -118,6 +120,11 @@ Details in [05-training-engine](05-training-engine.md).
 - `planner.py` — fills a rolling horizon: weekly TSS target → day allocation by availability →
   template selection by phase + limiter + readiness → concrete steps.
 - `guardrails.py` — hard constraints (max ramp rate, min rest, max HIT days, TSB floor, taper rules).
+- `gate.py` — the weekly progression gate (up / hold / down / early recovery / back from a break)
+  and the weekly accumulation rule (ADR-0018, flag `plan.progression_gate`); its athlete-facing
+  text lives in `planning/i18n/gate.zh-TW.yaml`.
+- `compliance.py` — the plan-vs-actual record of one planned day (`planned_workouts.compliance`,
+  [specs/adaptive-planning.md](specs/adaptive-planning.md) Phase 0b).
 - `renderer.py` — `PlannedWorkout` → intervals.icu workout text (see 02 §4.6) and `EventEx` payload.
 
 ### 5.6 `publish/`
@@ -207,6 +214,14 @@ A package may import only from its own layer or lower ones:
   `digest_monthly.py`) fill it; `reports/digest_pdf.py` + `digest_charts.py` render it, sharing
   `reports/pdf.py` and `templates/_report.html.j2` with the ride PDF; `reports/email_copy.py`
   writes every report email (subject, text, HTML) from `i18n/email.zh-TW.yaml`.
+- `services/adaptive.py` — the adaptive inputs per profile under its flags: personal scales for
+  readiness and the planner, the progression gate switch and its decision for the weekly
+  digest, and `learned_params` in the morning run.
+- `services/compliance.py` — fills `planned_workouts.compliance` for the last 7 days in the
+  morning run (the intent verdict comes from `reports/ride_intent.build_intent`);
+  `services/plan_replay.py` — `cyp plan replay`: readiness and the planner re-run day by day on
+  stored data, judged with the same compliance code, the database opened read-only
+  (`store/db.make_readonly_engine`).
 - `services/calendar.py` — the calendar view: planned (calendar first) vs done per day, compliance status and week summaries (`GET /v1/calendar`, read-only);
 - `services/ride_feedback.py` — post-ride RPE / feel answered on the web, fed into readiness (`data/ride_feedback/<id>.json`);
 - `services/ride_log.py` — the deterministic WORKOUT + RIDE.LOG text of a ride, plus the athlete-edited version saved in `data/ride_logs/<id>.txt` (previous version kept as `.prev.txt`);

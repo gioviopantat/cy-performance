@@ -14,6 +14,7 @@ simulatable, and bounded by guardrails ([ADR-0004](adr/0004-deterministic-planne
 | Availability: per-weekday max minutes, one-off `availability.dates` (`{2026-10-09: 210}` replaces that date's minutes, e.g. a swapped weekend), indoor/outdoor, hard "no" days; overrides from icu NOTE events with `training_availability` / `max_training_time` | `config/athlete.yaml` + icu events |
 | Limiters: from `longitudinal/limiters.py` (e.g. "fades after 40 min at threshold", "VO2 ceiling", "poor durability > 1 500 kJ") | analysis |
 | Compliance history (what actually got done) | `planned_workouts.compliance` |
+| Personal scales: RPE offset per class, usual feel, easy-day load (ADR-0019) | learned from rides, stored in `learned_params`; `athlete.yaml planner.scales` wins |
 | Other-sport load (yoga, strength, hiking, trail run) | icu activities with `icu_training_load` |
 
 ## 2. Season → blocks → weeks → days
@@ -135,7 +136,7 @@ effective config. Flags `plan.athlete_rules` and `plan.long_ride_progression`.
 
 ## 3. Daily adaptation loop (`jobs/daily.py`)
 ```
-sync (icu + strava) → analyze new rides → compliance of yesterday's slot → readiness(today)
+sync (icu + strava) → analyze new rides → readiness(today) → compliance of the last 7 days' slots
 → replan(horizon = today .. today+13):
     1. Yesterday done as planned?       → keep progression index
        Partial/skipped HIT?             → re-slot that HIT within 72 h if a day frees; else drop (never stack two HIT)
@@ -143,7 +144,10 @@ sync (icu + strava) → analyze new rides → compliance of yesterday's slot →
                                           ≥ 60 % of its load, hard → endurance (ADR-0017)
        (the plan is what the calendar showed: a later proposal for a frozen day that the
         calendar does not show is not judged; skipped Z2 is dropped, never made up)
-    2. Readiness today:
+    1b. Easy days from your habit (flag plan.personal_scales, ADR-0019): an endurance/recovery
+       day below your learned easy-day load → 60–90 min Z2 near it, IF ≤ 0.70 (not a today
+       below AS_PLANNED, not a week already ahead, not 60+)
+    2. Readiness today (RPE / feel read on your personal scale, ADR-0019):
        REST        → today = rest, push HIT ≥ 48 h
        EASY        → today ≤ Z2, cap 60 % of planned TSS
        AS_PLANNED  → unchanged
@@ -156,6 +160,15 @@ sync (icu + strava) → analyze new rides → compliance of yesterday's slot →
 ```
 
 ## 4. Weekly review (`jobs/weekly.py`, Monday)
+**Progression gate** (flag `plan.progression_gate`, off by default; ADR-0018,
+`planning/gate.py`): each Monday the week that starts goes up (+1 step, the season's advance;
+two easy ups: +1 extra, ≤ 2 per block), holds, goes down (−1 step, TSS × 0.85), becomes an early
+recovery week, or after a ≥ 10-day break holds and steps back, from last week's key-session
+compliance, personal RPE delta, 7-day HRV band, EASY/REST days, completion and fatigue z. From
+Friday a week ≥ 15 % ahead of its plan eases its remaining easy days (D1-B). The decision is
+explained in the plan (`plan.gate.<monday>`) and the weekly digest ("下週為什麼這樣排"). The
+bullets below are the original design; the gate implements the "block progression" one.
+
 - Compliance %, TSS/hours vs target, TID (sessions) vs model with time-in-zone as reference,
   readiness distribution.
 - FTP/eFTP: if icu eFTP or our CP fit ≥ 3 % above FTP for 2 consecutive weeks and a recent
@@ -223,6 +236,14 @@ rendering for the no-power scenario (Edge 530 rides).
 - Inputs exclude raw Strava streams/text (see 02 §2.4).
 
 ## 8. Simulation and validation
+**Replay (`cyp plan replay --from D --to D [--season-start D] [--json]`)**: re-runs readiness and
+the planner day by day on stored data (each day's plan frozen as the athlete would have seen it
+that morning, our own calendar events hidden, readiness recomputed), judges each day with the
+morning run's compliance code and prints per-week planned vs actual, overdone / skipped counts,
+EASY/REST days and gate outcomes. The database is opened read-only; nothing is written. Flags
+come from the profile (`CYP_FEATURES` for a one-off what-if). It is the acceptance tool of
+[specs/adaptive-planning.md](specs/adaptive-planning.md) (decision D8).
+
 A simulator command (planned; today the tests in `tests/planning/` play this role) runs the full
 planner with a Banister responder (fitness τ 42, fatigue τ 7, k1/k2 fitted from the athlete's
 history where possible), random compliance noise (85 % done, 10 % partial, 5 % skipped) and

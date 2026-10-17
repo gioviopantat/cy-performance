@@ -461,6 +461,20 @@ class OtherSportsConfig(_StrictModel):
 Phase = Literal["base", "build", "threshold", "test"]
 
 
+class PersonalScalesConfig(_StrictModel):
+    """Personal scales written by hand; each wins over the learned value.
+
+    Flag ``plan.personal_scales``; learned in ``analysis/personal_scales.py``.
+    """
+
+    #: RPE offset per ride class (``endurance: 2``: Z2 feels 2 points harder than the table).
+    rpe_offset: dict[str, Annotated[float, Field(ge=-2, le=2)]] = Field(default_factory=dict)
+    #: Your usual post-ride feel (icu 1 strong … 5 weak).
+    feel_baseline: Annotated[float, Field(ge=1, le=4)] | None = None
+    #: Load of your usual easy day.
+    easy_day_tss: Annotated[float, Field(gt=0, le=200)] | None = None
+
+
 class PlannerConfig(_StrictModel):
     """Planner knobs (docs/05-training-engine.md). Phase-keyed maps may be partial."""
 
@@ -481,6 +495,8 @@ class PlannerConfig(_StrictModel):
     menus: Literal["phase", "goal"] = "phase"
     #: Rotate equally ranked alternatives by week. Set by ``plan.variety``.
     variety: bool = False
+    #: Personal scales written by hand (priority over learned values).
+    scales: PersonalScalesConfig = Field(default_factory=PersonalScalesConfig)
 
     @field_validator("today_cutoff_local", mode="before")
     @classmethod

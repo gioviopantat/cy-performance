@@ -29,6 +29,7 @@ intervals.icu / Strava / Garmin already draw unless it carries our verdict. 07:0
 | 6 | 恢復: 7-day HRV vs baseline band, resting HR, sleep, ride feel vs expected, readiness verdicts of the week | `readiness_v2` |
 | 7 | 本週亮點: best climbs vs history (same fatigue / heat), durability (late-ride power) vs the 4-week median | climbs, durability |
 | 8 | 下週課表: the stored plan for the coming week with each session's purpose | `planned_workouts` |
+| 8b | 下週為什麼這樣排 (only with `plan.progression_gate` on, ADR-0018): the progression gate's decision for the coming week, its headline and every input it weighed; the email repeats the headline. Optional field `WeeklyDigest.plan_reason` | `planning/gate.py` over stored data |
 | 9 | 方法與證據 | `core/evidence.py` |
 
 ### Monthly (`digest_monthly_v1`)

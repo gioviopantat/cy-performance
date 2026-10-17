@@ -58,11 +58,11 @@ model {
     }
     digester = container 'Digest job' {
       technology 'Python subprocess per profile + flock'
-      description 'Per profile with report.digest_weekly / report.digest_monthly on: every due, unsent weekly (Monday) or monthly (the 1st) digest is built as a zh-TW PDF (the ride PDF look; next week from the stored plan) and emailed once (notify.email); digest_reports row per kind + period; never writes a calendar or Strava (jobs/digest.py, services/digest.py)'
+      description 'Per profile with report.digest_weekly / report.digest_monthly on: every due, unsent weekly (Monday) or monthly (the 1st) digest is built as a zh-TW PDF (the ride PDF look; next week from the stored plan and, with plan.progression_gate, why it is planned so) and emailed once (notify.email); digest_reports row per kind + period; never writes a calendar or Strava (jobs/digest.py, services/digest.py)'
     }
     cli = container 'cyp CLI' {
       technology 'Python 3.12, typer'
-      description 'profile, run, watch, ride-report, plan, sync, analyze, report, doctor, schedule; global --profile (src/cyp/cli)'
+      description 'profile, run, watch, ride-report, plan (+ plan replay), sync, analyze, report, doctor, schedule; global --profile (src/cyp/cli)'
     }
     runner = container 'Autopilot run' {
       technology 'Python subprocess per profile + flock'
@@ -82,7 +82,7 @@ model {
     }
     db = store 'Profile database' {
       technology 'SQLite + SQLAlchemy/Alembic'
-      description 'Activities, metrics, wellness, plans, publish_log, job_runs, ride_reports, sync cursors; one file per profile (store/)'
+      description 'Activities, metrics, wellness, plans with plan-vs-actual compliance, learned personal parameters, publish_log, job_runs, ride_reports, sync cursors; one file per profile (store/)'
     }
     streams = store 'Stream store' {
       technology 'Parquet per activity'
@@ -150,9 +150,9 @@ model {
   cyp.digester -> cyp.reports 'reads ride facts and trends; writes digest PDFs'
   cyp.digester -> smtp 'emails the weekly / monthly PDF'
   cyp.cli -> cyp.profileFiles 'profile add/adopt/promote; reads settings and flags'
-  cyp.cli -> cyp.db 'reads, migrates, plans'
+  cyp.cli -> cyp.db 'reads, migrates, plans; plan replay reads it read-only (mode=ro, writes nothing)'
   cyp.runner -> cyp.profileFiles 'loads .env, athlete.yaml, flags, icu_athlete_id'
-  cyp.runner -> cyp.db 'stores synced data, plans, publish_log, job_runs'
+  cyp.runner -> cyp.db 'stores synced data, plans, plan compliance, learned_params, publish_log, job_runs'
   cyp.runner -> cyp.streams 'writes and reads ride streams'
   cyp.runner -> cyp.reports 'writes daily/weekly reports and logs'
   cyp.runner -> icu 'waits for DNS after wake, checks key owner, syncs activities/wellness; diffs and upserts our events (write guard, apply mode only)'

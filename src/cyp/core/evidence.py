@@ -373,6 +373,48 @@ REGISTRY: tuple[Claim, ...] = (
         "(single-session spikes matter, week-to-week ratios do not)",
     ),
     _proposed(
+        "personal_scales.rpe_offset",
+        None,
+        "RPE is read against the athlete's own offset per ride class: median(RPE - table) over "
+        "90 days, >= 5 rides per class (else all classes), shrunk n/(n+5), within +-2 (ADR-0019).",
+        "C",
+        "Direction: Seiler S et al. 2017 / Inoue A et al. 2022 (session RPE differs by person "
+        "and session type); window, minimum, k = 5 and +-2 are ours",
+    ),
+    _proposed(
+        "personal_scales.feel_baseline",
+        None,
+        "A post-ride feel counts as bad only 2 points worse than the athlete's 90-day median "
+        "(>= 8 answers) and never stricter than the fixed rule (ADR-0019).",
+        "C",
+        "Ours (ADR-0019): a personal baseline instead of the scale's middle",
+    ),
+    _proposed(
+        "planning.easy_day_habit",
+        None,
+        "Easy days are planned near the athlete's own 28-day median non-hard-day load (>= 6 "
+        "days, shrunk to the Z2-60 template, within x[1, 1.8]) as 60-90 min Z2 with IF <= 0.70; "
+        "not below AS_PLANNED readiness, not in a week already ahead, never for 60+ (D2).",
+        "C",
+        "Ours (spec adaptive-planning D2): a plan the athlete actually rides makes compliance "
+        "meaningful; review §2.1 (Roger never rode a 45-min spin)",
+    ),
+    _proposed(
+        "planning.progression_gate",
+        None,
+        "Each Monday the next week goes up (+1 step; +1 extra after two easy ups, <= 2 per "
+        "block), holds, goes down (-1 step, TSS x0.85) or becomes an early recovery week from "
+        "last week's key sessions (2/2 achieved; 2 missed with RPE +2), personal RPE delta, the "
+        "7-day HRV band (5 days below), EASY/REST days (<= 1 / >= 3), completion 0.85-1.15 and "
+        "fatigue z >= 1.5; a >= 10-day break holds and steps back 1 (> 21 days: 2); from Friday "
+        "a week >= 15 % ahead eases its easy days (ADR-0018).",
+        "C",
+        "Direction: down / hold / up by recovery state, Nuuttila OP et al. 2022, Med Sci Sports "
+        "Exerc 54(10):1690, PMID 35975912; Kiviniemi AM et al. 2007, PMID 17849143 and 2010, "
+        "PMID 20575165; detraining, Mujika I, Padilla S 2000, Sports Med 30(2):79, PMID "
+        "10966148. Every threshold and step size is ours, to be checked by replay",
+    ),
+    _proposed(
         "readiness_v1.overreached_rule",
         "readiness_v1",
         "The 7-day HRV mean 1.25 SD or more below baseline and RHR z > +1.5 together mean "
