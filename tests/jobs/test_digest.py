@@ -76,7 +76,14 @@ def built(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dt.date]]:
         model = WeeklyDigest if kind == "weekly" else MonthlyDigest
 
         def build(
-            session: Any, store: Any, start: dt.date, *, profile: str, cfg: Any, reports_dir: Path
+            session: Any,
+            store: Any,
+            start: dt.date,
+            *,
+            profile: str,
+            cfg: Any,
+            reports_dir: Path,
+            gate: Any = None,
         ) -> WeeklyDigest | MonthlyDigest:
             assert reports_dir.name == "reports"
             calls.append((kind, start))

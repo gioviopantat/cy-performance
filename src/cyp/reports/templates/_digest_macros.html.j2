@@ -50,6 +50,14 @@
   <p class="note">課表已由 05:30 的自動排程寫進行事曆；這裡只是照抄，之後仍會依每天的恢復狀態調整。</p>
 </section>
 {% endmacro %}
+{% macro plan_reason(r) %}
+<section class="next plan-reason">
+  <h3>下週為什麼這樣排</h3>
+  <p><strong>{{ r.headline_zh }}</strong></p>
+  {% if r.reasons_zh %}<ul>{% for x in r.reasons_zh %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+  <p class="note">每週一由「每週進程閘門」依上週的關鍵課、RPE、HRV、準備度與完成率自動決定（證據等級 C，參考）。</p>
+</section>
+{% endmacro %}
 {% macro recovery_section(no, r, per_day) %}
 <section class="recovery">
   <h2><span class="no">{{ no }}</span>恢復</h2>

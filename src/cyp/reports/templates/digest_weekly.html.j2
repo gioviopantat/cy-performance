@@ -3,7 +3,7 @@
 {% extends "_digest.html.j2" %}
 {% block body %}
 {% from "_report.html.j2" import stat, explain, methods, climb_table %}
-{% from "_digest_macros.html.j2" import SESSION, DIST, BAND, badge, where, next_plan, recovery_section, goal_figures with context %}
+{% from "_digest_macros.html.j2" import SESSION, DIST, BAND, badge, where, next_plan, plan_reason, recovery_section, goal_figures with context %}
 
 {# 2 #}
 {% if d.sessions %}
@@ -115,6 +115,7 @@
 
 {# 8 #}
 {% if d.next_week %}{{ next_plan(8, "下週課表", d.next_week) }}{% endif %}
+{% if d.plan_reason %}{{ plan_reason(d.plan_reason) }}{% endif %}
 
 {# 9 #}
 {% if d.methods %}{{ methods(9, d.methods) }}{% endif %}

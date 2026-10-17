@@ -120,6 +120,9 @@ Details in [05-training-engine](05-training-engine.md).
 - `planner.py` — fills a rolling horizon: weekly TSS target → day allocation by availability →
   template selection by phase + limiter + readiness → concrete steps.
 - `guardrails.py` — hard constraints (max ramp rate, min rest, max HIT days, TSB floor, taper rules).
+- `gate.py` — the weekly progression gate (up / hold / down / early recovery / back from a break)
+  and the weekly accumulation rule (ADR-0018, flag `plan.progression_gate`); its athlete-facing
+  text lives in `planning/i18n/gate.zh-TW.yaml`.
 - `compliance.py` — the plan-vs-actual record of one planned day (`planned_workouts.compliance`,
   [specs/adaptive-planning.md](specs/adaptive-planning.md) Phase 0b).
 - `renderer.py` — `PlannedWorkout` → intervals.icu workout text (see 02 §4.6) and `EventEx` payload.
@@ -212,7 +215,8 @@ A package may import only from its own layer or lower ones:
   `reports/pdf.py` and `templates/_report.html.j2` with the ride PDF; `reports/email_copy.py`
   writes every report email (subject, text, HTML) from `i18n/email.zh-TW.yaml`.
 - `services/adaptive.py` — the adaptive inputs per profile under its flags: personal scales for
-  readiness and the planner, and `learned_params` in the morning run.
+  readiness and the planner, the progression gate switch and its decision for the weekly
+  digest, and `learned_params` in the morning run.
 - `services/compliance.py` — fills `planned_workouts.compliance` for the last 7 days in the
   morning run (the intent verdict comes from `reports/ride_intent.build_intent`);
   `services/plan_replay.py` — `cyp plan replay`: readiness and the planner re-run day by day on

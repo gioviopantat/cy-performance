@@ -175,3 +175,20 @@ def test_cli_replay_json_and_text(data: Path) -> None:
     assert not (data / "logs").exists() or not any((data / "logs").iterdir())
     bad = runner.invoke(app, ["plan", "replay", "--from", "2026-10-08", "--to", "2026-10-05"])
     assert bad.exit_code == 2
+
+
+def test_replay_reports_gate_decisions_only_with_the_flag(ctx: AppContext) -> None:
+    _early_season(ctx)
+    start, end = dt.date(2026, 9, 21), dt.date(2026, 10, 4)
+    off = plan_replay.replay(ctx, start, end)
+    assert all(w.gate is None for w in off.weeks)
+    ctx.settings = ctx.settings.model_copy(
+        update={"cyp_features": "notify.macos=off,plan.progression_gate=on"}
+    )
+    on = plan_replay.replay(ctx, start, end)
+    assert on.weeks[0].gate is None  # season week 1: nothing to judge yet
+    g = on.weeks[1].gate
+    assert g is not None and g["decision"] in {"up", "hold", "down", "early_recovery",
+                                               "back_from_break", "extra"}  # fmt: skip
+    assert g["progression_index"] <= g["season_index"] + g["extras_used"]
+    assert on.weeks[1].planned_first_morning is not None

@@ -10,11 +10,15 @@ import datetime as dt
 from pathlib import Path
 from typing import Any
 
+import pytest
 import yaml
 from sqlalchemy import select
 
 from cyp.analysis.personal_scales import Learned
+from cyp.planning import gate as gate_mod
+from cyp.planning.gate import GateDecision, gate_chain
 from cyp.planning.job import Adaptive, PlanOverrides, plan_horizon
+from cyp.planning.season import build_skeleton
 from cyp.services import adaptive
 from cyp.services import readiness as readiness_service
 from cyp.services.context import AppContext
@@ -22,7 +26,7 @@ from cyp.store.models import LearnedParam
 from tests.api.conftest import NOW
 
 TODAY = NOW.date()
-OFF = "notify.macos=off,plan.personal_scales=off"
+OFF = "notify.macos=off,plan.personal_scales=off,plan.progression_gate=off"
 
 
 def _flags(ctx: AppContext, value: str) -> None:
@@ -95,3 +99,64 @@ def test_horizon_changes_only_widened_or_repaired_days(ctx: AppContext) -> None:
     assert not any(
         e.key == f"plan.learn.easy_day_tss.{TODAY.isoformat()}" for e in easy_today.adaptations
     )
+
+
+# ------------------------------------------------------------------- progression gate
+
+
+def _early_season(ctx: AppContext, start: dt.date = dt.date(2026, 9, 7)) -> None:
+    path = Path(ctx.athlete_config_path)
+    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    raw["season"]["start"] = start
+    path.write_text(yaml.safe_dump(raw, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+
+def test_gate_flag_off_by_default_and_on_by_choice(ctx: AppContext) -> None:
+    _early_season(ctx)
+    _flags(ctx, "notify.macos=off")
+    assert not adaptive.plan_inputs(ctx, TODAY).gate
+    assert adaptive.gate_decision(ctx, dt.date(2026, 10, 5)) is None
+    _flags(ctx, "notify.macos=off,plan.progression_gate=on")
+    inputs = adaptive.plan_inputs(ctx, TODAY)
+    assert inputs.gate and inputs.rpe_offset  # reads the personal offsets
+    g = adaptive.gate_decision(ctx, dt.date(2026, 10, 5))
+    assert g is not None and g.explanation is not None
+    assert g.explanation.key == "plan.gate.2026-10-05"
+    # Deterministic, and never above the season's index plus the extra steps taken.
+    ds, cfg = ctx.dataset(), ctx.athlete_config()
+    sk = build_skeleton(cfg)
+    a = gate_chain(ds, sk, cfg.availability.weekly_max_minutes, until=TODAY)
+    b = gate_chain(ds, sk, cfg.availability.weekly_max_minutes, until=TODAY)
+    assert [(k, v.decision, v.progression_index) for k, v in a.items()] == [
+        (k, v.decision, v.progression_index) for k, v in b.items()
+    ]
+    assert list(a) == [w.start for w in sk.weeks[1:] if w.start <= TODAY]
+    assert all(1 <= g.progression_index <= g.season_index + g.extras_used for g in a.values())
+
+
+def test_horizon_applies_a_down_decision(ctx: AppContext, monkeypatch: Any) -> None:
+    _early_season(ctx)
+    ds, cfg = ctx.dataset(), ctx.athlete_config()
+    plain = plan_horizon(ds, cfg, today=TODAY, now_local=NOW)
+    week = TODAY - dt.timedelta(days=TODAY.weekday())
+    season_week = next(w for w in build_skeleton(cfg).weeks if w.start == week)
+
+    def down(*_a: Any, **_k: Any) -> dict[dt.date, Any]:
+        return {
+            week: gate_mod._apply(
+                season_week,
+                "down",
+                [],
+                gate_mod.WeekEvidence(start=week - dt.timedelta(days=7)),
+                GateDecision(week, "up", season_week.progression_index, 1),
+                0,
+            )
+        }
+
+    monkeypatch.setattr(gate_mod, "gate_chain", down)
+    run = plan_horizon(ds, cfg, today=TODAY, now_local=NOW, adaptive=Adaptive(gate=True))
+    assert run.week_targets[week].target_tss == pytest.approx(
+        plain.week_targets[week].target_tss * gate_mod.DOWN_TSS_FACTOR, abs=0.2
+    )
+    assert any(e.key == f"plan.gate.{week.isoformat()}" for e in run.adaptations)
+    assert run.gate[week].decision == "down"

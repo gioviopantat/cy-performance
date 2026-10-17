@@ -19,12 +19,16 @@ from sqlalchemy import select
 from cyp.analysis.personal_scales import SCALES_VERSION, PersonalScales, learn
 from cyp.dataset import Dataset
 from cyp.planning.adapt import easy_day_default_tss
+from cyp.planning.athlete_rules import is_senior
+from cyp.planning.gate import GateDecision, gate_chain
 from cyp.planning.job import Adaptive
+from cyp.planning.season import build_skeleton
 from cyp.services.context import AppContext
 from cyp.services.readiness import ride_feedback
 from cyp.store.models import LearnedParam
 
 SCALES_FLAG = "plan.personal_scales"
+GATE_FLAG = "plan.progression_gate"
 
 
 def scales_for(ctx: AppContext, day: dt.date, ds: Dataset | None = None) -> PersonalScales | None:
@@ -55,14 +59,46 @@ def readiness_scales(scales: PersonalScales | None) -> dict[str, Any]:
     }
 
 
-def adaptive_for(scales: PersonalScales | None) -> Adaptive:
-    """Planner inputs from the scales (an empty :class:`Adaptive` when off)."""
-    return Adaptive(easy_day=scales.easy_day_tss if scales is not None else None)
+def adaptive_for(scales: PersonalScales | None, *, gate: bool = False) -> Adaptive:
+    """Planner inputs from the scales and the gate flag (an empty :class:`Adaptive` when off)."""
+    return Adaptive(
+        easy_day=scales.easy_day_tss if scales is not None else None,
+        gate=gate,
+        rpe_offset=scales.offsets() if scales is not None and gate else {},
+    )
 
 
 def plan_inputs(ctx: AppContext, day: dt.date, ds: Dataset | None = None) -> Adaptive:
     """Everything adaptive the planner gets for ``day`` under this profile's flags."""
-    return adaptive_for(scales_for(ctx, day, ds))
+    return adaptive_for(scales_for(ctx, day, ds), gate=ctx.features().enabled(GATE_FLAG))
+
+
+def gate_decision(ctx: AppContext, week_start: dt.date) -> GateDecision | None:
+    """The progression gate's decision for the week starting ``week_start`` (flag off: None).
+
+    The same chain the planner runs (``planning/gate.gate_chain``), for the weekly digest's
+    section on why next week is planned the way it is.
+    """
+    if not ctx.features().enabled(GATE_FLAG):
+        return None
+    cfg = ctx.athlete_config_or_none()
+    if cfg is None:
+        return None
+    try:
+        sk = build_skeleton(cfg)
+    except ValueError:  # a season too short to plan has no gate
+        return None
+    ds = ctx.dataset()
+    scales = scales_for(ctx, week_start, ds)
+    chain = gate_chain(
+        ds,
+        sk,
+        cfg.availability.weekly_max_minutes,
+        until=week_start,
+        rpe_offset=scales.offsets() if scales is not None else None,
+        conservative=is_senior(cfg, week_start),
+    )
+    return chain.get(week_start)
 
 
 def record(ctx: AppContext, today: dt.date) -> int:

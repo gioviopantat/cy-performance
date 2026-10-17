@@ -109,6 +109,7 @@ digest:
   next_title:
     weekly: "下週課表"
     monthly: "下個月"
+  plan_reason_title: "下週為什麼這樣排"
   next_session: "{day}：{name}"
   next_more: "還有 {n} 堂，詳見 PDF。"
   attachment: "完整分析在附件 PDF，每個數字都附上出處與證據等級。"

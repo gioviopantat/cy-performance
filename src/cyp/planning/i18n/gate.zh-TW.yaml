@@ -1,0 +1,46 @@
+# Athlete-facing text of the weekly progression gate (planning/gate.py, ADR-0018).
+# Placeholders are str.format fields filled with numbers computed by the gate.
+decision:
+  up: "升（進程 +1 步）"
+  extra: "升（進程 +2 步，連兩週輕鬆完成）"
+  hold: "持平（進程不前進）"
+  down: "降（進程 −1 步、負荷 ×{factor:.2f}）"
+  early_recovery: "提早恢復週"
+  back_from_break: "中斷後回來（持平並退步）"
+band:
+  below: "低於"
+  within: "在"
+  above: "高於"
+reason:
+  break: "已經 {gap} 天沒騎（≥ {break_days} 天算中斷）：回來第一週持平並退 {steps} 步"
+  down_key: "關鍵課漏掉或未達 {missed} 次，而且騎起來比你平常難 {delta:+.1f} 分（RPE）"
+  down_hrv: "HRV 7 日平均有 {n} 天低於正常範圍"
+  down_easy: "準備度有 {n} 天是輕鬆或休息"
+  two_down: "連續兩週都是「降」"
+  tired: "主觀疲勞比平常高 {z:.1f} 個標準差"
+  early: "{why} → 這週提早改成恢復週"
+  extra: "連兩週「升」而且都比你平常輕鬆（RPE 差 ≤ {limit:+.0f}）：多前進一步（這個 block 已用 {used}/{max}）"
+up:
+  keys: "關鍵課達標 {achieved}/{planned}（升級要 ≥ {min} 堂且全部達標）"
+  rpe_none: "上週沒有可比的 RPE"
+  conservative: "（保守：不升）"
+  rpe: "RPE 比你平常 {delta:+.1f} 分（{n} 趟；升級要 ≤ {limit:+.0f}）"
+  hrv_none: "HRV 資料不足"
+  hrv: "HRV 7 日平均{band}正常範圍"
+  easy: "準備度輕鬆／休息 {n} 天（升級要 ≤ {max}）"
+  completion: "完成率 {c:.0%}（{actual:.0f}/{target:.0f} TSS；升級要 {lo:.0%}–{hi:.0%}）"
+  no_target: "上週沒有週目標可比"
+week:
+  headline: "{start} 起這週：{decision}"
+  fixed_suffix: "（恢復／測驗週照排）"
+  fixed_note: "；季節表本來就是恢復／測驗週：照排，不調整"
+  effect: "進程第 {index} 步（季節表第 {season} 步）"
+  effect_factor: "，週負荷 ×{factor:.2f}"
+  effect_recovery: "，改成恢復週"
+targets:
+  reason: "每週進程閘門「降」：負荷 ×{factor:.2f}（{before:.0f} → {after:.0f} TSS）"
+  headline: "（閘門：×{factor:.2f}）"
+accumulation:
+  note: "本週已經比計畫多騎 {over:.0%}，剩下的輕鬆日減量 {share:.0%}"
+  headline: "{date}：{before} → {after}（本週已超前）"
+  reason: "本週到昨天實際 {actual:.0f} TSS，計畫 {planned:.0f}（多 {over:.0%}，≥ {limit:.0%} 就把剩下的輕鬆日減量）"

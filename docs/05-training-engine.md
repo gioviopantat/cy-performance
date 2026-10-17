@@ -160,6 +160,15 @@ sync (icu + strava) → analyze new rides → readiness(today) → compliance of
 ```
 
 ## 4. Weekly review (`jobs/weekly.py`, Monday)
+**Progression gate** (flag `plan.progression_gate`, off by default; ADR-0018,
+`planning/gate.py`): each Monday the week that starts goes up (+1 step, the season's advance;
+two easy ups: +1 extra, ≤ 2 per block), holds, goes down (−1 step, TSS × 0.85), becomes an early
+recovery week, or after a ≥ 10-day break holds and steps back, from last week's key-session
+compliance, personal RPE delta, 7-day HRV band, EASY/REST days, completion and fatigue z. From
+Friday a week ≥ 15 % ahead of its plan eases its remaining easy days (D1-B). The decision is
+explained in the plan (`plan.gate.<monday>`) and the weekly digest ("下週為什麼這樣排"). The
+bullets below are the original design; the gate implements the "block progression" one.
+
 - Compliance %, TSS/hours vs target, TID (sessions) vs model with time-in-zone as reference,
   readiness distribution.
 - FTP/eFTP: if icu eFTP or our CP fit ≥ 3 % above FTP for 2 consecutive weeks and a recent

@@ -241,6 +241,7 @@ def compose_weekly(
         to_name=to_name,
         cc_names=cc_names,
         fmt={"rides": rides, "hours": hours},
+        plan_reason=d.plan_reason.headline_zh if d.plan_reason is not None else None,
     )
 
 
@@ -296,6 +297,7 @@ def _digest(
     to_name: str,
     cc_names: Sequence[str],
     fmt: dict[str, Any],
+    plan_reason: str | None = None,
 ) -> EmailContent:
     c = _copy()["digest"]
     verdict = headline.verdict
@@ -323,6 +325,9 @@ def _digest(
             lines.append(c["next_more"].format(n=len(nxt.sessions) - MAX_NEXT_SESSIONS))
         text = "\n".join([*((nxt.text_zh and [nxt.text_zh]) or []), *lines])
         body.sections.append((c["next_title"][kind], text))
+    if plan_reason:
+        # The progression gate's decision (ADR-0018, flag plan.progression_gate).
+        body.sections.append((c["plan_reason_title"], plan_reason))
     body.closing = [c["attachment"], "", _copy()["ride"]["signoff"], _copy()["ride"]["team"]]
     cc = _copy()["ride"]["footer_cc"].format(names="、".join(cc_names)) if cc_names else ""
     body.footer = c["footer"].format(to=to_name, cc=cc)

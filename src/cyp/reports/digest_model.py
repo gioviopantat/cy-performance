@@ -172,6 +172,19 @@ class NextPlan(_Model):
     text_zh: str = ""
 
 
+class PlanReason(_Model):
+    """Weekly, after the next-week plan: why that week is planned so (progression gate).
+
+    Filled only with the flag ``plan.progression_gate`` on (ADR-0018): the gate's decision for
+    the week after the digest's, its headline and every reason it weighed.
+    """
+
+    decision: str
+    headline_zh: str
+    reasons_zh: list[str] = Field(default_factory=list)
+    explanation: dict[str, Any] | None = None
+
+
 class WeeklyDigest(_Model):
     """Everything the weekly PDF shows."""
 
@@ -189,6 +202,7 @@ class WeeklyDigest(_Model):
     recovery: Recovery | None = None
     highlights: Highlights | None = None
     next_week: NextPlan | None = None
+    plan_reason: PlanReason | None = None
     methods: list[MethodUsed] = Field(default_factory=list)
 
 

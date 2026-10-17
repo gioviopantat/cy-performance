@@ -733,6 +733,7 @@
   ],
   "text_zh": "下週 3 次課、計畫 220 TSS，其中 1 次強度課"
  },
+ "plan_reason": null,
  "methods": [
   {
    "model_id": "coggan_np_if_tss",

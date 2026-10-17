@@ -33,6 +33,7 @@ from cyp.analysis.ride.frames import RideFrame
 from cyp.core.ids import external_id
 from cyp.dataset import CACHE, PlannedRow, ReadinessRow
 from cyp.planning.compliance import KEY_ROLES
+from cyp.planning.gate import GateDecision
 from cyp.planning.job import PlanRun, plan_horizon
 from cyp.planning.planner import DayPlan
 from cyp.planning.season import build_skeleton
@@ -93,6 +94,8 @@ class ReplayWeek:
     skipped: int
     easy_rest: int
     gate: dict[str, Any] | None = None
+    #: The whole week as planned on its first replayed morning (before daily adaptations).
+    planned_first_morning: float | None = None
 
 
 @dataclass
@@ -165,6 +168,7 @@ class ReplayResult:
                     "overdone": w.overdone,
                     "skipped": w.skipped,
                     "easy_rest": w.easy_rest,
+                    "planned_first_morning": w.planned_first_morning,
                     "gate": w.gate,
                 }
                 for w in self.weeks
@@ -267,6 +271,9 @@ def replay(
     )
     planned: dict[dt.date, tuple[PlannedRow, ...]] = {}
     targets: dict[dt.date, float] = {}
+    gates: dict[dt.date, GateDecision] = {}
+    first_morning: dict[dt.date, float] = {}
+    gate_on = flags.enabled(adaptive.GATE_FLAG)
     frames: dict[int, RideFrame | None] = {}
     with ctx.factory() as session:
         day = start
@@ -287,10 +294,18 @@ def replay(
                 now_local=dt.datetime.combine(day, REPLAY_TIME),
                 bias=bias,
                 library=library,
-                adaptive=adaptive.adaptive_for(scales),
+                adaptive=adaptive.adaptive_for(scales, gate=gate_on),
             )
+            for g in run.gate.values():
+                gates.setdefault(g.week_start, g)
+            monday = day - dt.timedelta(days=day.weekday())
+            if monday not in first_morning:
+                first_morning[monday] = round(
+                    sum(d.tss for d in run.days if monday <= d.date <= monday + dt.timedelta(6)), 1
+                )
             for w_start, t in run.week_targets.items():
-                targets.setdefault(w_start, t.target_tss)
+                if w_start <= day:  # the target as set on the week's own first morning
+                    targets.setdefault(w_start, t.target_tss)
             plan = next((d for d in run.days if d.date == day), None)
             rides = [a for a in base.on(day) if a.is_ride]
             record: dict[str, Any] | None = None
@@ -328,11 +343,34 @@ def replay(
                 )
             )
             day += dt.timedelta(days=1)
-    result.weeks = _weeks(result.days, targets)
+    result.weeks = _weeks(result.days, targets, gates)
+    for w in result.weeks:
+        w.planned_first_morning = first_morning.get(w.start)
     return result
 
 
-def _weeks(days: list[ReplayDay], targets: Mapping[dt.date, float]) -> list[ReplayWeek]:
+def _gate_dict(g: GateDecision | None) -> dict[str, Any] | None:
+    if g is None:
+        return None
+    ev = g.evidence
+    return {
+        "decision": g.decision,
+        "progression_index": g.progression_index,
+        "season_index": g.season_index,
+        "tss_factor": g.tss_factor,
+        "recovery": g.recovery,
+        "extras_used": g.extras_used,
+        "headline_zh": g.explanation.headline_zh if g.explanation else None,
+        "evidence": g.explanation.method.inputs if g.explanation and g.explanation.method else None,
+        "easy_rest_days_before": ev.easy_rest_days if ev is not None else None,
+    }
+
+
+def _weeks(
+    days: list[ReplayDay],
+    targets: Mapping[dt.date, float],
+    gates: Mapping[dt.date, GateDecision] | None = None,
+) -> list[ReplayWeek]:
     by_week: dict[dt.date, list[ReplayDay]] = {}
     for d in days:
         by_week.setdefault(d.date - dt.timedelta(days=d.date.weekday()), []).append(d)
@@ -347,6 +385,7 @@ def _weeks(days: list[ReplayDay], targets: Mapping[dt.date, float]) -> list[Repl
             overdone=sum(d.overdone for d in ds),
             skipped=sum(d.skipped for d in ds),
             easy_rest=sum(1 for d in ds if d.readiness in ("EASY", "REST")),
+            gate=_gate_dict((gates or {}).get(w)),
         )
         for w, ds in sorted(by_week.items())
     ]
