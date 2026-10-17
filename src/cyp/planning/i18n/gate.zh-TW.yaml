@@ -7,12 +7,14 @@ decision:
   down: "降（進程 −1 步、負荷 ×{factor:.2f}）"
   early_recovery: "提早恢復週"
   back_from_break: "中斷後回來（持平並退步）"
+  no_data: "照季節表前進（上週沒有可判斷的課表紀錄）"
 band:
   below: "低於"
   within: "在"
   above: "高於"
 reason:
-  break: "已經 {gap} 天沒騎（≥ {break_days} 天算中斷）：回來第一週持平並退 {steps} 步"
+  no_data: "上週沒有任何課表的完成紀錄可判斷（例如閘門開啟之前），進程照季節表前進"
+  break: "中斷了 {gap} 天沒騎（≥ {break_days} 天算中斷）：回來第一週持平並退 {steps} 步"
   down_key: "關鍵課漏掉或未達 {missed} 次，而且騎起來比你平常難 {delta:+.1f} 分（RPE）"
   down_hrv: "HRV 7 日平均有 {n} 天低於正常範圍"
   down_easy: "準備度有 {n} 天是輕鬆或休息"

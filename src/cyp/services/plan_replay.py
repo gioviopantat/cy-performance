@@ -274,13 +274,14 @@ def replay(
     gates: dict[dt.date, GateDecision] = {}
     first_morning: dict[dt.date, float] = {}
     gate_on = flags.enabled(adaptive.GATE_FLAG)
+    offsets = adaptive.offsets_at(ctx, base) if gate_on else None
     frames: dict[int, RideFrame | None] = {}
     with ctx.factory() as session:
         day = start
         while day <= end:
             # Personal scales as of the day (flag plan.personal_scales), then its readiness.
             scales = adaptive.scales_for(ctx, day, base)
-            r0 = readiness_for(base, day, feedback, **adaptive.readiness_scales(scales))
+            r0 = readiness_for(base, day, feedback, **adaptive.readiness_inputs(ctx, day, base))
             readiness[day] = ReadinessRow(day, r0.score_0_100, r0.status, r0.recommendation)
             view = replace(
                 base,
@@ -294,7 +295,7 @@ def replay(
                 now_local=dt.datetime.combine(day, REPLAY_TIME),
                 bias=bias,
                 library=library,
-                adaptive=adaptive.adaptive_for(scales, gate=gate_on),
+                adaptive=adaptive.adaptive_for(scales, gate=gate_on, offsets=offsets),
             )
             for g in run.gate.values():
                 gates.setdefault(g.week_start, g)

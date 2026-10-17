@@ -25,7 +25,8 @@ GOOD = WeekEvidence(
     easy_rest_days=1,
     actual_tss=500.0,
     target_tss=500.0,
-    days_since_ride=1,
+    break_days=0,
+    judged_days=5,
 )
 
 
@@ -108,12 +109,47 @@ def test_early_recovery_after_two_downs_or_high_fatigue() -> None:
 
 
 def test_back_from_a_break() -> None:
-    assert _d(replace(GOOD, days_since_ride=10)) == "back_from_break"
-    assert _d(replace(GOOD, days_since_ride=9)) == "up"
-    _, reasons = decide(replace(GOOD, days_since_ride=12), None, conservative=True, extras_used=0)
+    assert _d(replace(GOOD, break_days=10)) == "back_from_break"
+    assert _d(replace(GOOD, break_days=9)) == "up"
+    _, reasons = decide(replace(GOOD, break_days=12), None, conservative=True, extras_used=0)
     assert reasons[0].evidence["steps"] == gate.BREAK_STEPS
-    _, long = decide(replace(GOOD, days_since_ride=22), None, conservative=True, extras_used=0)
+    _, long = decide(replace(GOOD, break_days=22), None, conservative=True, extras_used=0)
     assert long[0].evidence["steps"] == gate.LONG_BREAK_STEPS
+
+
+def test_no_plan_record_follows_the_season_but_body_signals_still_count() -> None:
+    blank = replace(GOOD, key_planned=0, key_achieved=0, rpe_delta=None, judged_days=0)
+    assert _d(blank) == "no_data" and gate.STEP["no_data"] == gate.STEP["up"]
+    assert _d(replace(blank, easy_rest_days=3)) == "down"
+    assert _d(replace(blank, break_days=11)) == "back_from_break"
+
+
+def _rides_on(days: list[dt.date]) -> Any:
+    from cyp.dataset import ActivityRow, Dataset
+
+    acts = tuple(
+        ActivityRow(id=i, date=d, sport="Ride", name=None, is_ride=True, moving_s=3600, kj=None,
+                    has_power=True, has_hr=True, load=50.0, load_source="icu")
+        for i, d in enumerate(days)
+    )  # fmt: skip
+    return Dataset(
+        version="t", athlete_id=1, weight_kg=None, settings=(), activities=acts, loads={},
+        wellness={}, fitness={}, readiness={}, events=(), icu_models={},
+    )  # fmt: skip
+
+
+def test_break_found_when_it_ended_during_the_judged_week() -> None:
+    week = MON - dt.timedelta(days=7)
+    # Last ride Sun 27 Sep, back Thu 8 Oct: 10 days off, only 7 of them by the Monday before.
+    back_mid_week = _rides_on([dt.date(2026, 9, 27), dt.date(2026, 10, 8)])
+    assert gate._break_days(back_mid_week, week, MON) == 10
+    # Still away on Monday: counted from the last ride.
+    away = _rides_on([dt.date(2026, 10, 1)])
+    assert gate._break_days(away, week, MON) == 10
+    # A break already >= 10 days on the Monday before was judged then, not again.
+    judged_before = _rides_on([dt.date(2026, 9, 20), dt.date(2026, 10, 6)])
+    assert gate._break_days(judged_before, week, MON) == 5  # only the gap since 6 Oct
+    assert gate._break_days(_rides_on([]), week, MON) is None
 
 
 # ------------------------------------------------------------------------------ apply
@@ -139,7 +175,7 @@ def test_steps_move_the_progression_within_bounds(skeleton: SeasonSkeleton) -> N
     assert capped.progression_index == 4  # never above season index + extras taken
     early = gate._apply(w3, "early_recovery", [], GOOD, prev, 0)
     assert early.recovery and early.progression_index == 2
-    away = gate._apply(w3, "back_from_break", [], replace(GOOD, days_since_ride=30), prev, 0)
+    away = gate._apply(w3, "back_from_break", [], replace(GOOD, break_days=30), prev, 0)
     assert away.progression_index == 1
     assert down.explanation is not None and down.explanation.key == f"plan.gate.{w3.start}"
     assert down.explanation.method is not None
@@ -151,6 +187,7 @@ def test_season_recovery_and_test_weeks_are_not_changed(skeleton: SeasonSkeleton
     prev = GateDecision(rec.start, "up", rec.progression_index, rec.progression_index)
     g = gate._apply(rec, "down", [], GOOD, prev, 0)
     assert g.tss_factor == 1.0 and not g.recovery and not g.changes_plan
+    assert gate._apply(rec, "extra", [], GOOD, prev, 1).extras_used == 1  # no step, no quota
     first = gate._apply(skeleton.weeks[0], "down", [], GOOD, None, 0)
     assert first.progression_index == 1  # a block start never goes below 1
 

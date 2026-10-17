@@ -15,12 +15,15 @@ IF .62–.81), so the plan-vs-actual record says "overdone" for ordinary days.
    flag `plan.personal_scales`, on by default), each with a minimum amount of data, shrinkage
    towards the default and hard bounds:
    - `rpe_offset[class]`: median(RPE − table) over 90 days, ≥ 5 rated rides per class (else the
-     all-class median), shrunk n/(n + 5), clipped ±2. Readiness expects table + offset.
+     all-class median), shrunk n/(n + 5), clipped ±2. Readiness expects table + offset; a
+     class outside the table (`mixed`) gets no offset (its expectation is already a guess).
    - `feel_baseline`: 90-day median feel (≥ 8 answers). A feel is bad only 2 points worse than
      it, and never stricter than the fixed rule (the baseline only relaxes).
    - `easy_day_tss` (D2): median load of the last 28 days' ridden non-hard days (≥ 6), shrunk to
      the Z2-60 template (k = 5), within default × [1, 1.8].
-2. **Priority**: `athlete.yaml planner.scales` > learned > default. The morning run stores the
+2. **Priority**: `athlete.yaml planner.scales` > learned > default (a written `all` offset is
+   also the fallback of thin classes). Readiness reads the scales learned before the rated
+   ride (the day before), so a ride never sets its own baseline. The morning run stores the
    values in the new table `learned_params(athlete, param, value, n, as_of, algo_version,
    source)` (D5); replays learn them as of each replayed day.
 3. **Easy days**: an endurance / recovery day below the learned easy-day load becomes a 60–90

@@ -85,6 +85,10 @@ def test_rpe_offset_needs_data_window_and_yaml_wins() -> None:
     rides = [_ride(i, i, "endurance", rpe=5) for i in range(1, 9)]
     got = ps.learn_rpe_offsets(_ds(rides), AS_OF, None, {"endurance": -1.0})
     assert got["endurance"] == ps.Learned(-1.0, 0, "yaml")
+    # A written all-class offset is also the fallback of the classes without enough rides.
+    every = ps.learn_rpe_offsets(_ds(rides), AS_OF, None, {"all": 1.5})
+    assert every["vo2"] == every[ps.ALL] == ps.Learned(1.5, 0, "yaml")
+    assert every["endurance"].source == "learned"
     # The web answer wins over the icu field.
     web = ps.learn_rpe_offsets(_ds(rides), AS_OF, {r.id: (3, None) for r in rides})
     assert web["endurance"].value == 0.0
@@ -134,7 +138,7 @@ def test_rows_for_learned_params() -> None:
     params = {r[0] for r in scales.rows()}
     assert {"rpe_offset.endurance", "rpe_offset.all", "feel_baseline", "easy_day_tss"} <= params
     assert scales.offsets()["endurance"] == scales.offset_for("endurance")
-    assert scales.offset_for("mixed") == scales.offset_for(ps.ALL)
+    assert "mixed" not in scales.offsets() and ps.ALL not in scales.offsets()
 
 
 # ----------------------------------------------------------------------------- readiness
@@ -159,7 +163,9 @@ def test_negative_offset_reads_a_usual_three_as_harder() -> None:
     y = YesterdayRide(classification="endurance", rpe=4)
     assert _ready(y).recommendation not in ("EASY", "REST")
     assert _ready(y, rpe_offset={"endurance": -2.0}).recommendation in ("EASY", "REST")
-    assert expected_rpe(y, {"all": -1.0}) == 2.0  # a class without its own offset
+    # No offset is extrapolated onto a class outside the table.
+    mixed = YesterdayRide(classification="mixed", rpe=6)
+    assert expected_rpe(mixed, {"endurance": -2.0, "all": -2.0}) == 4.0
 
 
 def test_feel_baseline_only_relaxes_the_rule() -> None:

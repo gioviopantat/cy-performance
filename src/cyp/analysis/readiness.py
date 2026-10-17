@@ -177,9 +177,14 @@ def expected_rpe(y: YesterdayRide, offsets: Mapping[str, float] | None = None) -
 
 
 def rpe_offset_of(offsets: Mapping[str, float] | None, classification: str | None) -> float:
-    """The class's offset, else the all-class one (key ``"all"``), else 0."""
-    got = offsets or {}
-    return got.get(classification or "", got.get("all", 0.0))
+    """The personal offset of a table class (:data:`EXPECTED_RPE`); 0 for any other class.
+
+    A class outside the table (``mixed``) has only a guessed expectation, so a learned offset
+    is not extrapolated onto it.
+    """
+    if classification not in EXPECTED_RPE:
+        return 0.0
+    return (offsets or {}).get(classification, 0.0)
 
 
 def feel_bad_at(baseline: float | None) -> float:

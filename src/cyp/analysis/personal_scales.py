@@ -88,8 +88,8 @@ class PersonalScales:
         return got.value if got is not None else 0.0
 
     def offsets(self) -> dict[str, float]:
-        """``class -> offset`` for every known class plus :data:`ALL` (readiness input)."""
-        return {c: self.offset_for(c) for c in (*EXPECTED_RPE, ALL)}
+        """``class -> offset`` for every table class (readiness input; others get none)."""
+        return {c: self.offset_for(c) for c in EXPECTED_RPE}
 
     def rows(self) -> list[tuple[str, float, int, Source]]:
         """``(param, value, n, source)`` per value, for ``learned_params``."""
@@ -143,15 +143,21 @@ def learn_rpe_offsets(
             round(_clip(v, -RPE_OFFSET_MAX, RPE_OFFSET_MAX), 2), len(vals), "learned", med
         )
 
-    overall = (
-        shrunk(every) if len(every) >= RPE_MIN_PER_CLASS else Learned(0.0, len(every), "default")
-    )
+    written = {
+        cls: Learned(_clip(float(v), -RPE_OFFSET_MAX, RPE_OFFSET_MAX), 0, "yaml")
+        for cls, v in (configured or {}).items()
+    }
+    if ALL in written:  # a written all-class offset is also the fallback of thin classes
+        overall = written[ALL]
+    elif len(every) >= RPE_MIN_PER_CLASS:
+        overall = shrunk(every)
+    else:
+        overall = Learned(0.0, len(every), "default")
     out: dict[str, Learned] = {ALL: overall}
     for cls in EXPECTED_RPE:
         vals = deltas.get(cls, [])
         out[cls] = shrunk(vals) if len(vals) >= RPE_MIN_PER_CLASS else overall
-    for cls, v in (configured or {}).items():
-        out[cls] = Learned(_clip(float(v), -RPE_OFFSET_MAX, RPE_OFFSET_MAX), 0, "yaml")
+    out.update(written)
     return out
 
 

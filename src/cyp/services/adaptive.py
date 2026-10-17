@@ -12,6 +12,7 @@ Flags decide here (ADR-0008), the pure code below never asks:
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable, Mapping
 from typing import Any
 
 from sqlalchemy import select
@@ -59,18 +60,55 @@ def readiness_scales(scales: PersonalScales | None) -> dict[str, Any]:
     }
 
 
-def adaptive_for(scales: PersonalScales | None, *, gate: bool = False) -> Adaptive:
+def offsets_at(ctx: AppContext, ds: Dataset) -> Callable[[dt.date], Mapping[str, float]]:
+    """Personal RPE offsets learned before a day, cached per day (``{}`` with scales off)."""
+    if not ctx.features().enabled(SCALES_FLAG):
+        return lambda _day: {}
+    cfg = ctx.athlete_config_or_none()
+    written = cfg.planner.scales.rpe_offset if cfg is not None else None
+    feedback = ride_feedback(ctx)
+    cache: dict[dt.date, Mapping[str, float]] = {}
+
+    def at(day: dt.date) -> Mapping[str, float]:
+        if day not in cache:
+            cache[day] = learn(
+                ds, day, feedback, easy_default_tss=None, rpe_offset=written
+            ).offsets()
+        return cache[day]
+
+    return at
+
+
+def readiness_inputs(ctx: AppContext, day: dt.date, ds: Dataset) -> dict[str, Any]:
+    """Readiness keyword arguments for ``day`` (``{}`` with the flag off).
+
+    The scales are learned before the rated ride (the day before), so a ride never sets its
+    own baseline.
+    """
+    return readiness_scales(scales_for(ctx, day - dt.timedelta(days=1), ds))
+
+
+def adaptive_for(
+    scales: PersonalScales | None,
+    *,
+    gate: bool = False,
+    offsets: Callable[[dt.date], Mapping[str, float]] | None = None,
+) -> Adaptive:
     """Planner inputs from the scales and the gate flag (an empty :class:`Adaptive` when off)."""
     return Adaptive(
         easy_day=scales.easy_day_tss if scales is not None else None,
         gate=gate,
-        rpe_offset=scales.offsets() if scales is not None and gate else {},
+        rpe_offset_at=offsets if gate else None,
     )
 
 
 def plan_inputs(ctx: AppContext, day: dt.date, ds: Dataset | None = None) -> Adaptive:
     """Everything adaptive the planner gets for ``day`` under this profile's flags."""
-    return adaptive_for(scales_for(ctx, day, ds), gate=ctx.features().enabled(GATE_FLAG))
+    data = ds if ds is not None else ctx.dataset()
+    gate = ctx.features().enabled(GATE_FLAG)
+    return adaptive_for(
+        scales_for(ctx, day, data), gate=gate, offsets=offsets_at(ctx, data) if gate else None
+    )
 
 
 def gate_decision(ctx: AppContext, week_start: dt.date) -> GateDecision | None:
@@ -89,13 +127,12 @@ def gate_decision(ctx: AppContext, week_start: dt.date) -> GateDecision | None:
     except ValueError:  # a season too short to plan has no gate
         return None
     ds = ctx.dataset()
-    scales = scales_for(ctx, week_start, ds)
     chain = gate_chain(
         ds,
         sk,
         cfg.availability.weekly_max_minutes,
         until=week_start,
-        rpe_offset=scales.offsets() if scales is not None else None,
+        rpe_offset_at=offsets_at(ctx, ds),
         conservative=is_senior(cfg, week_start),
     )
     return chain.get(week_start)

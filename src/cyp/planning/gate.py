@@ -14,8 +14,9 @@ down / hold / up model. Inputs (all from stored data, so a replay gets the same 
 
 Rules, first match:
 
-1. **Back from a break**: no ride for ≥ :data:`BREAK_DAYS` days before Monday → hold and
-   −:data:`BREAK_STEPS` step (−:data:`LONG_BREAK_STEPS` after > :data:`LONG_BREAK_DAYS` days).
+1. **Back from a break**: ≥ :data:`BREAK_DAYS` days without a ride, still going on Monday or
+   ended during the judged week (judged once) → hold and −:data:`BREAK_STEPS` step
+   (−:data:`LONG_BREAK_STEPS` after > :data:`LONG_BREAK_DAYS` days).
 2. **Down** (any): ≥ :data:`DOWN_MISSED_KEY` key sessions missed with personal RPE delta
    ≥ :data:`DOWN_RPE_DELTA`; HRV below band on ≥ :data:`DOWN_HRV_BELOW_DAYS` days;
    ≥ :data:`DOWN_EASY_REST` EASY / REST days → −1 step and week TSS × :data:`DOWN_TSS_FACTOR`.
@@ -27,14 +28,20 @@ Rules, first match:
    EASY / REST days, completion in [:data:`UP_COMPLETION_LO`, :data:`UP_COMPLETION_HI`] →
    +1 step (the season's normal advance). Two "up" weeks in a row, both with RPE delta ≤
    :data:`EXTRA_RPE_DELTA` → one extra step, at most :data:`EXTRA_MAX_PER_BLOCK` per block.
-4. **Hold** otherwise: the progression does not advance; the week's TSS stays the season's.
+4. **No record**: the judged week has no plan-vs-actual record at all (e.g. weeks before the
+   compliance record existed, so a flag switched on mid-season does not drop the progression)
+   → the season's normal advance. Rules 1–2 still apply: they read body signals.
+5. **Hold** otherwise: the progression does not advance; the week's TSS stays the season's.
 
-Steps move the progression index the planner picks workout parameters with
+Each decision uses what was known on its Monday (offsets learned before it; the judged week's
+target as the planner set it that Monday, as the first week of its horizon). Steps move the
+progression index the planner picks workout parameters with
 (``SeasonWeek.progression_index``): never above the season's index plus the extra steps taken in
 the block, never below 1, reset at each block start. Season recovery and test weeks keep their
-schedule (decision recorded, no change). Conservative athletes (masters, D3): a missing RPE or
-HRV input counts against "up", a value exactly on an "up" threshold is not enough, and no extra
-steps (review §6.2: learning never makes a masters plan harder than the season's).
+schedule (decision recorded, no change, no extra step used). Conservative athletes (masters,
+D3): a missing RPE or HRV input counts against "up", a continuous value (RPE delta, completion)
+exactly on an "up" threshold is not enough, and no extra steps (review §6.2: learning never
+makes a masters plan harder than the season's).
 
 Weekly accumulation (decision D1-B, :func:`ease_accumulation`): from Friday, a week whose load
 so far is ≥ :data:`ACCUMULATION_OVER` above its plan so far eases the remaining easy days by
@@ -44,8 +51,9 @@ that share (at least :data:`~cyp.planning.adapt.OVERDONE_FLOOR` of their load is
 from __future__ import annotations
 
 import datetime as dt
+import itertools
 import statistics
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from functools import cache
 from pathlib import Path
@@ -63,7 +71,7 @@ from cyp.planning.planner import DayPlan, PlanContext, fill_endurance
 from cyp.planning.season import SeasonSkeleton, SeasonWeek, WeekTargets, week_targets
 
 GATE_VERSION = "gate_v1"
-Decision = Literal["up", "extra", "hold", "down", "early_recovery", "back_from_break"]
+Decision = Literal["up", "extra", "hold", "down", "early_recovery", "back_from_break", "no_data"]
 
 #: "Up" needs at least this many key sessions, every one achieved.
 UP_KEY_MIN = 2
@@ -108,6 +116,7 @@ STEP: dict[Decision, int] = {
     "down": -1,
     "early_recovery": 0,
     "back_from_break": -BREAK_STEPS,
+    "no_data": 1,
 }
 TEXT_PATH = Path(__file__).resolve().parent / "i18n" / "gate.zh-TW.yaml"
 
@@ -146,7 +155,11 @@ class WeekEvidence:
     actual_tss: float = 0.0
     target_tss: float | None = None
     fatigue_z: float | None = None
-    days_since_ride: int | None = None
+    #: Days without a ride of a break still going on Monday, or of one that ended during the
+    #: judged week (a break already judged the Monday before is not judged again).
+    break_days: int | None = None
+    #: Planned days of the judged week that carry a compliance record.
+    judged_days: int = 0
 
     @property
     def completion(self) -> float | None:
@@ -207,9 +220,25 @@ def _fatigue_z(ds: Dataset, start: dt.date) -> float | None:
     return zscore(statistics.fmean(vals), base)
 
 
-def _days_since_ride(ds: Dataset, day: dt.date) -> int | None:
-    last = max((a.date for a in ds.activities if a.is_ride and a.date < day), default=None)
-    return (day - last).days if last is not None else None
+def _break_days(ds: Dataset, start: dt.date, monday: dt.date) -> int | None:
+    """Days without riding of the break this Monday judges (see :attr:`WeekEvidence.break_days`).
+
+    ``None`` without any ride before Monday. A break still going on Monday counts; so does one
+    that ended between ``start`` and Monday, unless it was already ≥ :data:`BREAK_DAYS` days
+    long on the Monday before (it was judged then).
+    """
+    rides = sorted({a.date for a in ds.activities if a.is_ride and a.date < monday})
+    if not rides:
+        return None
+    ongoing = (monday - rides[-1]).days - 1
+    if ongoing >= BREAK_DAYS:
+        return ongoing
+    ended = [
+        (nxt - prv).days - 1
+        for prv, nxt in itertools.pairwise(rides)
+        if start <= nxt < monday and (start - prv).days - 1 < BREAK_DAYS
+    ]
+    return max([ongoing, *ended])
 
 
 def week_evidence(
@@ -220,6 +249,7 @@ def week_evidence(
 ) -> WeekEvidence:
     """The gate's inputs for the week starting ``start`` (see the module docstring)."""
     days = _days(start)
+    judged = sum(1 for d in days for row in ds.planned.get(d, ())[:1] if row.compliance is not None)
     key = [
         dict(row.compliance)
         for d in days
@@ -247,7 +277,8 @@ def week_evidence(
         actual_tss=round(sum(ds.loads.get(d, 0.0) for d in days), 1),
         target_tss=target_tss,
         fatigue_z=_fatigue_z(ds, start),
-        days_since_ride=_days_since_ride(ds, monday),
+        break_days=_break_days(ds, start, monday),
+        judged_days=judged,
     )
 
 
@@ -259,13 +290,13 @@ def decide(
 ) -> tuple[Decision, list[Reason]]:
     """The decision for the week after ``ev`` and one reason per input (rules above)."""
     reasons: list[Reason] = []
-    gap = ev.days_since_ride
+    gap = ev.break_days
     if gap is not None and gap >= BREAK_DAYS:
         steps = LONG_BREAK_STEPS if gap > LONG_BREAK_DAYS else BREAK_STEPS
         reasons.append(
             Reason(
                 text_zh=text("reason.break", gap=gap, break_days=BREAK_DAYS, steps=steps),
-                evidence={"days_since_ride": gap, "break_days": BREAK_DAYS, "steps": steps},
+                evidence={"break_days": gap, "min_break_days": BREAK_DAYS, "steps": steps},
             )
         )
         return "back_from_break", reasons
@@ -311,6 +342,14 @@ def decide(
             )
             return "early_recovery", reasons
         return "down", reasons
+    if ev.judged_days == 0:
+        reasons.append(
+            Reason(
+                text_zh=text("reason.no_data"),
+                evidence={"judged_days": 0, "easy_rest_days": ev.easy_rest_days},
+            )
+        )
+        return "no_data", reasons
     checks = _up_checks(ev, conservative)
     reasons += [r for _, r in checks]
     if all(ok for ok, _ in checks):
@@ -416,27 +455,28 @@ def gate_chain(
     weekly_max_minutes: int,
     *,
     until: dt.date,
-    rpe_offset: Mapping[str, float] | None = None,
+    rpe_offset_at: Callable[[dt.date], Mapping[str, float]] | None = None,
     conservative: bool = False,
 ) -> dict[dt.date, GateDecision]:
     """Decisions for every season week from week 2 through the week containing ``until``.
 
-    Walks the season from its first week: each week's load target is recomputed as the planner
-    set it on its Monday (CTL going into the week, the previous loading week, this chain's own
-    decision), so completion compares like with like. Deterministic: the same stored data gives
-    the same decisions every morning, and a replay gets what the live run got.
+    Walks the season from its first week. Each decision uses what was known on its Monday:
+    the personal RPE offsets learned before that Monday (``rpe_offset_at(monday)``), and the
+    judged week's load target as the planner set it that Monday (CTL going into the week, the
+    week the first of the horizon, this chain's own decision), so completion compares like with
+    like. The same stored data gives the same decisions every morning and in a replay.
     """
     out: dict[dt.date, GateDecision] = {}
     targets: dict[dt.date, float] = {}
     prev: GateDecision | None = None
-    prev_loading: float | None = None
     for i, w in enumerate(sk.weeks):
         if w.start > until:
             break
         g: GateDecision | None = None
         if i > 0:
             last = sk.weeks[i - 1]
-            ev = week_evidence(ds, last.start, targets.get(last.start), rpe_offset)
+            offsets = rpe_offset_at(w.start) if rpe_offset_at is not None else None
+            ev = week_evidence(ds, last.start, targets.get(last.start), offsets)
             same_block = last.block_idx == w.block_idx and prev is not None
             extras = prev.extras_used if same_block and prev is not None else 0
             decision, reasons = decide(ev, prev, conservative=conservative, extras_used=extras)
@@ -449,14 +489,11 @@ def gate_chain(
                 gw,
                 ctl,
                 weekly_max_minutes=weekly_max_minutes,
-                prev_loading_tss=prev_loading,
                 atl_start=atl,
             ),
             g,
         )
         targets[w.start] = t.target_tss
-        if not gw.recovery and gw.phase != "test":
-            prev_loading = t.target_tss
     return out
 
 
@@ -472,13 +509,9 @@ def _apply(
     fixed = w.recovery or w.phase == "test"
     base = prev.progression_index if prev is not None else w.progression_index - 1
     step = STEP[decision]
-    if (
-        decision == "back_from_break"
-        and ev.days_since_ride
-        and ev.days_since_ride > LONG_BREAK_DAYS
-    ):
+    if decision == "back_from_break" and ev.break_days and ev.break_days > LONG_BREAK_DAYS:
         step = -LONG_BREAK_STEPS
-    if decision == "extra":
+    if decision == "extra" and not fixed:
         extras += 1
     if fixed:
         index = prev.progression_index if prev is not None else w.progression_index
@@ -549,7 +582,8 @@ def _evidence_dict(ev: WeekEvidence) -> dict[str, Any]:
         "actual_tss": ev.actual_tss,
         "target_tss": ev.target_tss,
         "fatigue_z": round(ev.fatigue_z, 2) if ev.fatigue_z is not None else None,
-        "days_since_ride": ev.days_since_ride,
+        "break_days": ev.break_days,
+        "judged_days": ev.judged_days,
     }
 
 

@@ -78,7 +78,7 @@ def test_readiness_uses_scales_only_when_on(ctx: AppContext) -> None:
     assert readiness_service._scales(ctx, TODAY, ctx.dataset()) == {}
     _flags(ctx, "notify.macos=off")
     got = readiness_service._scales(ctx, TODAY, ctx.dataset())
-    assert set(got) == {"rpe_offset", "feel_baseline"} and "all" in got["rpe_offset"]
+    assert set(got) == {"rpe_offset", "feel_baseline"} and "endurance" in got["rpe_offset"]
 
 
 def test_horizon_changes_only_widened_or_repaired_days(ctx: AppContext) -> None:
@@ -118,7 +118,8 @@ def test_gate_flag_off_by_default_and_on_by_choice(ctx: AppContext) -> None:
     assert adaptive.gate_decision(ctx, dt.date(2026, 10, 5)) is None
     _flags(ctx, "notify.macos=off,plan.progression_gate=on")
     inputs = adaptive.plan_inputs(ctx, TODAY)
-    assert inputs.gate and inputs.rpe_offset  # reads the personal offsets
+    assert inputs.gate and inputs.rpe_offset_at is not None  # reads the personal offsets
+    assert "endurance" in inputs.rpe_offset_at(dt.date(2026, 10, 5))
     g = adaptive.gate_decision(ctx, dt.date(2026, 10, 5))
     assert g is not None and g.explanation is not None
     assert g.explanation.key == "plan.gate.2026-10-05"

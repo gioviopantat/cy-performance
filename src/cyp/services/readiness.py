@@ -51,9 +51,9 @@ def ride_feedback(ctx: AppContext) -> Feedback | None:
 
 def _scales(ctx: AppContext, day: dt.date, ds: Dataset) -> dict[str, Any]:
     """Personal RPE / feel scales for ``day`` (flag ``plan.personal_scales``; ``{}`` off)."""
-    from cyp.services.adaptive import readiness_scales, scales_for
+    from cyp.services.adaptive import readiness_inputs
 
-    return readiness_scales(scales_for(ctx, day, ds))
+    return readiness_inputs(ctx, day, ds)
 
 
 def get(ctx: AppContext, day: dt.date) -> ReadinessOut:

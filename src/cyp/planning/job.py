@@ -25,7 +25,7 @@ Nothing here talks to intervals.icu; publishing is :mod:`cyp.publish` and needs 
 from __future__ import annotations
 
 import datetime as dt
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -100,12 +100,13 @@ class Adaptive:
 
     ``easy_day``: the learned easy-day load (flag ``plan.personal_scales``, decision D2).
     ``gate``: run the weekly progression gate and the weekly accumulation rule (flag
-    ``plan.progression_gate``, ADR-0018); ``rpe_offset``: personal RPE offsets it reads.
+    ``plan.progression_gate``, ADR-0018); ``rpe_offset_at``: the personal RPE offsets learned
+    before a given Monday, which the gate reads (``None`` = the fixed table).
     """
 
     easy_day: Learned | None = None
     gate: bool = False
-    rpe_offset: Mapping[str, float] = field(default_factory=dict)
+    rpe_offset_at: Callable[[dt.date], Mapping[str, float]] | None = None
 
 
 @dataclass
@@ -247,7 +248,7 @@ def plan_horizon(
             sk,
             cfg.availability.weekly_max_minutes,
             until=today,
-            rpe_offset=ad.rpe_offset,
+            rpe_offset_at=ad.rpe_offset_at,
             conservative=ctx.masters,
         )
     planned_weeks: dict[dt.date, SeasonWeek] = {}
