@@ -71,13 +71,18 @@ class AppContext:
 
     @classmethod
     def from_settings(
-        cls, settings: Settings, *, athlete_config: Path | str | None = None
+        cls,
+        settings: Settings,
+        *,
+        athlete_config: Path | str | None = None,
+        read_only: bool = False,
     ) -> AppContext:
         """Engine + session factory + stream store for ``settings``.
 
-        ``athlete_config`` defaults to the profile's (``settings.cyp_athlete_config``).
+        ``athlete_config`` defaults to the profile's (``settings.cyp_athlete_config``);
+        ``read_only`` opens the SQLite file with ``mode=ro`` (any write raises).
         """
-        engine = engine_from_settings(settings)
+        engine = engine_from_settings(settings, read_only=read_only)
         if athlete_config:  # one athlete.yaml for the plan, the flags and the Strava bridge
             settings = settings.model_copy(update={"cyp_athlete_config": Path(athlete_config)})
         settings = with_feature_switches(settings)

@@ -72,7 +72,17 @@ Feedback = Mapping[int, tuple[float | None, int | None]]
 
 def _yesterday(ds: Dataset, day: dt.date, feedback: Feedback | None = None) -> YesterdayRide | None:
     """Yesterday's response. ``feedback`` is ``None`` when ``readiness.ride_feel`` is off."""
-    y = day - dt.timedelta(days=1)
+    return ride_response(ds, day - dt.timedelta(days=1), feedback)
+
+
+def ride_response(
+    ds: Dataset, y: dt.date, feedback: Feedback | None = None
+) -> YesterdayRide | None:
+    """The response of day ``y``: its rides' hardest class, load, plan and rated RPE / feel.
+
+    Readiness reads it for yesterday; plan compliance (``services/compliance.py``) for the day
+    it judges. ``feedback`` is ``None`` when ``readiness.ride_feel`` is off.
+    """
     rides = [a for a in ds.on(y) if a.is_ride and a.analysed]
     planned = _planned_load(ds, y)
     if not rides:

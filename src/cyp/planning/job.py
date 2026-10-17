@@ -102,6 +102,9 @@ class PlanRun:
     changes: dict[str, list[str]] = field(default_factory=dict)
     revision_id: int | None = None
     mutable_from: dt.date | None = None
+    #: Each planned day's load before any adaptation (the season plan's slot target, ADR-0017);
+    #: stored as ``steps.reference_tss`` so compliance judges against it.
+    reference_tss: dict[dt.date, float] = field(default_factory=dict)
 
     @property
     def needs_review(self) -> bool:
@@ -233,6 +236,7 @@ def plan_horizon(
         if not w.recovery and w.phase != "test":
             prev_loading = t.target_tss
     horizon = [d for d in all_days if first <= d.date <= last]
+    run.reference_tss = {d.date: round(d.tss, 1) for d in all_days}
 
     run.adaptations += adapt.apply_calendar(horizon, athlete_events)
     week_today = sk.week_of(today)
@@ -498,7 +502,12 @@ def _persist(
             template_version=str(d.workout.template_version),
             name=d.workout.name_zh,
             intent=d.intent,
-            steps={"params": dict(d.params), "role": d.role, "outdoor": d.outdoor},
+            steps={
+                "params": dict(d.params),
+                "role": d.role,
+                "outdoor": d.outdoor,
+                "reference_tss": run.reference_tss.get(d.date),
+            },
             target_tss=round(d.tss, 1),
             target_duration_s=d.workout.duration_s,
             target_if=round(d.workout.if_, 3),

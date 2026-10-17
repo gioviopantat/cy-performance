@@ -26,13 +26,17 @@ from cyp.core.errors import CypError
 from cyp.planning.job import PlanRun, build_plan
 from cyp.schemas import PlanOut, PlanPreviewRequest, SeasonOut
 from cyp.services import plan as plan_service
+from cyp.services import plan_replay as replay_service
 from cyp.services.context import AppContext
 from cyp.settings import AthleteConfig, Settings
 
 publish_app = typer.Typer(help="intervals.icu calendar publishing (M3).", no_args_is_help=True)
+plan_app = typer.Typer(rich_markup_mode=None)
 
 
+@plan_app.callback(invoke_without_command=True)
 def plan(
+    typer_ctx: typer.Context,
     date: DateOpt = None,
     publish: Annotated[
         bool,
@@ -53,6 +57,8 @@ def plan(
     athlete_config: AthleteConfigOpt = None,
 ) -> None:
     """Replan the rolling horizon (propose by default) and show/apply the calendar diff."""
+    if typer_ctx.invoked_subcommand is not None:
+        return
     settings = cli_settings()
     if apply and not confirm:
         fail("--apply writes to your intervals.icu calendar; add --confirm-write", code=2)
@@ -284,8 +290,72 @@ def publish_spike(
         fail("WARNING: delete the leftover test events manually in intervals.icu", code=1)
 
 
+@plan_app.command("replay")
+def plan_replay(
+    start: Annotated[str, typer.Option("--from", help="First day YYYY-MM-DD.")],
+    end: Annotated[str, typer.Option("--to", help="Last day YYYY-MM-DD.")],
+    season_start: Annotated[
+        str | None,
+        typer.Option(
+            "--season-start",
+            help="Move season.start for this replay only (to replay history before the season).",
+        ),
+    ] = None,
+    as_json: JsonOpt = False,
+    athlete_config: AthleteConfigOpt = None,
+) -> None:
+    """Re-run readiness and the planner day by day on stored data; writes nothing.
+
+    The database is opened read-only; flags come from the profile (CYP_FEATURES for a one-off
+    what-if, e.g. plan.progression_gate=on).
+    """
+    settings = cli_settings(file_log=False)
+    first, last = parse_day(settings, start), parse_day(settings, end)
+    if last < first:
+        fail("--to is before --from", code=2)
+    moved = parse_day(settings, season_start) if season_start else None
+    require_athlete_config(settings, athlete_config)
+    with app_context(settings, athlete_config, check_schema=False, read_only=True) as ctx:
+        try:
+            result = replay_service.replay(ctx, first, last, season_start=moved)
+        except SERVICE_ERRORS as exc:
+            fail(f"plan replay failed: {exc}")
+    if as_json:
+        echo_json(result.to_dict())
+        return
+    echo_replay(result)
+
+
+def echo_replay(result: replay_service.ReplayResult) -> None:
+    """Text rendering: one line per week, then the totals."""
+    typer.echo(
+        f"replay {result.profile} {result.start}..{result.end} (season from "
+        f"{result.season_start}; read-only)"
+    )
+    for w in result.weeks:
+        target = f"{w.target_tss:.0f}" if w.target_tss is not None else "-"
+        gate = f"  gate {w.gate['decision']}" if w.gate else ""
+        typer.echo(
+            f"  {w.start}  target {target}  planned {w.planned_tss:.0f}  actual "
+            f"{w.actual_tss:.0f}  ridden {w.ridden}/{w.days}  overdone {w.overdone}  "
+            f"skipped {w.skipped}  EASY/REST {w.easy_rest}{gate}"
+        )
+    t = result.totals()
+    typer.echo(
+        f"  total: planned {t['planned_tss']:.0f}  actual {t['actual_tss']:.0f}  ridden "
+        f"{t['ridden']}  overdone {t['overdone']}  skipped {t['skipped']}  "
+        f"violation days {t['violation_days']}"
+    )
+    e = t["easy_days"]
+    if e.get("n"):
+        typer.echo(
+            f"  easy days ridden: {e['n']}  planned median {e['planned_median']:.0f}  "
+            f"actual median {e['actual_median']:.0f}"
+        )
+
+
 def register(app: typer.Typer) -> None:
     """Attach ``plan``, ``season`` and ``publish`` to ``app``."""
-    app.command()(plan)
+    app.add_typer(plan_app, name="plan")
     app.command()(season)
     app.add_typer(publish_app, name="publish")

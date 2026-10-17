@@ -227,6 +227,10 @@ class PlannedRow:
     status: str
     intent: str | None = None
     executed_activity_id: int | None = None
+    #: The slot's target before any adaptation (``steps.reference_tss``; ``None`` on old rows).
+    reference_tss: float | None = None
+    #: Plan vs actual, filled the morning after (``planning/compliance.py``).
+    compliance: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -437,6 +441,8 @@ def data_version(session: Session) -> str:
         func.count(PlannedWorkout.id),
         func.sum(PlannedWorkout.revision),
         func.sum(PlannedWorkout.target_tss),
+        func.count(PlannedWorkout.compliance),
+        func.sum(func.length(PlannedWorkout.compliance)),
     ]
     stmt = select(*[select(agg).scalar_subquery() for agg in aggregates])
     return "|".join("" if v is None else str(v) for v in session.execute(stmt).one())
@@ -750,6 +756,7 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
             PlannedWorkout.status,
             PlannedWorkout.intent,
             PlannedWorkout.executed_activity_id,
+            PlannedWorkout.compliance,
         )
         .where(
             PlannedWorkout.athlete_id == athlete_id,
@@ -770,6 +777,8 @@ def load_dataset(session: Session, *, version: str | None = None) -> Dataset | N
                 p.status,
                 p.intent,
                 p.executed_activity_id,
+                _f(steps.get("reference_tss")),
+                p.compliance if isinstance(p.compliance, dict) else None,
             )
         )
 

@@ -164,8 +164,13 @@ LONG_RIDE_RPE_MAX_EXTRA = 2.0
 
 def expected_rpe(y: YesterdayRide) -> float:
     """The RPE the rated ride was meant to feel like (its class, plus a long-ride allowance)."""
-    base = EXPECTED_RPE.get(y.rated_classification or y.classification or "", 4.0)
-    extra = max((y.rated_minutes or 0.0) - LONG_RIDE_RPE_MIN, 0.0) / 60.0
+    return expected_rpe_for(y.rated_classification or y.classification, y.rated_minutes)
+
+
+def expected_rpe_for(classification: str | None, minutes: float | None) -> float:
+    """:data:`EXPECTED_RPE` of ``classification`` plus the long-ride allowance for ``minutes``."""
+    base = EXPECTED_RPE.get(classification or "", 4.0)
+    extra = max((minutes or 0.0) - LONG_RIDE_RPE_MIN, 0.0) / 60.0
     return base + min(extra, LONG_RIDE_RPE_MAX_EXTRA)
 
 

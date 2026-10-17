@@ -40,7 +40,7 @@ def _out(r: Readiness) -> ReadinessOut:
     )
 
 
-def _feedback(ctx: AppContext) -> Feedback | None:
+def ride_feedback(ctx: AppContext) -> Feedback | None:
     """Web post-ride answers when ``readiness.ride_feel`` is on, else ``None`` (off)."""
     from cyp.services.ride_feedback import all_answers
 
@@ -66,7 +66,7 @@ def get(ctx: AppContext, day: dt.date) -> ReadinessOut:
                     algo_version=row.algo_version or "readiness_v1",
                 )
             )
-    return _out(readiness_for(ds, day, _feedback(ctx)))
+    return _out(readiness_for(ds, day, ride_feedback(ctx)))
 
 
 def history(ctx: AppContext, start: dt.date, end: dt.date) -> list[ReadinessOut]:
@@ -103,7 +103,7 @@ def history(ctx: AppContext, start: dt.date, end: dt.date) -> list[ReadinessOut]
 def recompute(ctx: AppContext, days: list[dt.date]) -> list[ReadinessOut]:
     """Score and store each day."""
     ds = ctx.dataset()
-    feedback = _feedback(ctx)
+    feedback = ride_feedback(ctx)
     verdicts = [readiness_for(ds, d, feedback) for d in days]
     with ctx.write_lock, ctx.factory() as s:
         persist(s, ds.athlete_id, verdicts)

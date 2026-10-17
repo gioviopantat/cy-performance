@@ -135,7 +135,7 @@ effective config. Flags `plan.athlete_rules` and `plan.long_ride_progression`.
 
 ## 3. Daily adaptation loop (`jobs/daily.py`)
 ```
-sync (icu + strava) → analyze new rides → compliance of yesterday's slot → readiness(today)
+sync (icu + strava) → analyze new rides → readiness(today) → compliance of the last 7 days' slots
 → replan(horizon = today .. today+13):
     1. Yesterday done as planned?       → keep progression index
        Partial/skipped HIT?             → re-slot that HIT within 72 h if a day frees; else drop (never stack two HIT)
@@ -223,6 +223,14 @@ rendering for the no-power scenario (Edge 530 rides).
 - Inputs exclude raw Strava streams/text (see 02 §2.4).
 
 ## 8. Simulation and validation
+**Replay (`cyp plan replay --from D --to D [--season-start D] [--json]`)**: re-runs readiness and
+the planner day by day on stored data (each day's plan frozen as the athlete would have seen it
+that morning, our own calendar events hidden, readiness recomputed), judges each day with the
+morning run's compliance code and prints per-week planned vs actual, overdone / skipped counts,
+EASY/REST days and gate outcomes. The database is opened read-only; nothing is written. Flags
+come from the profile (`CYP_FEATURES` for a one-off what-if). It is the acceptance tool of
+[specs/adaptive-planning.md](specs/adaptive-planning.md) (decision D8).
+
 A simulator command (planned; today the tests in `tests/planning/` play this role) runs the full
 planner with a Banister responder (fitness τ 42, fatigue τ 7, k1/k2 fitted from the athlete's
 history where possible), random compliance noise (85 % done, 10 % partial, 5 % skipped) and
