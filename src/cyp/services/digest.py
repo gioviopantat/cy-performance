@@ -22,7 +22,7 @@ from cyp.reports import email_copy
 from cyp.reports.digest_facts import build_monthly, build_weekly
 from cyp.reports.digest_model import MonthlyDigest, WeeklyDigest
 from cyp.reports.digest_pdf import render_digest_pdf
-from cyp.services import adaptive
+from cyp.services import adaptive, ride_feedback
 from cyp.services.context import AppContext
 from cyp.services.ride_report import Mailer, recipient_name
 from cyp.store.models import DigestReport
@@ -103,6 +103,7 @@ def build(ctx: AppContext, kind: Kind, period_start: dt.date) -> Path:
         "profile": ctx.settings.cyp_profile or "default",
         "cfg": ctx.athlete_config_or_none(),
         "reports_dir": ctx.reports_dir,
+        "casual": ride_feedback.casual_ids(ctx),
     }
     with ctx.factory() as session:
         digest: WeeklyDigest | MonthlyDigest

@@ -192,3 +192,32 @@ def test_replay_reports_gate_decisions_only_with_the_flag(ctx: AppContext) -> No
                                                "back_from_break", "extra"}  # fmt: skip
     assert g["progression_index"] <= g["season_index"] + g["extras_used"]
     assert on.weeks[1].planned_first_morning is not None
+
+
+def test_casual_ride_makes_the_slot_casual_and_not_overdone(ctx: AppContext) -> None:
+    """Spec casual-and-strava: the carrying ride tagged casual -> ``casual``, never overdone."""
+    from cyp.services import adaptive
+    from cyp.services.ride_feedback import set_casual
+
+    _plan_season_day(ctx)
+    today = SEASON_DAY + dt.timedelta(days=7)
+    plain = compliance_service.compute(ctx, today)
+    assert plain and all(rec["casual"] is False for rec in plain.values())
+    with ctx.factory() as s:
+        days = {pw.id: pw.date_local for pw in s.scalars(select(PlannedWorkout))}
+    ds = ctx.dataset()
+    ridden = [i for i, rec in plain.items() if rec["actual_tss"] is not None]
+    assert ridden, "the seeded week has ridden planned days"
+    target = ridden[0]
+    day = days[target]
+    for a in ds.on(day):
+        if a.is_ride:
+            set_casual(ctx, a.id, True)
+    casual = compliance_service.compute(ctx, today)
+    rec = casual[target]
+    assert rec["casual"] is True and rec["overdone"] is False
+    assert rec["intent_verdict"] in ("casual", None)
+    assert rec["actual_tss"] == plain[target]["actual_tss"]  # the load still counts
+    others = [i for i in ridden if days[i] != day]
+    assert all(casual[i] == plain[i] for i in others)
+    assert day in adaptive.plan_inputs(ctx, today).casual_days

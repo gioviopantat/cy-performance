@@ -92,6 +92,8 @@ def _part_of_day(hour: int) -> str:
 
 def _case(r: RideReport) -> str:
     i = r.intent
+    if r.headline.verdict == "casual":
+        return "casual"
     if i is None:
         return "unplanned" if r.ride.np_w is not None or r.ride.tss is not None else "no_data"
     if i.verdict == "missed" and i.kind == "ceiling" and is_overdone(i.load_actual, i.load_planned):
@@ -215,11 +217,13 @@ def compose_weekly(
     highlights: list[str] = []
     c = _copy()["digest"]
     h = c["highlight"]
-    planned = [x for x in d.sessions if x.planned_name]
+    planned = [x for x in d.sessions if x.planned_name and x.verdict != "casual"]
+    casual = sum(1 for x in d.sessions if x.verdict == "casual")
     if planned:
         done = sum(1 for x in planned if x.verdict == "achieved")
         over = sum(1 for x in planned if x.verdict == "overdone")
         extra = h["sessions_overdone"].format(n=over) if over else ""
+        extra += h["sessions_casual"].format(n=casual) if casual else ""
         highlights.append(h["sessions"].format(done=done, planned=len(planned), extra=extra))
     if d.load is not None:
         highlights.append(_load_line(d.load, h))

@@ -12,6 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from cyp.core.errors import ConfigError, NotFoundError
@@ -36,7 +37,7 @@ BUILT = "built"
 SENT = "sent"
 FAILED = "failed"
 GAVE_UP = "gave_up"
-#: Terminal states: the watcher never touches these rides again.
+#: Terminal states: the watcher never builds or sends these rides again.
 DONE = (BUILT, SENT, GAVE_UP)
 MAX_ATTEMPTS = 3
 ICU_ACTIVITY_URL = "https://intervals.icu/activities/{id}"
@@ -90,6 +91,7 @@ def build(ctx: AppContext, activity_id: int) -> Path:
             tomorrow=tomorrow,
             rate_url=rate_url,
             feedback=(fb.rpe, fb.feel),
+            casual=fb.casual,
         )
     return render_ride_pdf(report, ride_dir(ctx))
 
@@ -157,6 +159,45 @@ def observe(ctx: AppContext, activity_id: int, now: dt.datetime) -> Seen:
         seen = Seen(row.status, row.attempts or 0, parse_iso(row.first_seen_at))
         s.commit()
         return seen
+
+
+#: ``ride_reports.strava_status`` values (flag ``strava.auto_description``, ADR-0020).
+STRAVA_WRITTEN = "written"
+STRAVA_UNCHANGED = "unchanged"
+STRAVA_FAILED = "failed"
+STRAVA_GAVE_UP = "gave_up"
+
+
+def strava_status(ctx: AppContext, activity_id: int) -> str | None:
+    """The ride's last automatic Strava outcome (``None``: never tried or no row)."""
+    with ctx.factory() as s:
+        row = s.get(RideReport, activity_id)
+        return row.strava_status if row is not None else None
+
+
+def strava_retries(ctx: AppContext) -> list[int]:
+    """Rides whose report is done and whose one automatic Strava write failed once."""
+    with ctx.factory() as s:
+        return list(
+            s.scalars(
+                select(RideReport.activity_id)
+                .where(RideReport.status.in_((BUILT, SENT)))
+                .where(RideReport.strava_status == STRAVA_FAILED)
+                .order_by(RideReport.activity_id)
+            )
+        )
+
+
+def record_strava(
+    ctx: AppContext, activity_id: int, status: str, error: str | None, now: dt.datetime
+) -> None:
+    """Store the automatic Strava outcome on the ride's row (the report status is untouched)."""
+    with ctx.write_lock, ctx.factory() as s:
+        row = _row(s, activity_id, now)
+        row.strava_status = status
+        row.strava_error = error[-2000:] if error else None
+        row.updated_at = iso_utc(now)
+        s.commit()
 
 
 def mark_gave_up(ctx: AppContext, activity_id: int, reason: str, now: dt.datetime) -> None:

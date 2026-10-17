@@ -268,7 +268,11 @@ def week_evidence(
         start=start,
         key_planned=len(key),
         key_achieved=sum(1 for r in key if r.get("intent_verdict") == "achieved"),
-        key_missed=sum(1 for r in key if r.get("skipped") or r.get("intent_verdict") == "missed"),
+        key_missed=sum(
+            1
+            for r in key
+            if r.get("skipped") or r.get("casual") or r.get("intent_verdict") == "missed"
+        ),
         rpe_delta=round(statistics.fmean(deltas), 2) if deltas else None,
         rpe_n=len(deltas),
         hrv_band=hrv_band(ds, monday),

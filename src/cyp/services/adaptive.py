@@ -5,7 +5,8 @@ Flags decide here (ADR-0008), the pure code below never asks:
 - :func:`scales_for`: the athlete's personal scales as of a day (``None`` with
   ``plan.personal_scales`` off), ``athlete.yaml planner.scales`` > learned > default.
 - :func:`readiness_scales`: the readiness inputs those scales give (empty when off).
-- :func:`adaptive_for`: what :func:`cyp.planning.job.plan_horizon` gets (empty when off).
+- :func:`adaptive_for`: what :func:`cyp.planning.job.plan_horizon` gets (empty when off, plus
+  the athlete's casual-ride days, which no flag gates).
 - :func:`record`: the morning run stores the scales in ``learned_params``.
 """
 
@@ -26,6 +27,7 @@ from cyp.planning.job import Adaptive
 from cyp.planning.season import build_skeleton
 from cyp.services.context import AppContext
 from cyp.services.readiness import ride_feedback
+from cyp.services.ride_feedback import casual_days
 from cyp.store.models import LearnedParam
 
 SCALES_FLAG = "plan.personal_scales"
@@ -93,12 +95,14 @@ def adaptive_for(
     *,
     gate: bool = False,
     offsets: Callable[[dt.date], Mapping[str, float]] | None = None,
+    casual_days: frozenset[dt.date] = frozenset(),
 ) -> Adaptive:
-    """Planner inputs from the scales and the gate flag (an empty :class:`Adaptive` when off)."""
+    """Planner inputs from the scales, the gate flag and the athlete's casual-ride tags."""
     return Adaptive(
         easy_day=scales.easy_day_tss if scales is not None else None,
         gate=gate,
         rpe_offset_at=offsets if gate else None,
+        casual_days=casual_days,
     )
 
 
@@ -107,7 +111,10 @@ def plan_inputs(ctx: AppContext, day: dt.date, ds: Dataset | None = None) -> Ada
     data = ds if ds is not None else ctx.dataset()
     gate = ctx.features().enabled(GATE_FLAG)
     return adaptive_for(
-        scales_for(ctx, day, data), gate=gate, offsets=offsets_at(ctx, data) if gate else None
+        scales_for(ctx, day, data),
+        gate=gate,
+        offsets=offsets_at(ctx, data) if gate else None,
+        casual_days=casual_days(ctx, data),
     )
 
 

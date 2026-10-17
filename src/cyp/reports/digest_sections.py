@@ -159,8 +159,15 @@ def _is_easy(intent: Intent, pw: PlannedWorkout | None) -> bool:
     return intent.kind == "ceiling" or (pw is not None and pw.intent in CEILING_INTENTS)
 
 
-def session_verdict(intent: Intent | None, pw: PlannedWorkout | None) -> SessionVerdict:
-    """The ride's intent verdict; ``overdone`` for an easy day past the planner's factor."""
+def session_verdict(
+    intent: Intent | None, pw: PlannedWorkout | None, *, casual: bool = False
+) -> SessionVerdict:
+    """The ride's intent verdict; ``overdone`` for an easy day past the planner's factor.
+
+    A casual ride is ``casual`` whatever its load (never overdone, never missed).
+    """
+    if casual:
+        return "casual"
     if intent is None:
         return "unplanned"
     if _is_easy(intent, pw) and is_overdone(intent.load_actual, intent.load_planned):
@@ -186,11 +193,12 @@ def _outdoor_notes(r: RideInputs) -> list[str]:
 def _ride_line(r: RideInputs) -> tuple[SessionLine, tuple[str, int] | None]:
     pw, ev = planned_for(r)
     intent = build_intent(r) if pw is not None or ev is not None else None
-    verdict = session_verdict(intent, pw)
+    verdict = session_verdict(intent, pw, casual=r.casual)
     fact = r.fact
     notes: list[str] = []
     if intent is None:
-        notes.append(text("session.unplanned", cls=fact["classification_zh"] or fact["sport"]))
+        msg = "session.casual" if r.casual else "session.unplanned"
+        notes.append(text(msg, cls=fact["classification_zh"] or fact["sport"]))
     elif verdict == "overdone":
         notes.append(
             text(

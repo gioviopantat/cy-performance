@@ -303,7 +303,7 @@ export interface paths {
         put?: never;
         /**
          * Save Feedback
-         * @description Store post-ride RPE / feel; readiness is recomputed for the next day right away.
+         * @description Store post-ride RPE / feel / casual tag; readiness is recomputed for the next day.
          */
         post: operations["save_feedback_v1_activities__activity_id__feedback_post"];
         delete?: never;
@@ -1577,12 +1577,16 @@ export interface components {
         /**
          * RideFeedbackIn
          * @description ``POST /v1/activities/{id}/feedback``: post-ride RPE 1–10 and feel 1 (strong) … 5 (weak).
+         *
+         *     ``casual``: the athlete's casual-ride tag (not graded); omitted keeps the stored tag.
          */
         RideFeedbackIn: {
             /** Rpe */
             rpe?: number | null;
             /** Feel */
             feel?: number | null;
+            /** Casual */
+            casual?: boolean | null;
         };
         /**
          * RideFeedbackOut
@@ -1597,6 +1601,11 @@ export interface components {
             feel?: number | null;
             /** Source */
             source: string;
+            /**
+             * Casual
+             * @default false
+             */
+            casual: boolean;
         };
         /**
          * RideLogOut

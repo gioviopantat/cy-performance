@@ -10,6 +10,7 @@ ride:
     missed: "【騎完報告】{md} {name}：「{planned}」這次沒對上，明天再來 💪"
     unplanned: "【騎完報告】{md} {name}：{km} km 自由騎，數據幫你整理好了 🚴"
     no_data: "【騎完報告】{md} {name}"
+    casual: "【騎完報告】{md} {name}：休閒騎，這趟不評分 ☕"
   hello: "{to} 你好，"
   opener: "{when}那趟 {facts}的騎乘，報告出爐了。"
   conclusion:
@@ -27,6 +28,9 @@ ride:
       - "先說結論：今天沒有排課，這是一趟自由騎。數據一樣幫你算清楚了。"
     no_data:
       - "這趟沒有足夠的功率資料可以判斷，但距離、時間和外騎情境都整理在附件裡。"
+    casual:
+      - "先說結論：這趟是休閒騎，不打分數。和朋友騎車、喝杯飲料也是騎車的一部分，享受就好 ☕ 負荷照樣算進體能，課表會自己調整。"
+      - "先說結論：休閒騎，今天不評分。開心騎、慢慢聊，這樣的一天也很珍貴 🙂 負荷一樣記進體能，規劃器會幫你把課排好。"
   highlights_title: "這趟三個重點"
   highlight:
     intent: "目的達成度：{verdict}"
@@ -45,6 +49,7 @@ ride:
     overdone: "未達成（騎過頭）"
     unplanned: "自由騎（沒有排課）"
     no_data: "資料不足"
+    casual: "休閒騎（不評分）"
   tomorrow_title: "明天怎麼排"
   tomorrow_changed: "{reason}，明天的「{before}」會改成「{after}」。"
   tomorrow_changed_no_reason: "明天的「{before}」會改成「{after}」。"
@@ -94,6 +99,7 @@ digest:
   highlight:
     sessions: "課表完成度：{done}/{planned} 堂達成{extra}"
     sessions_overdone: "（其中 {n} 堂騎過頭）"
+    sessions_casual: "，另有 {n} 趟休閒騎不評分"
     load: "負荷：實際 {actual} TSS，計畫 {planned}；CTL {start} → {end}"
     distribution: "強度分布（以課次計）：{verdict}"
     goal: "{target} W 目標：預估 {date} 達成"

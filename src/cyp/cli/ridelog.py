@@ -38,13 +38,27 @@ def _resolve(ctx: AppContext, ref: str) -> int:
 
 
 @ridelog_app.command("show")
-def show(activity: ActivityArg = "latest") -> None:
-    """Print the WORKOUT + RIDE.LOG block (deterministic; no poem)."""
+def show(
+    activity: ActivityArg = "latest",
+    fetch: Annotated[
+        bool,
+        typer.Option(
+            "--fetch",
+            help="Look the route up on OpenStreetMap and narrate it first (flags "
+            "strava.route_story / llm.ride_poem); otherwise no network.",
+        ),
+    ] = False,
+) -> None:
+    """Print the ride's casual RIDE.LOG (the saved text if any). Never writes Strava."""
+    from cyp.services import ride_story
     from cyp.services.ride_log import build
 
     with app_context(cli_settings()) as ctx:
         try:
-            typer.echo(build(ctx, _resolve(ctx, activity)).text)
+            activity_id = _resolve(ctx, activity)
+            if fetch:
+                ride_story.prepare(ctx, activity_id)
+            typer.echo(build(ctx, activity_id).text)
         except CypError as exc:
             fail(str(exc), code=1)
 

@@ -369,3 +369,29 @@ def test_tomorrow_reasons_read_for_tomorrow() -> None:
     planner = f"{yesterday} 132 %, {today} -> x"
     shifted = shift_to_tomorrow(planner)
     assert not any(p in shifted for p in FORBIDDEN["phrases"]), shifted
+
+
+def test_casual_ride_is_not_graded_but_keeps_its_figures(
+    factory: sessionmaker[Session], store: StreamStore, world: dict[str, int], cfg: AthleteConfig
+) -> None:
+    """Spec casual-and-strava: verdict ``casual``, the same numbers, a neutral headline."""
+    graded = report(factory, store, world["ride"], cfg)
+    r = report(factory, store, world["ride"], cfg, casual=True)
+    assert graded.intent is not None and r.intent is not None
+    assert graded.intent.verdict == "achieved" and r.intent.verdict == "casual"
+    assert r.headline.verdict == "casual"
+    assert r.headline.text_zh.startswith(text("headline.casual", name=r.intent.planned_name))
+    for field in ("achieved_min", "target_min", "load_actual", "load_planned", "reps_counted"):
+        assert getattr(r.intent, field) == getattr(graded.intent, field)
+    assert r.intent.explanation is not None
+    first = r.intent.explanation["because"][0]
+    assert first["evidence"] == {"casual": True, "graded_verdict": "achieved"}
+    assert "休閒騎" in r.intent.explanation["headline_zh"]
+
+
+def test_casual_unplanned_ride(
+    factory: sessionmaker[Session], store: StreamStore, world: dict[str, int], cfg: AthleteConfig
+) -> None:
+    r = report(factory, store, world["indoor"], cfg, casual=True)
+    assert r.intent is None and r.headline.verdict == "casual"
+    assert r.headline.text_zh.startswith("休閒騎（不評分）")

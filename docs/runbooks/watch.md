@@ -23,6 +23,45 @@ sqlite3 profiles/<name>/data/cyp.sqlite \
 `status`: `pending_feel` waiting (streams or rating), `built` PDF only (`notify.email` off),
 `sent`, `failed` (retried on the next tick), `gave_up` (3 failed attempts, or never retried).
 
+`strava_status` (only with `strava.auto_description` on, ADR-0020): empty = never tried,
+`written`, `unchanged` (the description already held this RIDE.LOG), `failed` (retried once on
+the next tick), `gave_up` (failed twice; macOS notice). `strava_error` holds the reason.
+
+## RIDE.LOG did not reach Strava
+
+The email is never held back by Strava: the report row stays `sent` whatever happens there.
+
+```bash
+sqlite3 profiles/<name>/data/cyp.sqlite \
+  "select activity_id, status, strava_status, strava_error from ride_reports
+   order by first_seen_at desc limit 10"
+```
+
+1. `strava_status` empty -> `strava.auto_description` (or `strava.write_description`) is off
+   (`cyp --profile <name> features`), or the report was sent before the flag was on (no backfill).
+2. `lacks activity:write` -> add `activity:write` to `STRAVA_SCOPE` in the profile's `.env` and
+   run `cyp --profile <name> auth strava` again (the athlete authorises in the browser).
+3. `belongs to athlete X, the ride to Y` / `cannot tell who owns` -> the Strava token is
+   another athlete's; refusing is correct. Re-authorise as the ride's owner.
+4. `has no Strava id` -> intervals.icu has not linked the ride to Strava yet.
+5. `gave_up` after a network error -> write it by hand once the cause is fixed (asks for
+   confirmation): `cyp --profile <name> ride-log push <id>` then `--confirm-write`.
+
+## RIDE.LOG has no route or no poem
+
+`cyp --profile <name> ride-log show <id> --fetch` retries both and prints the text; the log
+(`ride_story.*` events in `cyp.jsonl`) says why: `osm_failed` (Overpass / Nominatim down or
+rate-limited: try later), `no_api_key` (`ANTHROPIC_API_KEY` missing in the profile's `.env`),
+`narrator_failed` (API error), `narrator_declined` (refusal or cut off), `invalid` (the poem
+broke a rule; the deterministic lines are used). Caches: `data/ride_story/<id>.json` (delete it
+to make a new story) and `data/ride_story/osm/<id>.json`.
+
+## Casual rides (休閒騎)
+
+Tagging a ride casual (web 騎完感受, or `cyp --profile <name> ride-feedback <id> --casual`)
+only writes `data/ride_feedback/<id>.json`; an email already sent is not resent. Rebuild the
+stored PDF with `cyp --profile <name> ride-report <id>` (no `--send`).
+
 ## No email arrived
 
 1. `cyp watch` prints `skipped: feature report.ride is off` -> switch the flags on in

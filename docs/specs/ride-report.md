@@ -27,7 +27,11 @@ Numbers come only from the facts dict; an LLM may later narrate section 1, never
 (ADR-0004).
 
 ## Non-goals
-- No calendar or Strava write. The watcher never publishes; tomorrow is a dry-run preview.
+- No calendar write. The watcher never publishes; tomorrow is a dry-run preview. The only
+  Strava write is the opt-in RIDE.LOG after the report (`strava.auto_description`, ADR-0020,
+  [casual-and-strava.md](casual-and-strava.md)).
+- A ride the athlete tagged casual (休閒騎) is not graded: verdict `casual`, a neutral
+  headline and email ([casual-and-strava.md](casual-and-strava.md)).
   The 05:30 autopilot still owns the real replan.
 - No webhook receiver and no public endpoint (see Design → detection).
 - No Garmin Connect API (needs business approval; the Edge already syncs to intervals.icu).

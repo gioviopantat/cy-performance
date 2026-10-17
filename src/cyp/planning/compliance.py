@@ -11,7 +11,8 @@ check the reports use, ``reports/ride_intent.build_intent``), ``overdone``
 (:func:`~cyp.planning.adapt.is_overdone` against max(planned, reference)), ``rpe`` / ``feel``
 of the longest rated ride, ``rpe_delta`` (RPE minus the class's table value, before any
 personal offset), ``rated_class``, ``skipped`` (a workout was planned and nothing was ridden),
-``role`` and ``intent`` of the slot.
+``role`` and ``intent`` of the slot, ``casual`` (the athlete tagged the carrying ride casual:
+the slot counts as not done, ``intent_verdict`` is ``casual`` and it is never ``overdone``).
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ def compliance_record(
     feel: int | None = None,
     rated_class: str | None = None,
     rated_minutes: float | None = None,
+    casual: bool = False,
 ) -> dict[str, Any]:
     """The compliance JSON of one planned slot (see the module docstring)."""
     planned = planned_tss or 0.0
@@ -56,10 +58,11 @@ def compliance_record(
         "actual_tss": round(actual, 1) if actual is not None else None,
         "ratio": round(actual / planned, 3) if actual is not None and planned > 0 else None,
         "intent_verdict": intent_verdict if rode else None,
-        "overdone": is_overdone(actual, ref),
+        "overdone": not casual and is_overdone(actual, ref),
         "rpe": rpe,
         "feel": feel,
         "rpe_delta": delta,
         "rated_class": rated_class if rpe is not None or feel is not None else None,
         "skipped": planned > 0 and not rode,
+        "casual": casual and rode,
     }

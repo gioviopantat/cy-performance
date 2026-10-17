@@ -124,6 +124,8 @@ class DigestInputs:
     #: The athlete's local date when the digest is built; days from here on are not judged.
     today: dt.date
     skeleton: SeasonSkeleton | None
+    #: Rides the athlete tagged casual (``services.ride_feedback``): not graded.
+    casual: frozenset[int] = frozenset()
     _trends: dict[dt.date, TrendsResult | None] = field(default_factory=dict)
     _rides: dict[int, RideInputs] = field(default_factory=dict)
     #: Streams shared by every ride's inputs (climb history and heat baselines overlap).
@@ -170,5 +172,6 @@ class DigestInputs:
                 row=row,
                 trends=None,
                 _frames=self._frames,
+                casual=row.id in self.casual,
             )
         return self._rides[row.id]

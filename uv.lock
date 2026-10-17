@@ -524,6 +524,7 @@ version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
+    { name = "anthropic" },
     { name = "httpx" },
     { name = "jinja2" },
     { name = "matplotlib" },
@@ -543,9 +544,6 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-llm = [
-    { name = "anthropic" },
-]
 serve = [
     { name = "apscheduler" },
     { name = "fastapi" },
@@ -569,7 +567,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.13" },
-    { name = "anthropic", marker = "extra == 'llm'", specifier = ">=0.40" },
+    { name = "anthropic", specifier = ">=1.11.0" },
     { name = "apscheduler", marker = "extra == 'serve'", specifier = ">=3.10" },
     { name = "fastapi", marker = "extra == 'serve'", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
@@ -590,7 +588,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'serve'", specifier = ">=0.30" },
     { name = "weasyprint", specifier = ">=70.0" },
 ]
-provides-extras = ["serve", "llm"]
+provides-extras = ["serve"]
 
 [package.metadata.requires-dev]
 dev = [

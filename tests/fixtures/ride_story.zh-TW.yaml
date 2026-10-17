@@ -1,0 +1,35 @@
+# Invented zh-TW strings for tests/services/test_ride_story.py (place names, lines, poems).
+places:
+  cafe: "山腰咖啡"
+  home_cafe: "家門口咖啡"
+  peak: "測試山"
+  viewpoint: "遠方觀景台"
+  district: "測試區"
+  city: "新北市"
+  linkou: "林口區"
+  bali: "八里區"
+  climb: "測試坡"
+  invented: "不存在咖啡"
+  invented2: "憑空咖啡館"
+banned_text: ["達成", "明天", "騎過頭", "恢復騎 45 分"]
+company: "朋友"
+poem_ok: ["風過林梢葉漸黃", "起落輪聲伴夕陽", "林間小徑通幽處", "間歇清風送客長"]
+poem_head: "風起林間"
+poem_bad_head: "雨過林梢葉漸黃"
+poem_short: "風"
+filler: "秋"
+mountain: "山"
+lines:
+  good: ["今天在「山腰咖啡」喝一杯 ☕", "42.3 km、爬升 380 m"]
+  invented: ["去了「不存在咖啡」", "42.3 公里"]
+  place_word: ["路過一家咖啡店", "42.3 公里"]
+  number: ["騎了 99 公里", "爬升 380 公尺"]
+  latin: ["Nice ride today", "42.3 公里"]
+  forbidden: ["吃了甜點", "42.3 公里"]
+  one: ["只有一行"]
+  plain: ["今天很好", "42.3 公里"]
+  narrated: ["今天騎了 {km} 公里", "慢慢騎，風很舒服"]
+  liar: ["去了「憑空咖啡館」", "好喝"]
+rule_word: "甜蜜點"
+claude_poem: ["> 甲", "乙", "丙", "丁"]
+claude_head: "甲乙丙丁"

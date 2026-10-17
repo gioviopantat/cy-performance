@@ -148,3 +148,34 @@ def test_monthly_email() -> None:
     c = compose_monthly(m, to_name="Roger", today=dt.date(2026, 10, 1))
     assert c.subject.startswith("【月報】2026 年 9 月")
     assert "一致性：計畫 20 堂、騎了 18 堂、達成 15 堂" in c.text
+
+
+def test_casual_ride_gets_the_warm_casual_copy() -> None:
+    r = _report()
+    assert r.intent is not None
+    day = r.ride.start_local.date()
+    graded = compose_ride(r, to_name="Roger", today=day)
+    casual = r.model_copy(
+        update={
+            "intent": r.intent.model_copy(update={"verdict": "casual"}),
+            "headline": r.headline.model_copy(update={"verdict": "casual"}),
+        }
+    )
+    c = compose_ride(casual, to_name="Roger", today=day)
+    assert "休閒騎" in c.subject and "休閒騎" not in graded.subject
+    assert "不評分" in c.text and "目的達成度：休閒騎（不評分）" in c.text
+    assert "沒對上" not in c.text and "未達成" not in c.text
+
+
+def test_weekly_email_leaves_casual_rides_out_of_the_count() -> None:
+    d = _weekly()
+    d = d.model_copy(
+        update={
+            "sessions": [
+                *d.sessions,
+                SessionLine(day=dt.date(2026, 10, 10), planned_name="Z2 180 分", verdict="casual"),
+            ]
+        }
+    )
+    c = compose_weekly(d, to_name="William", today=dt.date(2026, 10, 12))
+    assert "課表完成度：1/2 堂達成（其中 1 堂騎過頭），另有 1 趟休閒騎不評分" in c.text

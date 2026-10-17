@@ -76,6 +76,10 @@ Thin, rate-limit-aware HTTP clients + sync jobs that write raw payloads to the s
 - `intervals/client.py` — Basic auth `API_KEY:<key>`, `athlete/0`, 429 + `Retry-After`.
 - `intervals/sync.py` — activities (summary + `icu_*` fields + intervals), wellness, power curves,
   sport settings, athlete, events (read-back of our published plan and the athlete's own races/notes).
+- `osm/` — OpenStreetMap for the RIDE.LOG route story (flag `strava.route_story`, ADR-0021):
+  `privacy.py` drops every point within 1 km of start and end and samples every 200 m before
+  anything leaves; `client.py` asks Overpass (named places near the route, places in an area)
+  and Nominatim (district names), ≤ 1 request/s, identifying User-Agent.
 - `matcher.py` — joins Strava ↔ intervals.icu activities (`external_id`/`strava_id` when present,
   else start time ±120 s + duration ±2%).
 
@@ -164,7 +168,9 @@ Details in [05-training-engine](05-training-engine.md).
 - `jobs/watch.py` — one watcher tick per profile: lock → light intervals.icu sync → per-ride
   analysis → for each new ride, wait for streams (≤ 6 h) and the rating (≤ 2 h), then build the
   PDF and email it; one `ride_reports` row per ride so it is sent once. Never writes a calendar
-  or Strava ([ADR-0010](adr/0010-ride-report-polling-and-email.md)).
+  ([ADR-0010](adr/0010-ride-report-polling-and-email.md)); with `strava.auto_description` on it
+  then writes the ride's RIDE.LOG to Strava through `services/strava_write.auto_push` → `push`
+  (outcome in `ride_reports.strava_status`, one retry; [ADR-0020](adr/0020-automatic-strava-ride-log.md)).
 - `jobs/digest.py` — the 07:00 digest job: per profile, every due and unsent weekly (Monday)
   or monthly (the 1st) digest is built and emailed once, missed ones on wake; one
   `digest_reports` row per kind + period ([specs/digest-reports.md](specs/digest-reports.md)).
@@ -184,9 +190,12 @@ A package may import only from its own layer or lower ones:
 | 7 | `jobs`, `services`, `llm` |
 | 8 | `cli`, `api`, `devtools` |
 
-### 5.8 `llm/` (planned; empty today, will ship behind a feature flag)
-- `narrator.py` — turns the structured daily/weekly result into a coach note in zh-TW/English.
-- `reviewer.py` — given the proposed plan + athlete state, may return *suggested edits* as
+### 5.8 `llm/`
+- `narrator.py` — the RIDE.LOG narrator (flag `llm.ride_poem`, ADR-0021): one Messages API
+  call (`claude-opus-5-5`, effort low, server-side fallback, structured output) that phrases the
+  casual lines and writes the acrostic poem from the story facts; its rules live in
+  `ride_log_prompt.txt`; the caller validates the answer (`reports/ride_story.validate`).
+- `reviewer.py` (planned) — given the proposed plan + athlete state, may return *suggested edits* as
   structured JSON; edits re-enter `guardrails` and are logged as `plan_revisions.source='llm'`.
 - Prompt inputs are aggregates and our own metrics, never raw Strava streams (see 02 §3.3).
 
@@ -223,10 +232,16 @@ A package may import only from its own layer or lower ones:
   stored data, judged with the same compliance code, the database opened read-only
   (`store/db.make_readonly_engine`).
 - `services/calendar.py` — the calendar view: planned (calendar first) vs done per day, compliance status and week summaries (`GET /v1/calendar`, read-only);
-- `services/ride_feedback.py` — post-ride RPE / feel answered on the web, fed into readiness (`data/ride_feedback/<id>.json`);
-- `services/ride_log.py` — the deterministic WORKOUT + RIDE.LOG text of a ride, plus the athlete-edited version saved in `data/ride_logs/<id>.txt` (previous version kept as `.prev.txt`);
+- `services/ride_feedback.py` — post-ride RPE / feel answered on the web, fed into readiness, and the casual-ride tag (`data/ride_feedback/<id>.json`; `cyp ride-feedback --casual`): a casual ride is not graded by the reports and digests, and the planner and compliance count its planned session as not done ([specs/casual-and-strava.md](specs/casual-and-strava.md));
+- `services/ride_story.py` — the casual Strava RIDE.LOG of a ride ([specs/casual-and-strava.md](specs/casual-and-strava.md) C):
+  `story()` (cached, else deterministic from the ride report; no network) and `prepare()` (the
+  only caller of OSM and Claude, each behind its flag), with `data/ride_story/` caches and the
+  visited-places record; `reports/ride_story.py` holds the facts, content-type rotation, copy
+  (`i18n/ride_story.zh-TW.yaml`) and the validation.
+- `services/ride_log.py` — the ride's RIDE.LOG text (the casual story block), plus the athlete-edited version saved in `data/ride_logs/<id>.txt` (previous version kept as `.prev.txt`);
   `services/strava_write.py` — the only Strava write (the ride's description), flag-gated, with
-  a scope and owner check (`cyp ride-log push`, `POST /v1/activities/{id}/strava-description`).
+  a scope and owner check (`cyp ride-log push`, `POST /v1/activities/{id}/strava-description`,
+  and the watcher's `auto_push` with `strava.auto_description`).
 - `web/` (outside the Python layers) — the local dashboard; talks only to `/v1`, types generated
   from the OpenAPI file ([specs/web-ui.md](specs/web-ui.md)).
 

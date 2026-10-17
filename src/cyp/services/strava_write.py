@@ -8,7 +8,8 @@ The only Strava write in the project. Gates, in order:
    ``STRAVA_SCOPE``);
 4. write guard: the token belongs to the athlete who owns the ride (Strava athlete id of the
    ride as fetched from Strava; fails closed when either id is unknown);
-5. the caller confirmed (CLI ``--confirm-write``, API ``confirm=true``).
+5. the caller confirmed (CLI ``--confirm-write``, API ``confirm=true``), or, for the ride
+   watcher, the profile turned on ``strava.auto_description`` (:func:`auto_push`, ADR-0020).
 
 The athlete's own text is kept: a previous ``📋 WORKOUT`` / ``⚙️ RIDE.LOG`` block (markers at the
 start of a line) is replaced and everything before and after it stays; without one, the
@@ -182,3 +183,27 @@ def push(
 
     save(ctx, activity_id, text)  # what went to Strava is what the UI shows from now on
     return PushResult(strava_id, before, after, written=True)
+
+
+AUTO_FLAG = "strava.auto_description"
+
+
+def auto_push(
+    ctx: AppContext, activity_id: int, *, client_factory: ClientFactory | None = None
+) -> PushResult:
+    """The watcher's write after a ride's report: the ride's RIDE.LOG through :func:`push`.
+
+    The flag :data:`AUTO_FLAG` is the per-profile confirmation (ADR-0020); every gate of
+    :func:`push` still applies. The text is what the UI shows (the saved one, else generated).
+
+    Raises:
+        StravaWriteBlockedError: the flag is off or a gate of :func:`push` refused.
+        NotFoundError: the ride is not analysed yet.
+    """
+    if not ctx.features().enabled(AUTO_FLAG):
+        raise StravaWriteBlockedError(f"feature {AUTO_FLAG} is off")
+    from cyp.services.ride_log import build
+
+    return push(
+        ctx, activity_id, build(ctx, activity_id).text, write=True, client_factory=client_factory
+    )

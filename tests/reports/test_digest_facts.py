@@ -429,3 +429,37 @@ def test_golden_fixtures_are_complete() -> None:
         m.research,
     ]
     assert all(x is not None for x in sections_m) and m.distribution_by_week and m.methods
+
+
+def test_casual_rides_are_not_graded_and_keep_their_load(world: Any, cfg: AthleteConfig) -> None:
+    """Spec casual-and-strava: a tagged ride is ``casual``, never overdone; load unchanged."""
+    plain = weekly(world, WEEK_FULL, cfg)
+    over, free = plain.sessions[2], plain.sessions[5]
+    assert (over.verdict, free.verdict) == ("overdone", "unplanned")
+    assert over.activity_id is not None and free.activity_id is not None
+    factory: sessionmaker[Session] = world[0]
+    when = _due(WEEK_FULL + dt.timedelta(days=7))
+    with factory() as s, patch.object(digest_facts, "now_utc", lambda: when):
+        d = build_weekly(
+            s,
+            world[1],
+            WEEK_FULL,
+            profile="test",
+            cfg=cfg,
+            reports_dir=world[2],
+            casual=frozenset({over.activity_id, free.activity_id}),
+        )
+    assert [s.verdict for s in d.sessions] == [
+        "achieved", "missed", "casual", "skipped", "achieved", "casual",
+    ]  # fmt: skip
+    assert "休閒騎" in d.sessions[2].note_zh and "休閒騎" in d.sessions[5].note_zh
+    assert d.load is not None and plain.load is not None
+    assert d.load.actual_tss == plain.load.actual_tss  # the load still counts
+    assert "休閒騎" in d.headline.text_zh
+
+
+def test_casual_session_verdict_wins_over_overdone() -> None:
+    long_day = _intent("ceiling", 3.0, "missed")
+    assert session_verdict(long_day, None) == "overdone"
+    assert session_verdict(long_day, None, casual=True) == "casual"
+    assert session_verdict(None, None, casual=True) == "casual"

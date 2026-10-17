@@ -608,7 +608,9 @@ class RideReport(Base):
     One row per ride (the primary key is the dedupe); the database is per profile, so no
     profile column. ``status``: ``pending_feel`` (waiting for the rating or the streams),
     ``built`` (PDF written, ``notify.email`` off), ``sent``, ``failed`` (retried next tick),
-    ``gave_up`` (no more retries).
+    ``gave_up`` (no more retries). ``strava_status`` (flag ``strava.auto_description``, ADR-0020):
+    ``written`` | ``unchanged`` | ``failed`` (retried once on the next tick) | ``gave_up``;
+    ``None`` = never tried.
     """
 
     __tablename__ = "ride_reports"
@@ -621,6 +623,8 @@ class RideReport(Base):
     first_seen_at: Mapped[str] = mapped_column(String(32))
     sent_at: Mapped[str | None] = mapped_column(String(32))
     updated_at: Mapped[str | None] = mapped_column(String(32))
+    strava_status: Mapped[str | None] = mapped_column(String(16))
+    strava_error: Mapped[str | None] = mapped_column(Text)
 
 
 class DigestReport(Base):

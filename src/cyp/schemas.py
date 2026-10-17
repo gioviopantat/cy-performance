@@ -567,10 +567,14 @@ class StravaDescriptionOut(Model):
 
 
 class RideFeedbackIn(Model):
-    """``POST /v1/activities/{id}/feedback``: post-ride RPE 1–10 and feel 1 (strong) … 5 (weak)."""
+    """``POST /v1/activities/{id}/feedback``: post-ride RPE 1–10 and feel 1 (strong) … 5 (weak).
+
+    ``casual``: the athlete's casual-ride tag (not graded); omitted keeps the stored tag.
+    """
 
     rpe: int | None = None
     feel: int | None = None
+    casual: bool | None = None
 
 
 class RideFeedbackOut(Model):
@@ -580,3 +584,4 @@ class RideFeedbackOut(Model):
     rpe: int | None = None
     feel: int | None = None
     source: str
+    casual: bool = False

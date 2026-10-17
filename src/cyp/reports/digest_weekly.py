@@ -274,7 +274,7 @@ def build_headline(
         )
         listed = text("common.list_sep").join(
             text("headline.count", name=text(f"verdict.{v}"), n=counts[v])
-            for v in ("achieved", "partial", "missed", "overdone", "skipped", "no_data")
+            for v in ("achieved", "partial", "missed", "overdone", "skipped", "no_data", "casual")
             if counts[v]
         )
         parts.append(text(f"headline.{verdict}", judged=judged, counts=listed))

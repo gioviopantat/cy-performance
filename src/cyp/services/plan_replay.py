@@ -39,6 +39,7 @@ from cyp.planning.planner import DayPlan
 from cyp.planning.season import build_skeleton
 from cyp.planning.templates import load_library
 from cyp.services import adaptive
+from cyp.services import ride_feedback as ride_feedback_store
 from cyp.services.compliance import judge_day
 from cyp.services.context import AppContext, NoDataError
 from cyp.services.readiness import ride_feedback
@@ -258,6 +259,8 @@ def replay(
     # Our own calendar events show the real plan, not the replayed one.
     base = replace(ds0, events=tuple(e for e in ds0.events if not e.ours), planned={})
     feedback = ride_feedback(ctx)
+    casual = ride_feedback_store.casual_ids(ctx)
+    casual_days = ride_feedback_store.casual_days(ctx, base)
     readiness: dict[dt.date, ReadinessRow] = {}
     bias = _bias(ctx)
     library = load_library()
@@ -295,7 +298,9 @@ def replay(
                 now_local=dt.datetime.combine(day, REPLAY_TIME),
                 bias=bias,
                 library=library,
-                adaptive=adaptive.adaptive_for(scales, gate=gate_on, offsets=offsets),
+                adaptive=adaptive.adaptive_for(
+                    scales, gate=gate_on, offsets=offsets, casual_days=casual_days
+                ),
             )
             for g in run.gate.values():
                 gates.setdefault(g.week_start, g)
@@ -322,6 +327,7 @@ def replay(
                     feedback,
                     with_intent=plan.role in KEY_ROLES,
                     frames=frames,
+                    casual=casual,
                 )
                 planned[day] = (_row(plan, run, record),)
             r = readiness.get(day)

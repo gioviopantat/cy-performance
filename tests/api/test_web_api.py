@@ -73,7 +73,7 @@ def test_ride_log_and_runs(two: TestClient) -> None:
     page = two.get("/v1/activities", params={"rides_only": True, "limit": 1}).json()
     aid = page["items"][0]["id"]
     log = two.get(f"/v1/activities/{aid}/ride-log").json()
-    assert log["workout"].startswith("📋 WORKOUT") and "⚙️ RIDE.LOG" in log["ride_log"]
-    assert "STATUS :" in log["ride_log"] and log["text"].count("\n\n") == 1
+    assert log["workout"] == "" and log["ride_log"].startswith("⚙️ RIDE.LOG")
+    assert "STATUS" not in log["ride_log"] and log["text"].endswith("#cyperformance")
     assert two.get("/v1/activities/999999/ride-log").status_code == 404
     assert two.get("/v1/autopilot/runs").json() == []  # empty until a run happened

@@ -56,8 +56,8 @@ export const api = {
   activity: (p: string, id: number) => call<S["ActivityDetail"]>(p, "GET", `/activities/${id}`),
   rideLog: (p: string, id: number) => call<S["RideLogOut"]>(p, "GET", `/activities/${id}/ride-log`),
   feedback: (p: string, id: number) => call<S["RideFeedbackOut"]>(p, "GET", `/activities/${id}/feedback`),
-  saveFeedback: (p: string, id: number, rpe: number | null, feel: number | null) =>
-    call<S["RideFeedbackOut"]>(p, "POST", `/activities/${id}/feedback`, { rpe, feel }),
+  saveFeedback: (p: string, id: number, rpe: number | null, feel: number | null, casual?: boolean) =>
+    call<S["RideFeedbackOut"]>(p, "POST", `/activities/${id}/feedback`, { rpe, feel, casual }),
   saveRideLog: (p: string, id: number, text: string) =>
     call<S["RideLogOut"]>(p, "POST", `/activities/${id}/ride-log`, { text }),
   stravaDescription: (p: string, id: number, text: string, confirm: boolean) =>

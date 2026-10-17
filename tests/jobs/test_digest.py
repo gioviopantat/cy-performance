@@ -84,6 +84,7 @@ def built(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, dt.date]]:
             cfg: Any,
             reports_dir: Path,
             gate: Any = None,
+            casual: frozenset[int] = frozenset(),
         ) -> WeeklyDigest | MonthlyDigest:
             assert reports_dir.name == "reports"
             calls.append((kind, start))
