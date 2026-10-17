@@ -1,0 +1,41 @@
+id: tempo_2x20
+version: 1
+name: "Tempo 2x20"
+name_zh: "Tempo 2x20 分"
+purpose_zh: "中等強度的持續輸出，基礎期的第一種結構化強度。"
+intent: tempo
+phases: [base]
+slot_roles: [hit]
+requires_power: false
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 76, max: 85, default: 78}
+  rest_min: 5
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 70}
+  - repeat: 2
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 20m, lo: "{pct}", hi: "{pct}+7", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Each 20 min block on a steady climb or flat without junctions; the 5 min rest is a soft-pedal. Cadence follows terrain."
+  note_zh: "每段 20 分鐘放在穩定的坡或無路口平路；5 分鐘休息輕踩，迴轉數隨地形。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Tempo 心率 84–92 % LTHR，能講短句但不想講的強度。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 78}
+    - repeat: 2
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 20m, lo: 84, hi: 92, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "Tempo 2×20 是基礎期前幾週唯一的強度課，用來重新建立「40 分鐘持續用力」的肌肉耐力與配速感，又不會拉高疲勞影響週量累積。進入基礎期第 3–4 週後會被甜蜜點 3×N 取代。"

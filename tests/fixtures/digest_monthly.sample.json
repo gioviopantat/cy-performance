@@ -1,0 +1,143 @@
+{
+ "version": "digest_monthly_v1",
+ "profile": "sample",
+ "athlete_name": "範例車手",
+ "generated_at": "2026-05-01T07:00:00+08:00",
+ "period": {
+  "start": "2026-04-01",
+  "end": "2026-04-30",
+  "label_zh": "2026 年 4 月",
+  "season_week": 12,
+  "phase": "建構期 2",
+  "is_break": false,
+  "break_reason_zh": ""
+ },
+ "headline": {
+  "text_zh": "四月完成 18 / 21 堂課，CTL 從 58 升到 64，略低於賽季路徑；高強度課次偏多。",
+  "verdict": "on_track",
+  "change_zh": "五月把一堂 VO2max 換成甜蜜點，讓強度分布回到目標。"
+ },
+ "consistency": {
+  "planned": 21,
+  "done": 18,
+  "achieved": 15,
+  "by_week": [
+   ["2026-03-30", 3, 3, 3],
+   ["2026-04-06", 5, 5, 4],
+   ["2026-04-13", 5, 4, 3],
+   ["2026-04-20", 3, 3, 3],
+   ["2026-04-27", 5, 3, 2]
+  ],
+  "longest_gap_days": 3,
+  "text_zh": "第三週出差少騎一堂；月底兩堂因下雨取消。"
+ },
+ "load": {
+  "planned_tss": 1880,
+  "actual_tss": 1795,
+  "hours": 33.5,
+  "rides": 19,
+  "ctl_start": 58.2,
+  "ctl_end": 63.9,
+  "atl_end": 61.0,
+  "tsb_end": 2.9,
+  "ramp_per_week": 1.4,
+  "ramp_cap": 5.0,
+  "ctl_series": [
+   ["2026-04-01", 58.2], ["2026-04-03", 59.0], ["2026-04-05", 60.6], ["2026-04-07", 60.9],
+   ["2026-04-09", 61.8], ["2026-04-11", 63.4], ["2026-04-13", 63.2], ["2026-04-15", 63.5],
+   ["2026-04-17", 64.1], ["2026-04-19", 64.8], ["2026-04-21", 63.0], ["2026-04-23", 62.1],
+   ["2026-04-25", 62.6], ["2026-04-27", 63.8], ["2026-04-29", 63.5], ["2026-04-30", 63.9]
+  ],
+  "ctl_plan": [
+   ["2026-04-01", 58.0], ["2026-04-06", 60.5], ["2026-04-13", 63.0], ["2026-04-20", 63.0],
+   ["2026-04-27", 65.5], ["2026-04-30", 66.5]
+  ],
+  "explanation": {"headline_zh": "恢復週（4/20）後 CTL 落後計畫 2.6。", "method": {"model_id": "pmc_v1"}, "confidence": "high"}
+ },
+ "power_curve": {
+  "durations_s": [5, 30, 60, 300, 1200, 3600],
+  "this_month_w": [880, 560, 410, 300, 262, 238],
+  "last_month_w": [905, 548, 395, 289, 255, null],
+  "season_best_w": [960, 590, 425, 305, 262, 240],
+  "best_since": "2025-10-01",
+  "text_zh": "5–20 分鐘的最佳功率追平或接近賽季最佳；衝刺略弱於上月。"
+ },
+ "fitness": {
+  "ftp_start_w": 250,
+  "ftp_end_w": 255,
+  "cp_w": 258,
+  "w_prime_j": 18400,
+  "backing_efforts_zh": ["4/11 示範坡 B 20 分鐘 262 W", "4/24 室內 5 分鐘測試 300 W"],
+  "goal": {
+   "target_w": 270,
+   "target_date": "2026-09-30",
+   "current_ftp_w": 255,
+   "trend_level_w": 256,
+   "projected_date": "2026-08-05",
+   "projected_date_before": "2026-08-20",
+   "evidence_w": 262,
+   "history": [
+    {"day": "2025-12-15", "ftp_w": 240, "source": "icu_eftp"},
+    {"day": "2026-02-01", "ftp_w": 246, "source": "icu_eftp"},
+    {"day": "2026-03-01", "ftp_w": 250, "source": "setting:icu"},
+    {"day": "2026-03-13", "ftp_w": 254, "source": "icu_eftp"},
+    {"day": "2026-04-11", "ftp_w": 256, "source": "icu_eftp"},
+    {"day": "2026-04-25", "ftp_w": 255, "source": "setting:icu"}
+   ],
+   "text_zh": "本月的證據讓預估達成日提前 15 天。"
+  },
+  "text_zh": "CP 與 FTP 一致，W′ 與上月相近。",
+  "explanation": {"headline_zh": "CP 由 3、5、12、20 分鐘的最佳功率擬合。", "method": {"model_id": "cp_fit_v1"}, "confidence": "medium"}
+ },
+ "distribution_by_week": [
+  ["2026-03-30", {"sessions": {"low": 2, "mid": 1, "high": 0}, "session_frac": {"low": 0.667, "mid": 0.333, "high": 0.0}, "target_frac": {"low": 0.6, "mid": 0.3, "high": 0.1}, "verdict": "on"}],
+  ["2026-04-06", {"sessions": {"low": 3, "mid": 1, "high": 1}, "session_frac": {"low": 0.6, "mid": 0.2, "high": 0.2}, "target_frac": {"low": 0.6, "mid": 0.3, "high": 0.1}, "verdict": "over"}],
+  ["2026-04-13", {"sessions": {"low": 2, "mid": 1, "high": 1}, "session_frac": {"low": 0.5, "mid": 0.25, "high": 0.25}, "target_frac": {"low": 0.6, "mid": 0.3, "high": 0.1}, "verdict": "over"}],
+  ["2026-04-20", {"sessions": {"low": 3, "mid": 0, "high": 0}, "session_frac": {"low": 1.0, "mid": 0.0, "high": 0.0}, "target_frac": {"low": 0.8, "mid": 0.2, "high": 0.0}, "verdict": "under"}],
+  ["2026-04-27", {"sessions": {"low": 2, "mid": 1, "high": 0}, "session_frac": {"low": 0.667, "mid": 0.333, "high": 0.0}, "target_frac": null, "verdict": "no_target"}]
+ ],
+ "limiters": {
+  "lines": [
+   {"limiter_id": "vo2max", "name_zh": "最大攝氧能力", "rank_now": 2, "rank_before": 1},
+   {"limiter_id": "threshold", "name_zh": "閾值功率", "rank_now": 1, "rank_before": 2},
+   {"limiter_id": "durability", "name_zh": "長時間耐力", "rank_now": 3, "rank_before": 3},
+   {"limiter_id": "sprint", "name_zh": "衝刺", "rank_now": 4, "rank_before": null},
+   {"limiter_id": "climbing", "name_zh": "爬坡", "rank_now": null, "rank_before": 4}
+  ],
+  "plan_response_zh": "五月每週兩堂閾值課（4×10、2×20），VO2max 降為隔週一次。"
+ },
+ "recovery": {
+  "days": [
+   {"day": "2026-04-01", "hrv_z7": 0.2, "rhr": 52}, {"day": "2026-04-04", "hrv_z7": 0.35, "rhr": 51},
+   {"day": "2026-04-07", "hrv_z7": 0.1, "rhr": 52}, {"day": "2026-04-10", "hrv_z7": -0.3, "rhr": 54},
+   {"day": "2026-04-13", "hrv_z7": -0.85, "rhr": 56}, {"day": "2026-04-16", "hrv_z7": -0.6, "rhr": 55},
+   {"day": "2026-04-19", "hrv_z7": -0.2, "rhr": 53}, {"day": "2026-04-22", "hrv_z7": 0.45, "rhr": 51},
+   {"day": "2026-04-25", "hrv_z7": 0.6, "rhr": 50}, {"day": "2026-04-28", "hrv_z7": 0.3, "rhr": 51},
+   {"day": "2026-04-30", "hrv_z7": 0.15, "rhr": 52}
+  ],
+  "rest_days": 7,
+  "readiness_counts": {"REST": 1, "EASY": 5, "AS_PLANNED": 20, "UPGRADE": 4},
+  "text_zh": "第三週出差睡得少，HRV 掉到基準下緣；恢復週後回升。"
+ },
+ "next_month": {
+  "sessions": [
+   {"day": "2026-05-05", "name": "閾值 4×10", "purpose_zh": "閾值是目前第一名限制因子", "tss": 90, "minutes": 80, "outdoor": false},
+   {"day": "2026-05-09", "name": "長途 Z2 4 小時", "purpose_zh": "耐力", "tss": 210, "minutes": 240, "outdoor": true},
+   {"day": "2026-05-16", "name": "20 分鐘測試", "purpose_zh": "更新 FTP", "tss": 75, "minutes": 60, "outdoor": false}
+  ],
+  "phase_zh": "建構期 2 · 第 3–6 週",
+  "key_sessions_zh": ["每週兩堂閾值", "5/16 20 分鐘測試"],
+  "text_zh": "五月 CTL 目標 70。"
+ },
+ "research": {
+  "report_path": "docs/research/2026-04.md",
+  "approved_changes_zh": ["HRV 引導訓練的證據由 C 調為 B。"],
+  "grade_changes": [["hrv_guided", "C", "B"]]
+ },
+ "methods": [
+  {"model_id": "pmc_v1", "claim_id": "ctl_atl_tsb", "grade": "B", "citation": "Banister 1975; Coggan", "doc": "docs/04-analysis-engine.md"},
+  {"model_id": "cp_fit_v1", "claim_id": "critical_power", "grade": "A", "citation": "Jones 2019", "doc": "docs/04-analysis-engine.md"},
+  {"model_id": "limiters_v1", "claim_id": "limiter_rank", "grade": "C", "doc": "docs/05-training.md"},
+  {"model_id": "tid_v2", "claim_id": "polarized_tid", "grade": "A", "citation": "Rosenblat 2019", "doc": "docs/adr/0014-tid-by-sessions.md"}
+ ]
+}

@@ -1,0 +1,122 @@
+{#- Weekly digest PDF (digest_weekly_v1; docs/specs/digest-reports.md, weekly table).
+    Section 1 and the break version are in _digest.html.j2. -#}
+{% extends "_digest.html.j2" %}
+{% block body %}
+{% from "_report.html.j2" import stat, explain, methods, climb_table %}
+{% from "_digest_macros.html.j2" import SESSION, DIST, BAND, badge, where, next_plan, plan_reason, recovery_section, goal_figures with context %}
+
+{# 2 #}
+{% if d.sessions %}
+<section class="grid">
+  <h2><span class="no">2</span>計畫 vs 實際</h2>
+  <div class="week">
+    {% for day, lines in grid %}
+    <div class="day-cell{{ ' rest' if not lines }}">
+      <div class="dow">{{ day | weekday }} <span class="date">{{ day.strftime("%m/%d") }}</span></div>
+      {% for s in lines %}
+      <div class="entry">
+        <div class="name">{{ s.planned_name or s.ride_name or "–" }}</div>
+        {{ badge(SESSION, s.verdict) }}
+      </div>
+      {% else %}
+      <div class="entry"><div class="name muted">休息</div></div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <table>
+    <thead><tr><th>日期</th><th>計畫</th><th>實際騎乘</th><th class="n">TSS 計畫</th><th class="n">TSS 實際</th><th class="n">分鐘</th><th class="where">地點</th><th>結果</th></tr></thead>
+    <tbody>
+    {% for s in d.sessions %}
+    <tr>
+      <td class="day">{{ s.day.strftime("%m/%d") }}（{{ s.day | weekday }}）</td>
+      <td>{{ s.planned_name or "–" }}</td>
+      <td>{{ s.ride_name or "–" }}</td>
+      <td class="n">{{ s.planned_tss | num }}</td>
+      <td class="n">{{ s.actual_tss | num }}</td>
+      <td class="n">{{ s.moving_min | num }}</td>
+      <td class="where">{{ where(s.outdoor) }}</td>
+      <td>{{ badge(SESSION, s.verdict) }}</td>
+    </tr>
+    {% if s.note_zh %}<tr class="sub"><td></td><td colspan="7" class="note">{{ s.note_zh }}</td></tr>{% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="note">外騎的停車、紅燈等干擾不算未達成；判定方式與單次騎乘報告相同。</p>
+</section>
+{% endif %}
+
+{# 3 #}
+{% if d.load %}
+{% set l = d.load %}
+<section class="load">
+  <h2><span class="no">3</span>負荷</h2>
+  <div class="figures">
+    {{ stat("TSS 計畫", l.planned_tss | num) }}
+    {{ stat("TSS 實際", l.actual_tss | num) }}
+    {% if l.atl_end is not none %}{{ stat("期末 ATL", l.atl_end | num) }}{% endif %}
+    {% if l.tsb_end is not none %}{{ stat("期末 TSB", l.tsb_end | signed("+.0f")) }}{% endif %}
+    {% if l.ramp_per_week is not none %}{{ stat("CTL 週增幅", l.ramp_per_week | signed, ("上限 " ~ l.ramp_cap | num(".1f")) if l.ramp_cap is not none else "") }}{% endif %}
+  </div>
+  {% if charts.load %}<div class="figure"><img src="{{ charts.load }}" alt="每日計畫與實際 TSS，下方為本週 CTL"></div>{% endif %}
+  {{ explain(l.explanation) }}
+</section>
+{% endif %}
+
+{# 4 #}
+{% if d.distribution %}
+{% set t = d.distribution %}
+<section class="distribution">
+  <h2><span class="no">4</span>強度分布 {{ badge(DIST, t.verdict) }}</h2>
+  <div class="figures">
+    {% for b in ["low", "mid", "high"] %}{{ stat(BAND[b], t.sessions.get(b, 0), "課") }}{% endfor %}
+  </div>
+  {% if charts.distribution %}<div class="figure"><img src="{{ charts.distribution }}" alt="依課次計算的強度分布與階段目標"></div>{% endif %}
+  <p class="note">以「課次」分類（一堂課算一次，依它的主要刺激）；時間分布只當參考。</p>
+  {{ explain(t.explanation) }}
+</section>
+{% endif %}
+
+{# 5 #}
+{% if d.goal %}
+<section class="goal">
+  <h2><span class="no">5</span>離 {{ d.goal.target_w | num }}W 還有多遠</h2>
+  {{ goal_figures(d.goal) }}
+</section>
+{% endif %}
+
+{# 6 #}
+{% if d.recovery %}{{ recovery_section(6, d.recovery, true) }}{% endif %}
+
+{# 7 #}
+{% if d.highlights %}
+{% set h = d.highlights %}
+<section class="highlights">
+  <h2><span class="no">7</span>本週亮點</h2>
+  {% if h.durability_ratio is not none %}
+  <div class="figures">
+    {{ stat("耐力：騎 1000 kJ 後的效率", h.durability_ratio | pct) }}
+    {% if h.durability_median_ratio is not none %}{{ stat("近 4 週中位數", h.durability_median_ratio | pct) }}{% endif %}
+  </div>
+  <p class="note">效率 = 騎過 1000 kJ 之後的 EF（功率／心率）除以剛出發時的 EF；100 % 代表完全沒有衰退。</p>
+  {% endif %}
+  {% if h.text_zh %}<p>{{ h.text_zh }}</p>{% endif %}
+  {{ explain(h.explanation) }}
+  {% for c in h.climbs %}
+  <div class="keep">
+  <h3>{{ c.name }}{% if c.rank is not none and c.of_n is not none %}　<span class="badge">第 {{ c.rank }} 快 · 共 {{ c.of_n }} 次</span>{% endif %}</h3>
+  {% if c.note_zh %}<p>{{ c.note_zh }}</p>{% endif %}
+  <div class="figure"><img src="{{ charts.climbs[loop.index0] }}" alt="{{ c.name }} 歷次功率：點大小為已騎 kJ，顏色為氣溫"></div>
+  </div>
+  {{ climb_table(c, "本週") }}
+  {% endfor %}
+</section>
+{% endif %}
+
+{# 8 #}
+{% if d.next_week %}{{ next_plan(8, "下週課表", d.next_week) }}{% endif %}
+{% if d.plan_reason %}{{ plan_reason(d.plan_reason) }}{% endif %}
+
+{# 9 #}
+{% if d.methods %}{{ methods(9, d.methods) }}{% endif %}
+{% endblock %}

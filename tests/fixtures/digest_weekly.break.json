@@ -1,0 +1,44 @@
+{
+ "version": "digest_weekly_v1",
+ "profile": "sample",
+ "athlete_name": "範例車手",
+ "generated_at": "2026-06-15T07:00:00+08:00",
+ "period": {
+  "start": "2026-06-08",
+  "end": "2026-06-14",
+  "label_zh": "2026 第 24 週 · 6/8–6/14",
+  "season_week": 18,
+  "phase": "建構期 3",
+  "is_break": true,
+  "break_reason_zh": "6/8–6/14 出國旅行（可騎時間登記為 0）。"
+ },
+ "headline": {
+  "text_zh": "這週出國，沒有騎乘；CTL 自然下滑 6，回來先用一週找回節奏。",
+  "verdict": "break"
+ },
+ "sessions": [
+  {"day": "2026-06-08", "planned_name": "Z2 耐力 60 分", "planned_tss": 45, "verdict": "skipped"},
+  {"day": "2026-06-10", "planned_name": "甜蜜點 3×12", "planned_tss": 78, "verdict": "skipped"}
+ ],
+ "load": {
+  "planned_tss": 123,
+  "actual_tss": 0,
+  "hours": 0,
+  "rides": 0,
+  "ctl_start": 62.4,
+  "ctl_end": 56.3,
+  "tsb_end": 14.2,
+  "ctl_series": [
+   ["2026-06-08", 61.5], ["2026-06-09", 60.6], ["2026-06-10", 59.6], ["2026-06-11", 58.9],
+   ["2026-06-12", 58.0], ["2026-06-13", 57.1], ["2026-06-14", 56.3]
+  ]
+ },
+ "next_week": {
+  "sessions": [
+   {"day": "2026-06-16", "name": "Z2 耐力 60 分", "purpose_zh": "重新開始", "tss": 45, "minutes": 60, "outdoor": false},
+   {"day": "2026-06-18", "name": "節奏 3×10", "purpose_zh": "喚醒中強度", "tss": 62, "minutes": 65, "outdoor": false},
+   {"day": "2026-06-20", "name": "長途 Z2 2.5 小時", "purpose_zh": "耐力", "tss": 135, "minutes": 150, "outdoor": true}
+  ],
+  "text_zh": "回來第一週負荷約為休假前的七成。"
+ }
+}

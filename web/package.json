@@ -1,0 +1,27 @@
+{
+  "name": "cyp-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local dashboard for cy-performance (docs/specs/web-ui.md). Talks only to /v1.",
+  "scripts": {
+    "dev": "vite",
+    "gen:api": "openapi-typescript ../docs/api/openapi.json -o src/api/schema.d.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "build": "vite build",
+    "check": "npm run gen:api && git diff --exit-code -- src/api/schema.d.ts && npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.104.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.3"
+  }
+}

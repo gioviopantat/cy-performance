@@ -1,0 +1,51 @@
+{
+ "id": "i3002",
+ "start_date_local": "2026-09-28T17:40:00",
+ "start_date": "2026-09-28T09:40:00Z",
+ "type": "VirtualRide",
+ "name": "Rouvy via Strava",
+ "timezone": "Asia/Taipei",
+ "distance": 20100.0,
+ "moving_time": 2400,
+ "elapsed_time": 2410,
+ "trainer": true,
+ "commute": false,
+ "race": false,
+ "device_watts": true,
+ "has_heartrate": true,
+ "average_heartrate": 139,
+ "max_heartrate": 160,
+ "average_cadence": 91.0,
+ "icu_training_load": 38,
+ "icu_intensity": 72.0,
+ "icu_ftp": 250,
+ "icu_weighted_avg_watts": 180,
+ "icu_average_watts": 172,
+ "icu_joules": 412800,
+ "icu_athlete_id": "i123456",
+ "source": "STRAVA",
+ "strava_id": "12345678901",
+ "stream_types": [],
+ "icu_zone_times": [
+  {
+   "id": "Z1",
+   "secs": 300
+  },
+  {
+   "id": "Z2",
+   "secs": 1800
+  },
+  {
+   "id": "Z3",
+   "secs": 300
+  }
+ ],
+ "icu_hr_zone_times": [
+  400,
+  1700,
+  300,
+  0,
+  0,
+  0
+ ]
+}

@@ -1,0 +1,30 @@
+id: z2_endurance_240
+version: 1
+name: "Endurance Z2 240 min"
+name_zh: "Z2 有氧耐力 240 分"
+purpose_zh: "四小時純 Z2 長騎，本季最長的單次有氧刺激。"
+intent: endurance
+phases: [base, build]
+slot_roles: [long_ride]
+requires_power: false
+indoor_ok: false
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 210m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 15m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Outdoor only; Saturday slot (240 min cap). Hold 62-72 % — the lower half of Z2 — because the duration is the stimulus. 60-90 g carbs/h."
+  note_zh: "僅戶外，週六 240 分時段。維持 Z2 的下半段 62–72 %，時間本身就是刺激；每小時 60–90 g 碳水。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 心率 69–83 % LTHR。最後一小時心率超過 85 % 時降功率，不要硬撐。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 210m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 15m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "四小時長騎把累積功推到 2 500 kJ 以上，是「GC 型選手」耐久力最直接的訓練，也是單次 TSS 最高的低強度課。守衛會確保它不超過最近六週最長騎乘的 1.6 倍，且隔天不排高強度。"

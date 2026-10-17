@@ -1,0 +1,41 @@
+id: tempo_2x25
+version: 1
+name: "Tempo 2x25"
+name_zh: "Tempo 2x25 分"
+purpose_zh: "兩段 25 分鐘的長 Tempo，模擬長距離騎乘中段的穩定輸出。"
+intent: tempo
+phases: [base, build, threshold]
+slot_roles: [hit]
+requires_power: false
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 76, max: 86, default: 79}
+  rest_min: 5
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 70}
+  - repeat: 2
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 25m, lo: "{pct}", hi: "{pct}+6", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "A rolling or flat loop without stops; hold the band on climbs and descents alike."
+  note_zh: "選不用停車的平路或起伏路線；上下坡都盡量維持在區間內。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Tempo 心率 84–92 % LTHR；後段心率漂移時以功率或 RPE 5–6/10 為準。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 78}
+    - repeat: 2
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 25m, lo: 84, hi: 92, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "長段 Tempo 直接訓練長距離騎乘的配速能力：50 分鐘的中等強度讓身體習慣在不爆掉的前提下持續輸出，是長距離目標最常用的課。"

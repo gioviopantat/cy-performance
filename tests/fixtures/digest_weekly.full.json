@@ -1,0 +1,823 @@
+{
+ "version": "digest_weekly_v1",
+ "profile": "test",
+ "athlete_name": "Test Rider",
+ "generated_at": "2026-10-11T23:00:00Z",
+ "period": {
+  "start": "2026-10-05",
+  "end": "2026-10-11",
+  "label_zh": "2026-10-05 – 10-11（ISO 第 41 週） · 賽季第 1 週 基礎期",
+  "season_week": 1,
+  "phase": "base",
+  "is_break": false,
+  "break_reason_zh": ""
+ },
+ "headline": {
+  "text_zh": "沒照計畫：5 次課 達成 2、未達成 1、騎過頭 1、沒騎 1；負荷 390／290 TSS（135%）；285 W 預估 2027-05-30 達成（比期初提前 1 天）。",
+  "verdict": "off_track",
+  "change_zh": "輕鬆課要真的輕鬆：這週 1 次恢復／耐力課負荷超過計畫的 130%"
+ },
+ "sessions": [
+  {
+   "day": "2026-10-06",
+   "planned_name": "甜蜜點 3x10 分",
+   "planned_tss": 70.0,
+   "ride_name": "a_ss",
+   "activity_id": 6,
+   "actual_tss": 59.0,
+   "moving_min": 58,
+   "outdoor": false,
+   "verdict": "achieved",
+   "note_zh": "3/3 組有效、29/30 分鐘在 220–230 W"
+  },
+  {
+   "day": "2026-10-07",
+   "planned_name": "VO2max 5x3 分",
+   "planned_tss": 75.0,
+   "ride_name": "a_vo2",
+   "activity_id": 7,
+   "actual_tss": 48.0,
+   "moving_min": 52,
+   "outdoor": false,
+   "verdict": "missed",
+   "note_zh": "0/5 組有效、0/15 分鐘在 288–300 W"
+  },
+  {
+   "day": "2026-10-08",
+   "planned_name": "恢復騎 45 分",
+   "planned_tss": 20.0,
+   "ride_name": "a_recovery",
+   "activity_id": 8,
+   "actual_tss": 74.0,
+   "moving_min": 90,
+   "outdoor": false,
+   "verdict": "overdone",
+   "note_zh": "輕鬆課騎過頭：負荷是計畫的 368%（超過 130% 而且多 40 TSS 以上，就沒達到輕鬆課的目的；隔天規劃器會依多出的量減量）"
+  },
+  {
+   "day": "2026-10-09",
+   "planned_name": "Z2 有氧耐力 60 分",
+   "planned_tss": 40.0,
+   "ride_name": null,
+   "activity_id": null,
+   "actual_tss": null,
+   "moving_min": null,
+   "outdoor": null,
+   "verdict": "skipped",
+   "note_zh": ""
+  },
+  {
+   "day": "2026-10-10",
+   "planned_name": "Z2 有氧耐力 120 分",
+   "planned_tss": 85.0,
+   "ride_name": "a_long",
+   "activity_id": 9,
+   "actual_tss": 94.0,
+   "moving_min": 130,
+   "outdoor": false,
+   "verdict": "achieved",
+   "note_zh": "0% 的移動時間超過容許上限 206 W（90 秒平均）"
+  },
+  {
+   "day": "2026-10-11",
+   "planned_name": null,
+   "planned_tss": null,
+   "ride_name": "a_free",
+   "activity_id": 10,
+   "actual_tss": 115.0,
+   "moving_min": 84,
+   "outdoor": true,
+   "verdict": "unplanned",
+   "note_zh": "沒有排課的自由騎：最大攝氧間歇"
+  }
+ ],
+ "load": {
+  "planned_tss": 290.0,
+  "actual_tss": 390.4,
+  "hours": 6.9,
+  "rides": 5,
+  "ctl_start": 10.1,
+  "ctl_end": 17.3,
+  "atl_end": 44.3,
+  "tsb_end": -26.9,
+  "ramp_per_week": 7.2,
+  "ramp_cap": 6.0,
+  "daily": [
+   [
+    "2026-10-05",
+    0.0,
+    0.0
+   ],
+   [
+    "2026-10-06",
+    70.0,
+    58.8
+   ],
+   [
+    "2026-10-07",
+    75.0,
+    48.3
+   ],
+   [
+    "2026-10-08",
+    20.0,
+    73.5
+   ],
+   [
+    "2026-10-09",
+    40.0,
+    0.0
+   ],
+   [
+    "2026-10-10",
+    85.0,
+    94.4
+   ],
+   [
+    "2026-10-11",
+    0.0,
+    115.4
+   ]
+  ],
+  "ctl_series": [
+   [
+    "2026-10-05",
+    9.9
+   ],
+   [
+    "2026-10-06",
+    11.1
+   ],
+   [
+    "2026-10-07",
+    11.9
+   ],
+   [
+    "2026-10-08",
+    13.4
+   ],
+   [
+    "2026-10-09",
+    13.1
+   ],
+   [
+    "2026-10-10",
+    15.0
+   ],
+   [
+    "2026-10-11",
+    17.3
+   ]
+  ],
+  "ctl_plan": [],
+  "explanation": {
+   "key": "digest.load.2026-10-05",
+   "headline_zh": "實際負荷 390／計畫 290 TSS（135%），體能 CTL 10.1 → 17.3",
+   "because": [
+    {
+     "text_zh": "實際負荷 390 TSS，計畫 290 TSS（135%）；計畫負荷是這段期間每一份課表的目標 TSS 加總",
+     "evidence": {
+      "actual_tss": 390.4,
+      "planned_tss": 290.0,
+      "ratio": 1.346
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "騎了 5 趟、6.9 小時",
+     "evidence": {
+      "rides": 5,
+      "hours": 6.9
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "體能 CTL 從 10.1 到 17.3，換算每週 +7.2",
+     "evidence": {
+      "ctl_start": 10.1,
+      "ctl_end": 17.3,
+      "ramp_per_week": 7.2
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "每週 +7.2 超過基礎期的上限 6",
+     "evidence": {
+      "ramp_per_week": 7.2,
+      "ramp_cap": 6.0,
+      "phase": "base"
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "期末疲勞 ATL 44.3、狀態 TSB -26.9",
+     "evidence": {
+      "atl_end": 44.3,
+      "tsb_end": -26.9
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "ACWR 4.65 > 1.3：最近一週的負荷比過去一個月高很多（只描述負荷變化；「比值高就容易受傷」來自團隊運動研究，自行車沒有驗證）",
+     "evidence": {
+      "claim": "ramp_rate_acwr_monotony.acwr_injury",
+      "weak": true
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "CTL 一週升 7.2，超過上限 6",
+     "evidence": {
+      "claim": "ramp_rate_acwr_monotony.ramp_cap",
+      "weak": true
+     },
+     "weight": null
+    }
+   ],
+   "method": {
+    "model_id": "banister_pmc",
+    "version": "pmc_v1",
+    "inputs": {
+     "start": "2026-10-05",
+     "end": "2026-10-11",
+     "ramp_cap": 6.0
+    },
+    "doc": "docs/glossary/banister_pmc.md",
+    "claim": "banister_pmc.load_history"
+   },
+   "confidence": "high",
+   "glossary_terms": [
+    "banister_pmc",
+    "coggan_np_if_tss",
+    "ramp_rate_acwr_monotony"
+   ]
+  }
+ },
+ "distribution": {
+  "sessions": {
+   "low": 2,
+   "mid": 2,
+   "high": 1
+  },
+  "session_frac": {
+   "low": 0.4,
+   "mid": 0.4,
+   "high": 0.2
+  },
+  "target_frac": {
+   "low": 0.8,
+   "mid": 0.15,
+   "high": 0.05
+  },
+  "time_frac": {
+   "low": 0.807,
+   "mid": 0.157,
+   "high": 0.036
+  },
+  "verdict": "over",
+  "explanation": {
+   "key": "tid.2026-10-05",
+   "headline_zh": "2026-10-05 這週的強度分布是金字塔",
+   "because": [
+    {
+     "text_zh": "以課次計 低／中／高 = 2 / 2 / 1 趟（40 / 40 / 20 %）",
+     "evidence": {
+      "low_n": 2,
+      "mid_n": 2,
+      "high_n": 1,
+      "low": 0.4,
+      "mid": 0.4,
+      "high": 0.2
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "以時間計 低／中／高 = 81 / 16 / 4 %（共 6.9 小時；僅供參考，不和目標比）",
+     "evidence": {
+      "time_low": 0.807,
+      "time_mid": 0.157,
+      "time_high": 0.036,
+      "hours": 6.9
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "極化指數 PI 1.27（以時間計；> 2.0 為極化，只是描述）",
+     "evidence": {
+      "pi": 1.27
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "base 期目標（以課次計）80 / 15 / 5 %，中強度課差 +25、高強度課差 +15 個百分點",
+     "evidence": {
+      "target": [
+       0.8,
+       0.15,
+       0.05
+      ],
+      "mid_delta_pp": 25.0,
+      "high_delta_pp": 15.0
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "以課次計：5 趟裡有 3 趟中／高強度，階段目標約 1.0 趟（容許差 1 趟）→ 強度課偏多",
+     "evidence": {
+      "hard_sessions": 3,
+      "expected_hard": 1.0,
+      "slack": 1,
+      "verdict": "over"
+     },
+     "weight": null
+    }
+   ],
+   "method": {
+    "model_id": "tid_3zone",
+    "version": "tid_v2",
+    "inputs": {
+     "phase": "base",
+     "session_high_min_s": 600.0,
+     "session_high_min_bouts": 3,
+     "session_mid_min_s": 1200.0
+    },
+    "doc": "docs/glossary/time_in_zone_tid.md",
+    "claim": "time_in_zone_tid.phase_targets"
+   },
+   "confidence": "high",
+   "glossary_terms": [
+    "time_in_zone_tid"
+   ]
+  }
+ },
+ "goal": {
+  "target_w": 285.0,
+  "target_date": "2027-04-02",
+  "current_ftp_w": 250.0,
+  "trend_level_w": 250.0,
+  "projected_date": "2027-05-30",
+  "projected_date_before": "2027-05-31",
+  "evidence_w": 248.9,
+  "history": [
+   {
+    "day": "2026-08-23",
+    "ftp_w": 242.5,
+    "source": "icu_eftp"
+   },
+   {
+    "day": "2026-08-30",
+    "ftp_w": 243.6,
+    "source": "icu_eftp"
+   },
+   {
+    "day": "2026-09-06",
+    "ftp_w": 244.6,
+    "source": "icu_eftp"
+   },
+   {
+    "day": "2026-09-13",
+    "ftp_w": 245.7,
+    "source": "icu_eftp"
+   },
+   {
+    "day": "2026-09-20",
+    "ftp_w": 246.7,
+    "source": "icu_eftp"
+   },
+   {
+    "day": "2026-09-27",
+    "ftp_w": 247.8,
+    "source": "icu_eftp"
+   },
+   {
+    "day": "2026-10-04",
+    "ftp_w": 248.8,
+    "source": "icu_eftp"
+   },
+   {
+    "day": "2026-10-11",
+    "ftp_w": 249.8,
+    "source": "icu_eftp"
+   }
+  ],
+  "text_zh": "以近 8 週趨勢，預估 2027-05-30 達到 285 W（比期初提前 1 天）",
+  "explanation": {
+   "key": "digest.goal.2026-10-11",
+   "headline_zh": "以近 8 週趨勢，預估 2027-05-30 達到 285 W（比期初提前 1 天）",
+   "because": [
+    {
+     "text_zh": "FTP 估計來源：icu_eftp",
+     "evidence": {
+      "estimate_source": "icu_eftp"
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "近 8 週 FTP 估計（56 個實際變動點）趨勢每週 +1.1 W、後半段每週 +1.1 W、7 週比前一週高、一致性 τ = 1.00，今天的趨勢值 250 W",
+     "evidence": {
+      "weeks": 8,
+      "slope_w_per_week": 1.05,
+      "recent_slope_w_per_week": 1.05,
+      "kendall_tau": 1.0,
+      "level_w": 250.0
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "預估日期 2027-05-30 晚於目標日 2027-04-02：照目前趨勢會落後",
+     "evidence": {
+      "projected_date": "2027-05-30"
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "10/04 預估 2027-05-31，10/11 預估 2027-05-30：提前 1 天",
+     "evidence": {
+      "shift_days": -1
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "10/11 有接近極限的長時間努力（20 分鐘 262 W（105 % FTP）），× 0.95 = FTP 證據 249 W",
+     "evidence": {
+      "ftp_evidence_w": 248.9,
+      "day": "2026-10-11"
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "用 Theil–Sen 穩健直線（成對斜率的中位數），單一週的異常值影響很小；只用估計值實際變動的那幾天（不重複計算沿用的值）；至少 4 週資料、3 個變動點、3 週比前一週高、後半段仍往上、Kendall τ ≥ 0.5、估計不低於 FTP 設定 5% 以上、每週至少 +0.25 W 才給日期；晚於目標日 26 週以上只說「晚於目標日」",
+     "evidence": {},
+     "weight": null
+    }
+   ],
+   "method": {
+    "model_id": "goal_projection_v2",
+    "version": "goal_projection_v2",
+    "inputs": {
+     "trend_weeks": 8,
+     "target_w": 285.0,
+     "as_of": "2026-10-11",
+     "before": "2026-10-04"
+    },
+    "doc": "docs/glossary/ftp_target_season.md",
+    "claim": "goal_projection.model"
+   },
+   "confidence": "medium",
+   "glossary_terms": [
+    "ftp_target_season",
+    "eftp"
+   ]
+  }
+ },
+ "recovery": {
+  "days": [
+   {
+    "day": "2026-10-05",
+    "hrv_z7": 0.42,
+    "rhr": 48.0,
+    "sleep_h": 7.3,
+    "readiness": "AS_PLANNED",
+    "feel_gap": null
+   },
+   {
+    "day": "2026-10-06",
+    "hrv_z7": 0.04,
+    "rhr": 49.0,
+    "sleep_h": 7.3,
+    "readiness": "AS_PLANNED",
+    "feel_gap": 1.0
+   },
+   {
+    "day": "2026-10-07",
+    "hrv_z7": -0.34,
+    "rhr": 50.0,
+    "sleep_h": 7.3,
+    "readiness": "AS_PLANNED",
+    "feel_gap": 2.0
+   },
+   {
+    "day": "2026-10-08",
+    "hrv_z7": -0.63,
+    "rhr": 48.0,
+    "sleep_h": 7.2,
+    "readiness": "AS_PLANNED",
+    "feel_gap": null
+   },
+   {
+    "day": "2026-10-09",
+    "hrv_z7": -0.76,
+    "rhr": 49.0,
+    "sleep_h": 7.1,
+    "readiness": "EASY",
+    "feel_gap": null
+   },
+   {
+    "day": "2026-10-10",
+    "hrv_z7": -0.72,
+    "rhr": 50.0,
+    "sleep_h": 7.1,
+    "readiness": "EASY",
+    "feel_gap": null
+   },
+   {
+    "day": "2026-10-11",
+    "hrv_z7": -0.51,
+    "rhr": 48.0,
+    "sleep_h": 7.1,
+    "readiness": "AS_PLANNED",
+    "feel_gap": null
+   }
+  ],
+  "rest_days": 2,
+  "readiness_counts": {
+   "EASY": 2,
+   "AS_PLANNED": 5
+  },
+  "text_zh": "HRV 7 日平均有 7 天資料：3 天在正常範圍（基準 ±0.5 個標準差）、4 天低於、0 天高於，最低 -0.8 個標準差；安靜心率平均 48.9，前 4 週平均 49.0（-0.2）；睡眠平均 7.2 小時，前 4 週平均 7.2 小時；2 趟有評分，RPE 平均比預期 +1.5；0 趟比預期累很多（≥ 3）；每天的準備度判斷：輕鬆騎 2 天、照課表 5 天；沒騎車 2 天",
+  "explanation": {
+   "key": "digest.recovery.2026-10-05",
+   "headline_zh": "HRV 7 日平均有 7 天資料：3 天在正常範圍（基準 ±0.5 個標準差）、4 天低於、0 天高於，最低 -0.8 個標準差",
+   "because": [
+    {
+     "text_zh": "HRV 7 日平均有 7 天資料：3 天在正常範圍（基準 ±0.5 個標準差）、4 天低於、0 天高於，最低 -0.8 個標準差",
+     "evidence": {
+      "days": 7,
+      "below": 4,
+      "above": 0,
+      "swc_sd": 0.5
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "安靜心率平均 48.9，前 4 週平均 49.0（-0.2）",
+     "evidence": {
+      "rhr_mean": 48.9,
+      "rhr_base": 49.0,
+      "baseline_days": 28
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "睡眠平均 7.2 小時，前 4 週平均 7.2 小時",
+     "evidence": {
+      "sleep_h": 7.2,
+      "sleep_base_h": 7.22
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "2 趟有評分，RPE 平均比預期 +1.5；0 趟比預期累很多（≥ 3）",
+     "evidence": {
+      "rated_rides": 2,
+      "mean_gap": 1.5
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "每天的準備度判斷：輕鬆騎 2 天、照課表 5 天",
+     "evidence": {
+      "EASY": 2,
+      "AS_PLANNED": 5
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "沒騎車 2 天",
+     "evidence": {
+      "rest_days": 2
+     },
+     "weight": null
+    }
+   ],
+   "method": {
+    "model_id": "readiness_v2.2",
+    "version": "readiness_v2.2",
+    "inputs": {
+     "hrv_window_days": 7,
+     "hrv_swc_sd": 0.5,
+     "baseline_days": 28,
+     "rpe_surprise": 3.0
+    },
+    "doc": "docs/glossary/readiness_v1.md",
+    "claim": "readiness_v1.weights"
+   },
+   "confidence": "high",
+   "glossary_terms": [
+    "readiness_v1"
+   ]
+  }
+ },
+ "highlights": {
+  "climbs": [
+   {
+    "name": "2.4 km · 5.6 % 爬坡",
+    "this": {
+     "day": "2026-10-11",
+     "power_w": 260.0,
+     "w_kg": 3.71,
+     "time_s": 544,
+     "kj_before": 133.0,
+     "temp_c": 20.0
+    },
+    "history": [
+     {
+      "day": "2026-09-09",
+      "power_w": 209.0,
+      "w_kg": 2.98,
+      "time_s": 616,
+      "kj_before": 133.0,
+      "temp_c": 22.0
+     },
+     {
+      "day": "2026-09-16",
+      "power_w": 228.0,
+      "w_kg": 3.26,
+      "time_s": 600,
+      "kj_before": 133.0,
+      "temp_c": 22.0
+     },
+     {
+      "day": "2026-09-23",
+      "power_w": 219.0,
+      "w_kg": 3.12,
+      "time_s": 584,
+      "kj_before": 133.0,
+      "temp_c": 22.0
+     },
+     {
+      "day": "2026-09-30",
+      "power_w": 238.0,
+      "w_kg": 3.4,
+      "time_s": 569,
+      "kj_before": 133.0,
+      "temp_c": 22.0
+     }
+    ],
+    "rank": 1,
+    "of_n": 5,
+    "note_zh": "第 1/5 快；比過去中位數快 48 秒；平均 260 W（過去中位數 224 W）"
+   }
+  ],
+  "durability_ratio": 0.938,
+  "durability_median_ratio": 0.9635,
+  "text_zh": "2.4 km · 5.6 % 爬坡（10/11）：第 1/5 快；比過去中位數快 48 秒；平均 260 W（過去中位數 224 W）；騎超過 1000 kJ 後效率剩 93.8%，比前 28 天的中位數 96.4% 差（差 ≥ 2%）",
+  "explanation": {
+   "key": "digest.durability.2026-10-05",
+   "headline_zh": "騎超過 1000 kJ 後效率剩 93.8%，比前 28 天的中位數 96.4% 差（差 ≥ 2%）",
+   "because": [
+    {
+     "text_zh": "騎超過 1000 kJ 後效率剩 93.8%，比前 28 天的中位數 96.4% 差（差 ≥ 2%）",
+     "evidence": {
+      "median_ratio": 0.938,
+      "base_median_ratio": 0.9635,
+      "n_long": 1,
+      "late_kj": 1000,
+      "margin": 0.02
+     },
+     "weight": null
+    },
+    {
+     "text_zh": "耐久力 = 同樣耐力區功率下，累積 1000 kJ 之後的效率（功率／心率）÷ 剛開始的效率；100 % 代表沒有掉",
+     "evidence": {},
+     "weight": null
+    }
+   ],
+   "method": {
+    "model_id": "durability_v1",
+    "version": "durability_v1",
+    "inputs": {
+     "late_kj": 1000,
+     "base_days": 28,
+     "margin": 0.02
+    },
+    "doc": "docs/glossary/decoupling_hr_lag.md",
+    "claim": "decoupling_hr_lag.durability_kj_buckets"
+   },
+   "confidence": "low",
+   "glossary_terms": [
+    "decoupling_hr_lag"
+   ]
+  }
+ },
+ "next_week": {
+  "sessions": [
+   {
+    "day": "2026-10-13",
+    "name": "甜蜜點 3x10 分",
+    "purpose_zh": "FTP 以下 10 % 的高產出/低疲勞比間歇，基礎期與建構期的主要 FTP 刺激。",
+    "tss": 75.0,
+    "minutes": 70,
+    "outdoor": true
+   },
+   {
+    "day": "2026-10-15",
+    "name": "Z2 有氧耐力 90 分",
+    "purpose_zh": "標準平日 Z2 有氧騎乘。",
+    "tss": 60.0,
+    "minutes": 90,
+    "outdoor": true
+   },
+   {
+    "day": "2026-10-17",
+    "name": "Z2 有氧耐力 120 分",
+    "purpose_zh": "兩小時 Z2，平日最長的有氧單位。",
+    "tss": 85.0,
+    "minutes": 120,
+    "outdoor": true
+   }
+  ],
+  "phase_zh": "10/12 起賽季第 2 週 基礎期",
+  "key_sessions_zh": [
+   "10/13 甜蜜點 3x10 分"
+  ],
+  "text_zh": "下週 3 次課、計畫 220 TSS，其中 1 次強度課"
+ },
+ "plan_reason": null,
+ "methods": [
+  {
+   "model_id": "coggan_np_if_tss",
+   "claim_id": "coggan_np_if_tss.tss_dose",
+   "grade": "B",
+   "citation": "Sanders D et al. 2017, Int J Sports Physiol Perform 12(5):668-675",
+   "doc": "docs/glossary/coggan_np_if_tss.md"
+  },
+  {
+   "model_id": "ride_intent_v1",
+   "claim_id": "ride_intent.model",
+   "grade": "C",
+   "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",
+   "doc": "docs/specs/ride-report.md"
+  },
+  {
+   "model_id": "banister_pmc",
+   "claim_id": "banister_pmc.load_history",
+   "grade": "B",
+   "citation": "Banister EW et al. 1975, Aust J Sports Med",
+   "doc": "docs/glossary/banister_pmc.md"
+  },
+  {
+   "model_id": "tid_3zone",
+   "claim_id": "time_in_zone_tid.phase_targets",
+   "grade": "C",
+   "citation": "Seiler KS, Kjerland GO 2006, Scand J Med Sci Sports 16(1):49-56 (session-goal counting)",
+   "doc": "docs/glossary/time_in_zone_tid.md"
+  },
+  {
+   "model_id": "goal_projection_v2",
+   "claim_id": "goal_projection.model",
+   "grade": "C",
+   "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",
+   "doc": "docs/glossary/ftp_target_season.md"
+  },
+  {
+   "model_id": "eftp",
+   "claim_id": "eftp.icu_value",
+   "grade": "C",
+   "citation": "Proprietary; no published validation",
+   "doc": "docs/glossary/eftp.md"
+  },
+  {
+   "model_id": "readiness_v2.2",
+   "claim_id": "readiness_v1.weights",
+   "grade": "C",
+   "citation": "Ours; a starting point (readiness_v1 glossary)",
+   "doc": "docs/glossary/readiness_v1.md"
+  },
+  {
+   "model_id": "readiness_v2.3",
+   "claim_id": "readiness_v1.rpe_surprise",
+   "grade": "C",
+   "citation": "Inoue A et al. 2022, Sports Med Open 8:35 (meta-analysis, very low certainty)",
+   "doc": "docs/glossary/readiness_v1.md"
+  },
+  {
+   "model_id": "climb_repeats",
+   "claim_id": null,
+   "grade": null,
+   "citation": null,
+   "doc": "docs/04-analysis-engine.md"
+  },
+  {
+   "model_id": "durability_v1",
+   "claim_id": "decoupling_hr_lag.durability_kj_buckets",
+   "grade": "B",
+   "citation": "Barsumyan A et al. 2025, BMC Sports Sci Med Rehabil 17:192, PMID 40640875",
+   "doc": "docs/glossary/decoupling_hr_lag.md"
+  },
+  {
+   "model_id": "outdoor_context_v1",
+   "claim_id": "outdoor_context.model",
+   "grade": "C",
+   "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",
+   "doc": "docs/specs/ride-report.md"
+  },
+  {
+   "model_id": "planner",
+   "claim_id": "workout_library.template_structure",
+   "grade": "C",
+   "citation": "Practitioner design",
+   "doc": "docs/glossary/workout_library.md"
+  }
+ ]
+}

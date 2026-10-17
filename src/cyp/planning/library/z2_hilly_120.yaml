@@ -1,0 +1,30 @@
+id: z2_hilly_120
+version: 1
+name: "Hilly Endurance 120 min"
+name_zh: "多坡有氧 120 分"
+purpose_zh: "Z2 為主的多坡路線，上坡允許到 Z2 上緣／Tempo 下緣。"
+intent: endurance
+phases: [base, build, threshold]
+slot_roles: [endurance, long_ride]
+requires_power: false
+indoor_ok: false
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 65}
+  - {cue: Rolling, kind: steady, duration: 95m, lo: 62, hi: 80, cadence: "80-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "A hilly loop; on climbs stay at or below 80 %, spin, do not race the segments."
+  note_zh: "選多坡的路線；上坡不超過 80 %，用轉的，不追路段。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "心率 69–88 % LTHR；上坡心率超過 88 % 就降速。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 72}
+    - {cue: Rolling, kind: steady, duration: 95m, lo: 69, hi: 88, cadence: "80-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "多坡 Z2 讓有氧課不只是平路：上坡自然帶到 Z2 上緣，練到爬坡肌群又不變成強度課，對住在坡多地區、目標是長距離的選手特別實用。"

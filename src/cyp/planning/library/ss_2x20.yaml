@@ -1,0 +1,45 @@
+id: ss_2x20
+version: 1
+name: "Sweet Spot 2x20"
+name_zh: "甜蜜點 2x20 分"
+purpose_zh: "兩段 20 分鐘甜蜜點，40 分鐘高品質 FTP 刺激。"
+intent: sweetspot
+phases: [base, build]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 88, max: 93, default: 88}
+  rest_min: 5
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 70}
+  - {kind: steady, duration: 3m, lo: 80, hi: 85}
+  - {kind: steady, duration: 2m, lo: 50, hi: 55}
+  - repeat: 2
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 20m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Needs a 20 min climb (e.g. a 6-8 km, 4-6 % grade) or a closed flat loop. Rest = descent/freeride."
+  note_zh: "需要約 20 分鐘的坡（6–8 km、4–6 %）或無路口平路；休息用下坡。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "甜蜜點心率 90–97 % LTHR；第二趟心率會比第一趟高 2–4 bpm，正常。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 78}
+    - {kind: steady, duration: 3m, lo: 84, hi: 90}
+    - {kind: steady, duration: 2m, lo: 60, hi: 70}
+    - repeat: 2
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 20m, lo: 90, hi: 97, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "2×20 是甜蜜點進程的收尾：當 3×15 已能穩定完成，用兩段 20 分鐘把持續時間拉到接近閾值課的格式，為建構期的閾值 2×20 鋪路。它仍屬低疲勞課，所以可以放在基礎期後段的恢復週前一週。"

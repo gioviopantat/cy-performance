@@ -1,0 +1,177 @@
+# Athlete-facing zh-TW text of the weekly / monthly digests (reports/digest_*.py).
+# Python str.format templates; every {field} is a number or date the builder computed.
+# Renderers show these strings as they are and never add figures (docs/07).
+
+common:
+  sep: "；"
+  list_sep: "、"
+
+period:
+  week: "{start:%Y-%m-%d} – {end:%m-%d}（ISO 第 {iso} 週）"
+  season_week: " · 賽季第 {n} 週 {phase}"
+  recovery: "（恢復週）"
+  month: "{d.year} 年 {d.month} 月"
+  day: "{d:%m/%d}"
+  range: "{lo:%m/%d}–{hi:%m/%d}"
+  break_unavailable: "{ranges} 沒有可訓練時間（athlete.yaml 可用時間設為 0，共 {n} 天）"
+  break_sick: "{range} 行事曆標記生病"
+  break_injured: "{range} 行事曆標記受傷"
+  break_unknown: "這段期間沒有騎乘紀錄，也沒有標記原因"
+
+verdict:
+  achieved: "達成"
+  partial: "部分達成"
+  missed: "未達成"
+  overdone: "騎過頭"
+  skipped: "沒騎"
+  unplanned: "自由騎"
+  no_data: "無法判斷"
+  casual: "休閒騎"
+
+session:
+  unplanned: "沒有排課的自由騎：{cls}"
+  casual: "休閒騎（不評分）：{cls}"
+  overdone: "輕鬆課騎過頭：負荷是計畫的 {ratio:.0%}（超過 {max:.0%} 而且多 {margin:.0f} TSS 以上，就沒達到輕鬆課的目的；隔天規劃器會依多出的量減量）"
+  excused: "{n} 段停車／滑行／下坡不扣分"
+  stops: "停車 {n} 次、共 {minutes} 分鐘，間歇結構不可靠"
+  heat: "均溫 {temp} °C，心率類指標不和平常比較"
+  skipped_unavailable: "這天設為沒有可訓練時間"
+
+load:
+  headline: "實際負荷 {actual:.0f}／計畫 {planned:.0f} TSS（{ratio:.0%}）"
+  headline_no_plan: "實際負荷 {actual:.0f} TSS（沒有計畫可比）"
+  headline_ctl: "，體能 CTL {start:.1f} → {end:.1f}"
+  vs_plan: "實際負荷 {actual:.0f} TSS，計畫 {planned:.0f} TSS（{ratio:.0%}）；計畫負荷是這段期間每一份課表的目標 TSS 加總"
+  no_plan: "實際負荷 {actual:.0f} TSS；這段期間沒有計畫的課表"
+  volume: "騎了 {rides} 趟、{hours:.1f} 小時"
+  ledger_more: "實際負荷用 intervals.icu 計入體能的每日負荷（和 CTL 同一本帳），比騎車負荷加總 {ride:.0f} TSS 多 {diff:.0f}（其他運動，或騎車紀錄沒有負荷的活動）"
+  ledger_less: "實際負荷用 intervals.icu 計入體能的每日負荷（和 CTL 同一本帳），比騎車負荷加總 {ride:.0f} TSS 少 {diff:.0f}（intervals.icu 沒有把那些活動算進體能）"
+  ctl: "體能 CTL 從 {start:.1f} 到 {end:.1f}，換算每週 {ramp:+.1f}"
+  ramp_ok: "每週 {ramp:+.1f} 在{phase}的上限 {cap:g} 以內"
+  ramp_over: "每週 {ramp:+.1f} 超過{phase}的上限 {cap:g}"
+  tsb: "期末疲勞 ATL {atl:.1f}、狀態 TSB {tsb:+.1f}"
+  plan_path: "賽季計畫預估 {day:%m/%d} 的 CTL 是 {plan:.1f}，實際 {ctl:.1f}"
+
+tid:
+  rule: "以課次計：{n} 趟裡有 {hard} 趟中／高強度，階段目標約 {expected:.1f} 趟（容許差 {slack} 趟）→ {verdict}"
+  under: "強度課偏少"
+  "on": "符合階段目標"
+  over: "強度課偏多"
+  no_target: "沒有階段目標可比"
+
+goal:
+  shift: "{before:%m/%d} 預估 {prev_date}，{end:%m/%d} 預估 {date}：{shift}"
+  headline_shift: "（比期初{shift}）"
+  earlier: "提前 {days} 天"
+  later: "延後 {days} 天"
+  same: "不變"
+  evidence: "{day:%m/%d} 有接近極限的長時間努力（{label}），× {frac:.2f} = FTP 證據 {ev:.0f} W"
+
+recovery:
+  hrv: "HRV 7 日平均有 {n} 天資料：{within} 天在正常範圍（基準 ±{swc} 個標準差）、{below} 天低於、{above} 天高於，最低 {low:+.1f} 個標準差"
+  rhr: "安靜心率平均 {mean:.1f}，前 4 週平均 {base:.1f}（{diff:+.1f}）"
+  rhr_no_base: "安靜心率平均 {mean:.1f}（前 4 週沒有資料可比）"
+  rhr_step: "⚠ 安靜心率在 {day} 前後一夕之間差了 {jump:+.0f} bpm（之前約 {before:.0f}、之後約 {after:.0f}）。這麼大的跳動通常是量測來源改變，例如手錶沒電換電池、換裝置或改設定，不是體能變化；跨過這一天的比較請只當參考"
+  sleep: "睡眠平均 {mean:.1f} 小時，前 4 週平均 {base:.1f} 小時"
+  sleep_no_base: "睡眠平均 {mean:.1f} 小時（前 4 週沒有資料可比）"
+  feel: "{n} 趟有評分，RPE 平均比預期 {gap:+.1f}；{harder} 趟比預期累很多（≥ {surprise:.0f}）"
+  count: "{name} {n} 天"
+  readiness: "每天的準備度判斷：{counts}"
+  rest_days: "沒騎車 {n} 天"
+
+readiness:
+  REST: "休息"
+  EASY: "輕鬆騎"
+  AS_PLANNED: "照課表"
+  UPGRADE: "可加強"
+
+next:
+  week: "{start:%m/%d} 起賽季第 {n} 週 {phase}"
+  recovery_tag: "（恢復週）"
+  recovery_week: "{start:%m/%d} 起第 {n} 週是恢復週（負荷降低）"
+  test_week: "{start:%m/%d} 起第 {n} 週：{test}"
+  key: "{day:%m/%d} {name}"
+  none: "下週還沒有存好的課表（早上的自動排課還沒跑，或這週設為不可訓練）"
+  none_month: "下個月還沒有存好的課表（規劃器只往前排兩週）"
+  week_summary: "下週 {n} 次課、計畫 {tss:.0f} TSS，其中 {hard} 次強度課"
+  month: "目前存好 {n} 次課（排到 {last:%m/%d}）、計畫 {tss:.0f} TSS，其中 {hard} 次強度課；之後的課每天早上自動排"
+
+test:
+  ramp: "Ramp 測驗"
+  twenty_min: "20 分鐘 FTP 測驗"
+
+highlights:
+  climb: "{name}（{day:%m/%d}）：{note}"
+  durability_no_base: "騎超過 1000 kJ 後效率剩剛開始的 {ratio:.1%}（{n} 趟長騎；前 {days} 天沒有可比的長騎）"
+  durability_better: "騎超過 1000 kJ 後效率剩 {ratio:.1%}，比前 {days} 天的中位數 {base:.1%} 好（差 ≥ {margin:.0%}）"
+  durability_worse: "騎超過 1000 kJ 後效率剩 {ratio:.1%}，比前 {days} 天的中位數 {base:.1%} 差（差 ≥ {margin:.0%}）"
+  durability_same: "騎超過 1000 kJ 後效率剩 {ratio:.1%}，和前 {days} 天的中位數 {base:.1%} 差不多"
+  durability_method: "耐久力 = 同樣耐力區功率下，累積 {kj} kJ 之後的效率（功率／心率）÷ 剛開始的效率；100 % 代表沒有掉"
+
+headline:
+  on_track: "照計畫：{judged} 次課 {counts}"
+  partly: "部分照計畫：{judged} 次課 {counts}"
+  off_track: "沒照計畫：{judged} 次課 {counts}"
+  no_plan: "沒有計畫可比，騎了 {rides} 趟"
+  count: "{name} {n}"
+  load: "負荷 {actual:.0f}／{planned:.0f} TSS（{ratio:.0%}）"
+  goal_date: "{target:.0f} W 預估 {date} 達成"
+  goal_earlier: "（比期初提前 {days} 天）"
+  goal_later: "（比期初延後 {days} 天）"
+  goal_same: "（和期初一樣）"
+  goal_none: "{target:.0f} W：資料還不夠預估日期"
+  break: "休息期：{reason}"
+  break_skipped: "；原本排的 {n} 次課沒騎"
+  ctl_drift: "，體能 CTL {start:.1f} → {end:.1f}"
+  month: "排了 {planned} 次課，騎了 {done} 次、達成 {achieved} 次"
+  month_ctl: "CTL {start:.1f} → {end:.1f}"
+  month_plan: "（賽季計畫 {plan:.1f}）"
+  end: "。"
+
+change:
+  overdone: "輕鬆課要真的輕鬆：這週 {n} 次恢復／耐力課負荷超過計畫的 {max:.0%}"
+  skipped: "這週有 {n} 次課沒騎：時間不夠就在 athlete.yaml 調整可用時間，讓規劃器排得進去"
+  too_hard: "強度課太多（{n} 趟裡 {hard} 趟中／高強度）：下週把多的那趟換成 Z2"
+  missed: "{n} 次課沒達成（區間時間不到計畫的 {frac:.0%}）：先確認 FTP 和配速，必要時把組數拆短"
+  recovery: "恢復不足（{rest} 天判休息、{low} 天 HRV 7 日平均低於正常範圍）：下週先照準備度調整，不要硬補課"
+  recovery_month: "恢復不足（{rest} 天判休息、{low} 天 HRV 7 日平均低於正常範圍）：下個月照每天的準備度調整，不要硬補課"
+  volume: "負荷只有計畫的 {ratio:.0%}（低於 {min:.0%}）：下週先把排好的課騎完，不要加量"
+  too_easy: "強度課偏少：下週的強度課優先騎"
+  keep: "照目前的節奏繼續"
+  break_return: "回來的第一堂：{day:%m/%d} {name}，先輕鬆找回節奏"
+  consistency: "一致性：排了 {planned} 次只騎了 {done} 次，最長 {gap} 天沒騎；下個月先把次數騎滿"
+  too_hard_month: "{n} 週的強度課比階段目標多：把多的強度課換成 Z2"
+  limiter: "目前最主要的限制是「{name}」，下個月的強度課優先騎針對它的課"
+
+consistency:
+  text: "排了 {planned} 次課，騎了 {done} 次、達成 {achieved} 次；最長連續 {gap} 天沒騎"
+
+curve:
+  d5: "5 秒"
+  d60: "1 分鐘"
+  d300: "5 分鐘"
+  d1200: "20 分鐘"
+  d3600: "60 分鐘"
+  vs_last: "{name} {w:.0f} W（上個月 {last:.0f} W）"
+  no_last: "{name} {w:.0f} W（上個月沒有資料）"
+  season_best: "，本季最佳"
+  year_best: "，近 {days} 天最佳"
+
+fitness:
+  effort: "{day} {label}"
+  setting: "FTP 設定 {start:.0f} → {end:.0f} W（{diff:+.0f}）"
+  cp: "近 {days} 天 2 參數 CP 模型：CP {cp:.0f} W、W′ {wp:.1f} kJ（{n} 個最佳努力點），CP × {frac:.2f} = eFTP {eftp:.0f} W"
+  no_cp: "近 {days} 天的最佳努力不夠擬合 CP 模型"
+  efforts: "這個月有 {n} 次接近極限的努力支撐這些數字（列出前 {shown} 次，長時間的優先）"
+  no_efforts: "這個月沒有接近極限的努力，FTP／CP 估計偏保守"
+
+limiters:
+  bias: "{cls} ×{b:.2f}"
+  response: "規劃器針對「{name}」調高這些課的比例：{bias}"
+  no_bias: "主要限制是「{name}」，規劃器目前沒有額外調整"
+  none: "目前沒有偵測到明顯的限制因子"
+  resolved: "上個月的限制「{names}」已經不再是限制，規劃器不再為它調整"
+
+research:
+  change: "{claim}：{before} → {after}（{why}）"
+  none: "這份月報的等級變更還沒有核准"
