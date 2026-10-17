@@ -221,6 +221,22 @@ REGISTRY: tuple[Feature, ...] = (
         requires=("strava.write_description",),
     ),
     Feature(
+        "strava.route_story",
+        "report",
+        False,
+        "RIDE.LOG 路線故事",
+        "Name where the ride went (districts, places, the stop) and suggest a next spot from "
+        "OpenStreetMap, with the 1 km privacy zone around start and end (ADR-0021).",
+    ),
+    Feature(
+        "llm.ride_poem",
+        "report",
+        False,
+        "RIDE.LOG 藏頭詩",
+        "Let Claude phrase the casual RIDE.LOG lines and write the acrostic poem from the "
+        "ride's facts; validated, deterministic text on any failure (ADR-0021).",
+    ),
+    Feature(
         "notify.macos",
         "notify",
         True,

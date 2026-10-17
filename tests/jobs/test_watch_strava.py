@@ -79,7 +79,8 @@ def test_writes_after_the_email_once_and_keeps_the_athletes_text(
     assert _actions(report, aid) == ["sent", "strava_written"] and report.ok
     assert len(mailer.sent) == 1 and len(fake.writes) == 1
     desc = fake.writes[0][1]
-    assert desc.startswith("Coffee ride with Sherry\n\n📋 WORKOUT")
+    assert desc.startswith("Coffee ride with Sherry\n\n⚙️ RIDE.LOG")
+    assert desc.endswith("#cyperformance")
     assert desc.count("⚙️ RIDE.LOG") == 1
     row = _row(actx, aid)
     assert (row.status, row.strava_status, row.strava_error) == ("sent", "written", None)
@@ -164,3 +165,23 @@ def test_failed_email_writes_no_strava(actx: AppContext, built: list[int]) -> No
     assert _actions(report, aid) == ["failed"] and fake.writes == []
     assert _row(actx, aid).strava_status is None
     assert ride_report.strava_retries(actx) == []
+
+
+def test_story_is_prepared_before_the_write_and_never_blocks_it(
+    actx: AppContext, built: list[int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cyp.services import ride_story
+
+    order: list[str] = []
+    real = watch.strava_write.auto_push
+    monkeypatch.setattr(ride_story, "prepare", lambda c, aid, **_k: order.append("prepare"))
+
+    def push(ctx: AppContext, aid: int, **kw: object) -> object:
+        order.append("push")
+        return real(ctx, aid, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(watch.strava_write, "auto_push", push)
+    _token(actx, "read,activity:write", athlete=OWNER)
+    aid = _strava_ride(actx)
+    report = _tick(actx, T0, Mailer(), FakeStrava(""))
+    assert order == ["prepare", "push"] and _actions(report, aid) == ["sent", "strava_written"]

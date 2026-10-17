@@ -53,7 +53,9 @@ the docs below match the code in the same commit. Format/autofix: `uv run poe fm
   (`tests/test_invariants.py`).
 - **Every run leaves evidence**: `cyp run` always returns a report and a `job_runs` row
   (`config` / `lock` / `setup` failures included).
-- **Deterministic planner**; an LLM may narrate, never compute numbers (ADR-0004).
+- **Deterministic planner**; an LLM may narrate, never compute numbers (ADR-0004). The one LLM
+  use (RIDE.LOG, `llm.ride_poem`) is validated against the facts; OSM gets no point within 1 km
+  of a ride's start or end (ADR-0021, `tests/services/test_ride_story.py`).
 
 ## Map
 | Where | What |
@@ -65,6 +67,7 @@ the docs below match the code in the same commit. Format/autofix: `uv run poe fm
 | `src/cyp/core/features.py` | flag registry |
 | `src/cyp/core/evidence.py` | A/B/C evidence grades; verdicts only on A/B (ADR-0011) |
 | `src/cyp/jobs/watch.py`, `src/cyp/services/ride_report.py`, `src/cyp/reports/ride_*.py` | per-ride PDF: detect, build, email (ADR-0010) |
+| `src/cyp/services/ride_story.py`, `src/cyp/reports/ride_story.py`, `src/cyp/ingest/osm/`, `src/cyp/llm/narrator.py` | the casual Strava RIDE.LOG: facts, OSM route (privacy zone), Claude narration + acrostic, cache (ADR-0021) |
 | `src/cyp/jobs/runner.py`, `src/cyp/jobs/launchd.py` | `run_profile` (lock, migrate, notify), `run --all`; launch agent |
 | `docs/onboarding-questions.md` | the questions a new athlete answers, and what they drive |
 | `src/cyp/api/`, `web/` | HTTP API (one server, every profile via `X-CYP-Profile`) and the React dashboard; after changing a schema run `uv run cyp dev openapi` and `npm --prefix web run gen:api` |

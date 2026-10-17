@@ -117,9 +117,11 @@ class Settings(BaseSettings):
     #: How the emails greet the recipient (``William 你好``); defaults to the profile's name.
     cyp_report_email_name: str = ""
 
-    # Optional LLM (not used yet; a narrator will ship behind a feature flag, ADR-0008)
+    # Optional LLM: the RIDE.LOG narrator (flag llm.ride_poem, ADR-0021)
     anthropic_api_key: SecretStr = SecretStr("")
-    cyp_llm_model: str = "claude-sonnet-5-5"
+    cyp_llm_model: str = "claude-opus-5-5"
+    #: Contact added to the OpenStreetMap User-Agent (flag strava.route_story, ADR-0021).
+    cyp_osm_contact: str = ""
 
     @field_validator("cyp_timezone")
     @classmethod

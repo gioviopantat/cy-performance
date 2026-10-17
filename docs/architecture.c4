@@ -119,6 +119,16 @@ model {
     technology 'SMTP over TLS (e.g. Gmail with an App Password)'
     description 'Delivers the per-ride PDF to CYP_REPORT_EMAIL_TO (and CYP_REPORT_EMAIL_CC) from the profile .env (feature notify.email, jobs/notify.py)'
   }
+  osm = extsys 'OpenStreetMap (Overpass, Nominatim)' {
+    #optional
+    technology 'HTTPS, public APIs, <= 1 request/s'
+    description 'Place and district names for the RIDE.LOG route story; receives only route points outside the 1 km privacy zone around start and end (feature strava.route_story, ingest/osm, ADR-0021)'
+  }
+  claude = extsys 'Claude API (Anthropic)' {
+    #optional
+    technology 'Messages API, claude-opus-5-5, anthropic SDK'
+    description 'Phrases the casual RIDE.LOG lines and writes the acrostic poem from the story facts JSON; output validated (feature llm.ride_poem, llm/narrator.py, ADR-0021)'
+  }
   macNotify = extsys 'macOS Notification Center' {
     #optional
     technology 'osascript'
@@ -144,6 +154,10 @@ model {
   cyp.watcher -> cyp.reports 'writes ride PDFs and facts JSON'
   cyp.watcher -> smtp 'emails the ride PDF'
   cyp.watcher -> macNotify 'notice after 3 failed attempts (or 2 failed Strava writes)'
+  cyp.watcher -> osm 'looks up the ride route places and districts (privacy-trimmed points; strava.route_story)'
+  cyp.watcher -> claude 'narrates the RIDE.LOG and its poem (llm.ride_poem)'
+  cyp.cli -> osm 'ride-log show --fetch'
+  cyp.cli -> claude 'ride-log show --fetch'
   cyp.watcher -> strava 'after the report, writes the ride RIDE.LOG description (flag strava.auto_description, ADR-0020; scope + owner gates)'
   cyp.digestAgent -> cyp.cli 'starts digest run --all daily at 07:00'
   cyp.cli -> cyp.digester 'digest run --all: one subprocess per profile; digest weekly|monthly [--send]'
@@ -177,13 +191,13 @@ model {
 views {
   view index {
     title 'cy-performance: context'
-    include owner, athlete, cyp, icu, strava, garmin, macNotify, smtp
+    include owner, athlete, cyp, icu, strava, garmin, macNotify, smtp, osm, claude
   }
 
   view containers of cyp {
     title 'cy-performance: containers'
     include *
     include cyp.*
-    include owner, athlete, icu, strava, garmin, macNotify, googleFonts, smtp
+    include owner, athlete, icu, strava, garmin, macNotify, googleFonts, smtp, osm, claude
   }
 }

@@ -1,0 +1,95 @@
+# Strava RIDE.LOG copy (reports/ride_story.py, spec casual-and-strava §C). Public and casual:
+# no verdicts, no plan, no tomorrow, no model jargon. Place names always in 「」 and only from
+# OSM facts. Variants rotate deterministically by activity id.
+
+summary:
+  - "{km} 公里、爬升 {elev} 公尺，{minutes} 分鐘的單車時光"
+  - "{minutes} 分鐘踩了 {km} 公里，爬升 {elev} 公尺"
+  - "今天的里程：{km} 公里，爬升 {elev} 公尺"
+summary_flat:
+  - "{km} 公里、{minutes} 分鐘，平平順順"
+  - "{minutes} 分鐘踩了 {km} 公里，輕鬆就好"
+
+casual:
+  - "跟朋友一起慢慢騎，聊天比速度重要 ☕"
+  - "和朋友出來晃晃，喝杯飲料才是今天的主線 🧋"
+  - "不趕路的一天，跟朋友邊騎邊聊"
+
+route:
+  - "今天的路線：{route} 🚴"
+  - "一路經過{route}，在{turn}折返"
+  - "從{first}出發晃到{turn}，再慢慢騎回來"
+route_one:
+  - "今天在{turn}附近繞了一圈 🚴"
+  - "{turn}一帶的小旅行"
+
+climb_board:
+  - "「{climb}」今天是 {of_n} 次裡第 {rank} 快 ⛰️"
+  - "又去爬了「{climb}」，{of_n} 次裡排第 {rank} ⛰️"
+climb_place:
+  - "途經「{peak}」，爬升 {elev} 公尺，腿有感 ⛰️"
+  - "繞上「{peak}」一帶，山路 {elev} 公尺爬升"
+
+stop:
+  - "中途在「{stop}」停下來補給 ☕"
+  - "在「{stop}」歇個腳、喝一杯再出發"
+  - "今天的補給站：「{stop}」🧋"
+
+next_spot:
+  - "下次踩點提案：「{spot}」，{why}，離這次折返點約 {spot_km} 公里 📍"
+  - "下回可以試試「{spot}」：{why}，距離這次折返點約 {spot_km} 公里"
+spot_why:
+  viewpoint: "看得到遠景，適合當爬坡的終點"
+  peak: "一座還沒去過的山頭"
+  cafe: "騎到那裡剛好坐下來補給"
+  attraction: "順路的景點，可以停下來看看"
+
+weather:
+  - "均溫 {temp}°C，{temp_word}"
+  - "今天 {temp}°C，{temp_word}"
+temp_word:
+  hot: "太陽很有誠意，水壺見底"
+  warm: "暖暖的，剛好適合出門"
+  cool: "涼涼的風，騎起來最舒服"
+  cold: "有點冷，手套派上用場"
+
+number:
+  - "今日數字：{num} {unit}"
+  - "今天的數字是 {num} {unit}，記下來"
+number_unit:
+  elev: "公尺爬升"
+  km: "公里"
+  minutes: "分鐘"
+
+season:
+  1: "一月的冷風裡騎車，熱湯在終點等著"
+  2: "二月春寒，踩一踩身體就暖了"
+  3: "三月花開，路邊的風景換了顏色"
+  4: "四月的雨說來就來，晴天要把握"
+  5: "五月的風帶點熱度，夏天快到了"
+  6: "六月的午後雷陣雨，早點出門最好"
+  7: "七月盛夏，清晨的路最可愛"
+  8: "八月的太陽很烈，樹蔭就是補給"
+  9: "九月的風開始轉向，秋天近了"
+  10: "十月的風開始涼了，最適合出門踩踩"
+  11: "十一月秋高氣爽，一年裡最好騎的季節"
+  12: "十二月的冷空氣，騎完一杯熱飲剛好"
+
+#: Acrostic heads (4 characters each) per content type; the last 10 used are skipped.
+heads:
+  route: ["風起林間", "路轉山腰", "青山相送", "晴川歷歷", "雲隨輪轉", "長路漫漫", "遠山如黛", "溪橋入畫"]
+  climb: ["坡陡心定", "登高望遠", "汗灑山徑", "步步登高", "峰迴路轉", "千階在望", "攀雲而上", "山風入懷"]
+  stop: ["杯中有茶", "停車小憩", "一盞清涼", "茶香半日", "歇腳樹下", "閒坐街角", "涼飲解渴", "偷閒片刻"]
+  next_spot: ["他日再訪", "下回相約", "前方有景", "且待來日", "尋幽訪勝", "來日方長", "遠方在招", "約定山水"]
+  weather: ["日暖風輕", "晴空萬里", "秋陽正好", "微風拂面", "雲淡天高", "晚風送涼", "細雨沾衣", "烈日當空"]
+  number: ["數盡長路", "輪轉千回", "里程點滴", "千米之外", "數里清風", "輪下有數", "一輪一景", "積步成里"]
+  season: ["秋意漸濃", "四季輪轉", "時節正好", "秋風送爽", "歲月如輪", "金風玉露", "寒來暑往", "流光騎過"]
+
+footer: "#cyperformance"
+
+#: Validation word lists (reports/ride_story.validate).
+validation:
+  #: Words that read as a place; outside a facts place they mean an invented one.
+  place_words: ["咖啡", "茶", "寺", "宮", "廟", "公園", "步道", "觀景台"]
+  #: Never in a RIDE.LOG (Roger: 甜蜜點 not 甜點; no 三八 / 幹).
+  forbidden: ["甜點", "三八", "幹"]

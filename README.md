@@ -130,6 +130,11 @@ RIDE.LOG to Strava (flag `strava.write_description`, off by default): add `activ
 `STRAVA_SCOPE` in the profile's `.env`, run `uv run cyp --profile me auth strava` once, set
 `strava.write_description: true` under `features:`. Then `uv run cyp ride-log push latest`
 previews and `--confirm-write` writes (or use the 行事曆 page: open the ride's day). Your own text on Strava is kept.
+The RIDE.LOG is a casual post (no training talk): 2–4 lines, an optional acrostic poem and
+`#cyperformance`. `strava.route_story: true` names where the ride went from OpenStreetMap (start
+and end areas never leave the machine; set `CYP_OSM_CONTACT` for the User-Agent) and
+`llm.ride_poem: true` lets Claude write the lines and the poem (`ANTHROPIC_API_KEY` in the
+profile's `.env`); `uv run cyp --profile me ride-log show <id> --fetch` runs both once.
 To have the ride watcher do this after every ride report, also set
 `strava.auto_description: true` (ADR-0020; same gates, no per-ride confirmation; the outcome is
 in `ride_reports.strava_status`, see `docs/runbooks/watch.md`).

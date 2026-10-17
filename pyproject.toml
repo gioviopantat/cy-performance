@@ -22,11 +22,11 @@ dependencies = [
     "python-dotenv>=1.0",
     "matplotlib>=3.11.2",
     "weasyprint>=70.0",
+    "anthropic>=1.11.0",
 ]
 
 [project.optional-dependencies]
 serve = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "apscheduler>=3.10"]
-llm = ["anthropic>=0.40"]
 
 [project.scripts]
 cyp = "cyp.cli:app"

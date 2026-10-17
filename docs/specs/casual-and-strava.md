@@ -85,3 +85,96 @@ against the planned Z2 180 min.
 `docs/09-features.md`, `docs/01-architecture.md`, `docs/architecture.c4`, ADR-0020, CLAUDE.md
 (Strava invariant, commands), README, `docs/runbooks/watch.md`, `docs/specs/web-ui.md`,
 `docs/specs/ride-report.md`, `docs/02-integrations.md` (Strava write).
+
+## C. A casual RIDE.LOG for Strava (2026-10-17)
+
+Roger: "ridelog 也希望你優化一下 現在的幾乎沒有任何意義" (style chosen: 社群輕鬆版) and "我希望是在
+strava上的內容都是休閒的 比如判斷騎行路線以及推薦下次踩點等等 希望很多樣化".
+
+### Goal
+The Strava description becomes a short, friendly post: 2–4 casual lines about the ride (where it
+went, a stop, a climb, a number of the day, a spot to try next), a 4-line acrostic poem in
+literary Chinese, and `#cyperformance`. Training analysis (verdicts, plan, tomorrow) stays in the
+PDF and the email only.
+
+### Non-goals
+- No training talk on Strava: no 達成/未達成/騎過頭, no plan, no tomorrow, no model jargon
+  (decoupling, HR lag, TSB, STATUS). The old `📋 WORKOUT` block is dropped (it was plan talk).
+- No invented places: every place name comes from OpenStreetMap data of this ride.
+- No other people's names (a casual ride says 跟朋友, never who).
+- No Strava write here: writing stays `strava_write.push()` (manual, or B's opt-in flag).
+
+### Design
+- **Text** (`services/ride_log.build`): one block, markers unchanged so `strava_write.compose`
+  still replaces only our block (old WORKOUT + RIDE.LOG + poem blocks included):
+  ```
+  ⚙️ RIDE.LOG
+  <2–4 casual lines>
+  > <poem line 1>
+  > … (4 lines, only with llm.ride_poem)
+  #cyperformance
+  ```
+  A saved text (`data/ride_logs/<id>.txt`) still wins everywhere. `RideLog.workout` is empty
+  (API field kept for the web client).
+- **Facts** (`reports/ride_story.py`, layer 5, pure): `StoryFacts` from the ride report the PDF
+  uses (`reports/ride_facts.build_ride_report`; the stored facts JSON beside the PDF when there
+  is one, so the numbers match it) plus the route places. Content types: `route`, `climb`,
+  `stop`, `next_spot`, `weather`, `number`, `season`. The type is picked deterministically: a
+  rotation by activity id over the types this ride has material for, skipping the previous ride's
+  type (no two consecutive posts with the same type). A casual ride (tag A) prefers `stop`, then
+  `route`, and adds a 跟朋友 line. Copy: `reports/i18n/ride_story.zh-TW.yaml`, variants rotated
+  by activity id. The acrostic head (4 characters) is picked from a list per content type,
+  skipping heads used by the last 10 stories.
+- **Route** (`ingest/osm/`, layer 3; flag `strava.route_story`, default off): from the latlng
+  stream. **Privacy zone**: every point within 1 km of the start or the end is dropped before any
+  request; the rest is downsampled to one point per 200 m and rounded to 5 decimals; no
+  timestamps, no athlete id, no activity id ever leaves. Overpass (one `around:150` query on the
+  route line: `amenity=cafe`, `shop=beverages|tea|coffee|bubble_tea`, `tourism=viewpoint|attraction`,
+  `natural=peak`, `leisure=park`, `amenity=place_of_worship` with a name) and Nominatim reverse
+  geocoding (zh-TW; at most 3 points: the turnaround and two along the way) for district names,
+  ≤ 1 request/s, `User-Agent: cy-performance/<version> (+CYP_OSM_CONTACT)`; the contact is an
+  optional setting, never hard-coded. The turnaround is the kept point farthest from the start;
+  the longest stop (from the report's stops) is matched to the nearest drink/café POI within
+  150 m. Results are cached per ride (`data/ride_story/osm/<id>.json`); any failure means a
+  RIDE.LOG without route details.
+- **Next spot** (`next_spot`): one more Overpass query (viewpoints, peaks, cafés with a name) in
+  the bounding box of the last 90 days' cached routes (already privacy-trimmed), minus places in
+  the per-profile visited record (`data/ride_story/visited.json`, every POI a past route passed).
+  One unvisited place is picked deterministically, with why it fits (its kind and the distance
+  from this ride's turnaround).
+- **Narration** (`llm/narrator.py`, layer 7; flag `llm.ride_poem`, default off, needs
+  `ANTHROPIC_API_KEY`): one call to `claude-opus-5-5` (`settings.cyp_llm_model`), effort low,
+  max_tokens 1024, timeout 30 s, SDK retries 2, server-side fallback
+  (`server-side-fallback-2026-07-01`, `fallbacks="default"`), structured output
+  `{lines: [...], poem: [...]}`. Input: only the facts JSON (content type, place names, numbers,
+  casual, the head) and the rules (acrostic, literary Chinese, rhymed, no English, no rap,
+  甜蜜點 never 甜點). `stop_reason` refusal / max_tokens, an API error, or an invalid output →
+  the deterministic lines and no poem. Validation (`reports/ride_story.validate`): 2–4 lines of
+  ≤ 60 characters, exactly 4 poem lines of 5–9 characters whose first characters spell the head,
+  no Latin letters except `km`, `m`, `W`, `°C`, every number appears in the facts, every
+  「name」 is a facts place, no POI-like word (咖啡、茶、寺、宮、廟、公園、步道、觀景台) outside a
+  facts place, none of 甜點 / 三八 / 幹.
+- **Cache** (`data/ride_story/<id>.json`): the chosen type, head, lines, poem and source; a
+  story made with the network is reused as is, so a resend is identical.
+- **When the network runs**: only `services/ride_story.prepare()` calls OSM or Claude (each
+  behind its flag): the watcher before the automatic Strava write (B), and
+  `cyp ride-log show --fetch`. Showing a RIDE.LOG (web, CLI) never calls out.
+
+### Safety
+No calendar or Strava write. OSM gets privacy-trimmed coordinates only (test). Claude gets the
+facts JSON only, never Strava data or streams (docs/02 Strava terms). Both default off; failures
+degrade to the deterministic text. ADR-0021.
+
+### Decisions taken without asking (Roger runs bypass mode, lead 2026-10-17)
+- The WORKOUT block is dropped (plan talk); its only casual fact (distance/time) moves into the
+  lines.
+- `cyp_llm_model` default becomes `claude-opus-5-5` (it was unused).
+- The poem has no deterministic fallback: without the LLM there is no poem.
+- The next-spot area is the bounding box of cached, privacy-trimmed routes (no extra stream reads).
+
+### Acceptance
+Tests stub Overpass, Nominatim and Claude (no network): privacy zone (no coordinate within 1 km
+of start/end leaves), cache (second prepare makes no request), variety (no two consecutive
+types), invented-name rejection, acrostic / Latin / number checks, refusal → no poem, compose
+replaces an old WORKOUT + RIDE.LOG + poem block exactly once. Texts for activities 226, 228,
+229 shown in the report (OSM live, LLM only if the key is set; no Strava write).

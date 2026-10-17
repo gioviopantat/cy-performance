@@ -13,7 +13,8 @@ email is retried on the next ticks up to 3 attempts, then a macOS notice. The wa
 writes a calendar; tomorrow's plan in the PDF is a dry-run preview.
 
 With ``strava.auto_description`` on (ADR-0020), a ride whose report was just done gets its
-RIDE.LOG written to Strava through ``services/strava_write.auto_push`` (every gate of ``push``).
+RIDE.LOG written to Strava through ``services/strava_write.auto_push`` (every gate of ``push``),
+after ``services/ride_story.prepare`` looked the route up and narrated it (their own flags).
 The outcome goes to ``ride_reports.strava_status``; a failure never touches the report row,
 is retried once on the next tick, then given up (macOS notice).
 """
@@ -35,7 +36,7 @@ from cyp.core.errors import ConfigError, CypError
 from cyp.core.timeutil import now_utc, to_local
 from cyp.jobs.runner import ChildResult, RunLockedError, notify_failure, profile_lock, run_profiles
 from cyp.logging import get_logger
-from cyp.services import pipeline, ride_feedback, ride_report, strava_write
+from cyp.services import pipeline, ride_feedback, ride_report, ride_story, strava_write
 from cyp.services import trends as trends_service
 from cyp.services.context import AppContext
 from cyp.settings import Settings
@@ -209,6 +210,8 @@ def _strava(
     previous = ride_report.strava_status(ctx, activity_id)
     error: str | None = None
     try:
+        # Route lookup and poem (each behind its flag; never raises for their failures).
+        ride_story.prepare(ctx, activity_id)
         result = strava_write.auto_push(ctx, activity_id, client_factory=client)
         status = ride_report.STRAVA_WRITTEN if result.written else ride_report.STRAVA_UNCHANGED
     except Exception as exc:  # noqa: BLE001 - recorded on the row; the email already went out
