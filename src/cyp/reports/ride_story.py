@@ -32,7 +32,8 @@ RECENT_HEADS = 10
 MAX_LINES, MIN_LINES, MAX_LINE_CHARS = 4, 2, 60
 POEM_LINES, POEM_MIN_CHARS, POEM_MAX_CHARS = 4, 5, 9
 #: Place-like and forbidden words live in the copy file (``validation``).
-UNITS = re.compile(r"(?<![A-Za-z])(km|kJ|m|W)(?![A-Za-z])|°C")
+#: The only units a public post may use (no W, kJ, bpm, kg: they reveal FTP, weight, health).
+UNITS = re.compile(r"(?<![A-Za-z])(km|m)(?![A-Za-z])|°C")
 NUMBER = re.compile(r"\d+(?:\.\d+)?")
 CJK = re.compile(f"[{chr(0x3400)}-{chr(0x9FFF)}]")
 QUOTED = re.compile(r"「([^」]+)」")

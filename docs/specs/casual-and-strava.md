@@ -188,3 +188,13 @@ of start/end leaves), cache (second prepare makes no request), variety (no two c
 types), invented-name rejection, acrostic / Latin / number checks, refusal → no poem, compose
 replaces an old WORKOUT + RIDE.LOG + poem block exactly once. Texts for activities 226, 228,
 229 shown in the report (OSM live, LLM only if the key is set; no Strava write).
+
+### Public only (lead 2026-10-17)
+Strava's API has no private-notes field, so the description carries public-safe content only.
+`StoryFacts` is the allow-list (distance, elevation gain, moving time, temperature, climb rank
+"第 N 快" without watts, districts / places / stop / next spot); the LLM and the deterministic
+text see nothing else. Plan names, verdicts, FTP, any watts, heart rate, HRV, sleep, RPE / feel,
+readiness, tomorrow, goals, weight, TSS / CTL / TSB and companions stay in the email / PDF. The
+validator allows only the units `km`, `m`, `°C` (so W, kJ, bpm, kg, FTP, TSS, RPE are rejected)
+and only numbers of the facts / draft; tests: `test_the_facts_object_is_an_allow_list`,
+`test_private_tokens_are_rejected`. Not done yet: top / average speed (not in the facts).

@@ -532,3 +532,24 @@ def test_a_rephrasing_may_not_add_places_or_numbers_beyond_the_draft() -> None:
     extra_number = [f"{P['linkou']} 42.3", "380"]  # a real number of the ride, not in the draft
     errors = copy.validate(extra_number, POEM_OK, f, T["poem_head"], draft=draft)
     assert any("number 380 not in the draft" in e for e in errors)
+
+
+#: Every field the public facts object may carry (lead 2026-10-17: Strava gets public content only).
+PUBLIC_FIELDS = {
+    "activity_id", "month", "casual", "indoor", "km", "elev_m", "minutes", "temp_c", "climb",
+    "climb_rank", "climb_of_n", "districts", "route_places", "peak", "stop", "spot",
+    "spot_kind", "spot_km",
+}  # fmt: skip
+
+
+def test_the_facts_object_is_an_allow_list() -> None:
+    """No watts, heart rate, FTP, TSS, RPE, plan, weight or companion ever reaches the text."""
+    assert set(_facts(1).to_dict()) == PUBLIC_FIELDS
+
+
+@pytest.mark.parametrize("private", ["250 W", "150 bpm", "FTP", "TSS", "RPE", "64 kg", "3.9 W/kg"])
+def test_private_tokens_are_rejected(private: str) -> None:
+    f = _facts(1, districts=[T["places"]["linkou"]])
+    lines = [f"{T['places']['linkou']} {private}", T["company"]]
+    errors = copy.validate(lines, POEM_OK, f, T["poem_head"])
+    assert any("latin letters" in e or "not in the" in e for e in errors), errors

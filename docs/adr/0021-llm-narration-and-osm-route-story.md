@@ -30,6 +30,11 @@ has them) and free text (templates alone repeat).
 5. Only `services/ride_story.prepare()` calls out (the watcher before B's write, and
    `cyp ride-log show --fetch`); displaying a RIDE.LOG never does.
 
+6. **Public content only**: Strava has no private-notes field, so the facts object is an
+   allow-list of public-safe fields (no plan, verdict, watts, FTP, heart rate, RPE, weight,
+   TSS/CTL/TSB, companions) and the validator rejects every unit but km, m, °C and any number
+   outside the facts (spec casual-and-strava C, "Public only").
+
 ## Consequences
 - A new runtime dependency (`anthropic`) and two external services, both optional.
 - Tests never touch the network (stubbed clients; the socket guard stays).
