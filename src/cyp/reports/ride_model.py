@@ -134,6 +134,8 @@ class ClimbCompare(_Model):
     """Section 5: this climb vs its history (one per named climb on this ride)."""
 
     name: str
+    distance_km: float | None = None
+    grade_pct: float | None = None
     this: ClimbEffort
     history: list[ClimbEffort] = Field(default_factory=list)
     rank: int | None = None

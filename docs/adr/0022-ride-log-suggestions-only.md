@@ -2,7 +2,8 @@
 
 **Status**: accepted · 2026-10-17 (Roger: "不要幫我寫任何敘事的話 不要幫我寫日記 寫你的建議就好
 然後不用太認真"). Supersedes the content types, the summary line and the district lookup of
-ADR-0021; its narration rules, privacy zone and validation stay.
+ADR-0021; its narration rules, privacy zone and validation stay. Content types superseded by
+ADR-0023.
 
 ## Context
 The first live posts (rides 226, 228, 229) told the ride back to the athlete: where it went, the

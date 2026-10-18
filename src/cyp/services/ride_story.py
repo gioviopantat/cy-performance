@@ -360,7 +360,8 @@ def route_info(
     pool = sorted((p for p in candidates if p.kind == best), key=lambda p: p.osm_id)
     spot = pool[activity_id % len(pool)] if pool else None
     spot_km = round(privacy.haversine_m(turn, (spot.lat, spot.lng)) / 1000) if spot else None
-    info = copy.RouteInfo(places, stop, spot, spot_km)
+    spot_dir = copy.compass(turn, (spot.lat, spot.lng)) if spot else None
+    info = copy.RouteInfo(places, stop, spot, spot_km, spot_dir)
     _write(
         _osm_path(ctx, activity_id),
         {
@@ -388,7 +389,9 @@ def _compose(
     """The story and whether every requested step worked (``False``: retry next prepare)."""
     report = report if report is not None else _report(ctx, activity_id)
     casual = ride_feedback.get(ctx, activity_id).casual
-    facts = copy.story_facts(report, route, casual=casual)
+    cfg = ctx.athlete_config_or_none()
+    named = cfg.location.climbs if cfg is not None else []
+    facts = copy.story_facts(report, route, casual=casual, named=named)
     previous, heads = _history(ctx, activity_id)
     kind = copy.pick_type(facts, previous)
     head = copy.pick_head(kind, activity_id, heads)
@@ -398,7 +401,7 @@ def _compose(
     ok = True
     payload = {**facts.to_dict(), "content_type": kind, "draft_lines": lines}
     problems: list[str] = []
-    for attempt in range(NARRATION_ATTEMPTS if narrator is not None else 0):
+    for attempt in range(NARRATION_ATTEMPTS if narrator is not None and lines else 0):
         assert narrator is not None
         try:
             got = narrator(payload, head, problems)

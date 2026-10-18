@@ -56,17 +56,20 @@ class Place:
     kind: str
     lat: float
     lng: float
+    #: Elevation in metres (OSM ``ele``), when tagged.
+    ele: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """JSON-ready dict (the cache format)."""
         return {"osm_id": self.osm_id, "name": self.name, "kind": self.kind,
-                "lat": self.lat, "lng": self.lng}  # fmt: skip
+                "lat": self.lat, "lng": self.lng, "ele": self.ele}  # fmt: skip
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> Place:
         """Inverse of :meth:`to_dict`."""
+        ele = d.get("ele")
         return cls(str(d["osm_id"]), str(d["name"]), str(d["kind"]), float(d["lat"]),
-                   float(d["lng"]))  # fmt: skip
+                   float(d["lng"]), int(ele) if ele is not None else None)  # fmt: skip
 
 
 def _name(tags: dict[str, Any]) -> str | None:
@@ -75,6 +78,14 @@ def _name(tags: dict[str, Any]) -> str | None:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def _ele(tags: dict[str, Any]) -> int | None:
+    """``ele`` as whole metres (``"512"``, ``"512.3"``, ``"512 m"``), else None."""
+    try:
+        return round(float(str(tags.get("ele", "")).replace("m", "").strip()))
+    except ValueError:
+        return None
 
 
 def _kind(tags: dict[str, Any]) -> str | None:
@@ -105,7 +116,7 @@ def parse_overpass(data: dict[str, Any]) -> list[Place]:
         if name is None or kind is None or lat is None or lng is None:
             continue
         osm_id = f"{el.get('type', 'node')}/{el.get('id')}"
-        out[osm_id] = Place(osm_id, name, kind, float(lat), float(lng))
+        out[osm_id] = Place(osm_id, name, kind, float(lat), float(lng), _ele(tags))
     return list(out.values())
 
 

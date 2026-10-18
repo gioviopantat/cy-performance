@@ -340,6 +340,8 @@
  "climbs": [
   {
    "name": "2.3 km · 5.7 % 爬坡",
+   "distance_km": 2.26,
+   "grade_pct": 5.74,
    "this": {
     "day": "2026-10-14",
     "power_w": 224.0,

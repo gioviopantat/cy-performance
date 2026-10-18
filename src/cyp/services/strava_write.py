@@ -190,8 +190,10 @@ AUTO_FLAG = "strava.auto_description"
 
 def auto_push(
     ctx: AppContext, activity_id: int, *, client_factory: ClientFactory | None = None
-) -> PushResult:
+) -> PushResult | None:
     """The watcher's write after a ride's report: the ride's RIDE.LOG through :func:`push`.
+
+    ``None``: the ride has no RIDE.LOG (nothing concrete to suggest), nothing is written.
 
     The flag :data:`AUTO_FLAG` is the per-profile confirmation (ADR-0020); every gate of
     :func:`push` still applies. The text is what the UI shows (the saved one, else generated).
@@ -204,6 +206,7 @@ def auto_push(
         raise StravaWriteBlockedError(f"feature {AUTO_FLAG} is off")
     from cyp.services.ride_log import build
 
-    return push(
-        ctx, activity_id, build(ctx, activity_id).text, write=True, client_factory=client_factory
-    )
+    text = build(ctx, activity_id).text
+    if not text.strip():
+        return None  # nothing concrete to suggest for this ride: Strava is left alone
+    return push(ctx, activity_id, text, write=True, client_factory=client_factory)

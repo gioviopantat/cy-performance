@@ -213,7 +213,8 @@ def _strava(
         # Route lookup and poem (each behind its flag; never raises for their failures).
         ride_story.prepare(ctx, activity_id)
         result = strava_write.auto_push(ctx, activity_id, client_factory=client)
-        status = ride_report.STRAVA_WRITTEN if result.written else ride_report.STRAVA_UNCHANGED
+        written = result is not None and result.written
+        status = ride_report.STRAVA_WRITTEN if written else ride_report.STRAVA_UNCHANGED
     except Exception as exc:  # noqa: BLE001 - recorded on the row; the email already went out
         error = f"{type(exc).__name__}: {exc}"
         retried = previous == ride_report.STRAVA_FAILED

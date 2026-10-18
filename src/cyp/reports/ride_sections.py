@@ -209,6 +209,8 @@ def build_climbs(inp: RideInputs) -> list[ClimbCompare]:
                     km=(c.get("distance_m") or 0) / 1000,
                     grade=c.get("avg_grade_pct") or 0.0,
                 ),
+                distance_km=round((c.get("distance_m") or 0) / 1000, 2) or None,
+                grade_pct=c.get("avg_grade_pct"),
                 this=this,
                 history=history,
                 rank=rank,

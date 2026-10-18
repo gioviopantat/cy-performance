@@ -13,12 +13,13 @@ from cyp.services import ride_report
 from cyp.services.context import AppContext
 from cyp.store.models import Activity
 from tests.jobs.test_watch import T0, Mailer, _ctx, _one_ride, _row, built, notices
+from tests.services.test_ride_story import seed_spot
 from tests.services.test_strava_write import FakeStrava, _token
 
 __all__ = ["built", "notices"]  # pytest fixtures used below
 
 WRITE = "notify.macos=off,report.ride=on,notify.email=on,sync.strava=on,strava.write_description=on"
-AUTO = f"{WRITE},strava.auto_description=on"
+AUTO = f"{WRITE},strava.auto_description=on,strava.route_story=on"
 OWNER = 42
 
 
@@ -37,6 +38,7 @@ def _strava_ride(ctx: AppContext, owner: int = OWNER) -> int:
         a.strava_id = 777
         a.raw_strava_json = {"athlete": {"id": owner}}
         s.commit()
+    seed_spot(ctx, aid)
     return aid
 
 
@@ -185,3 +187,18 @@ def test_story_is_prepared_before_the_write_and_never_blocks_it(
     aid = _strava_ride(actx)
     report = _tick(actx, T0, Mailer(), FakeStrava(""))
     assert order == ["prepare", "push"] and _actions(report, aid) == ["sent", "strava_written"]
+
+
+def test_a_ride_with_nothing_concrete_leaves_strava_alone(
+    actx: AppContext, built: list[int]
+) -> None:
+    """No RIDE.LOG (nothing concrete to suggest) is not a failure: no write, no notice."""
+    _token(actx, "read,activity:write", athlete=OWNER)
+    aid = _strava_ride(actx)
+    (actx.settings.cyp_data_dir / "ride_story" / "osm" / f"{aid}.json").unlink()
+    actx.settings = actx.settings.model_copy(update={"cyp_features": AUTO.replace(
+        ",strava.route_story=on", "")})  # fmt: skip
+    fake = FakeStrava("my notes")
+    report = _tick(actx, T0, Mailer(), fake)
+    assert _actions(report, aid) == ["sent", "strava_unchanged"] and fake.writes == []
+    assert _row(actx, aid).strava_status == "unchanged"

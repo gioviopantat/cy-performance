@@ -229,8 +229,10 @@ def test_casual_ride_log_has_no_plan_talk_and_replaces_the_old_block_once(
 
     from cyp.services.ride_log import build
     from cyp.store.models import Athlete, PlannedWorkout
+    from tests.services.test_ride_story import seed_spot
 
     aid = _ride(ctx)
+    seed_spot(ctx, aid)
     with ctx.factory() as s:
         a = s.get(Activity, aid)
         assert a is not None

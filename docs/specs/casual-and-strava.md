@@ -118,9 +118,12 @@ PDF and the email only.
   (API field kept for the web client).
 - **Facts** (`reports/ride_story.py`, layer 5, pure): `StoryFacts` from the ride report the PDF
   uses (`reports/ride_facts.build_ride_report`; the stored facts JSON beside the PDF when there
-  is one, so the numbers match it) plus the route places. The lines are 1–2 light suggestions
-  for next time, never a retelling of the ride (ADR-0022). Content types: `next_spot`, `stop`,
-  `climb`, `weather`, `season`, `tip`. The type is picked deterministically: a rotation by
+  is one, so the numbers match it) plus the route places. The lines are 1–2 concrete
+  suggestions for next time, never a retelling of the ride (ADR-0022) and never vague: each
+  carries a real name or number, and a ride with nothing concrete gets no RIDE.LOG (ADR-0023).
+  Content types: `next_spot` (place, compass direction and distance from the turnaround, peak
+  elevation), `climb` (only a climb matching the athlete's `location.climbs`, with rank and gap
+  to their fastest), `stop`, `weather` (below 12 °C or from 30 °C). The type is picked deterministically: a rotation by
   activity id over the types this ride has material for, skipping the previous ride's type (no
   two consecutive posts with the same type); a next spot is added as the second line when the
   ride has one. A casual ride (tag A) prefers `next_spot`, then `stop`; nothing says who came

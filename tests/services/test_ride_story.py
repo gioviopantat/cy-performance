@@ -42,6 +42,18 @@ def _with(ctx: AppContext, features: str, **settings: Any) -> None:
     ctx.settings = ctx.settings.model_copy(update={"cyp_features": features, **settings})
 
 
+def seed_spot(ctx: AppContext, aid: int) -> None:
+    """A cached OSM lookup with a next spot, so the ride has something concrete (no network)."""
+    route = copy.RouteInfo(
+        spot=Place("node/9", T["places"]["viewpoint"], "viewpoint", 25.2, 121.4),
+        spot_km=8,
+        spot_dir="N",
+    )
+    path = ride_story.story_dir(ctx) / "osm" / f"{aid}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"day": None, "bbox": None, "route": route.to_dict()}))
+
+
 def _rides(ctx: AppContext) -> list[int]:
     with ctx.factory() as s:
         return [
@@ -196,31 +208,65 @@ def _facts(aid: int, **kw: Any) -> copy.StoryFacts:
 
 
 def test_no_two_consecutive_posts_share_a_content_type() -> None:
+    P = T["places"]
     previous: str | None = None
     kinds = []
     for aid in range(1, 60):
         f = _facts(
             aid,
-            spot=T["places"]["viewpoint"] if aid % 2 else None,
-            spot_km=12 if aid % 2 else None,
-            stop=T["places"]["cafe"] if aid % 3 else None,
-        )
+            temp_c=33 if aid % 2 else 20,
+            stop=P["cafe"] if aid % 3 else None,
+            spot=P["viewpoint"], spot_km=12,
+            climb=P["climb"] if aid % 4 else None, climb_rank=2, climb_of_n=9,
+        )  # fmt: skip
         kind = copy.pick_type(f, previous)
         assert kind != previous
         kinds.append(kind)
         previous = kind
-    assert len(set(kinds)) >= 4  # varied, not two alternating types
+    assert len(set(kinds)) >= 3  # varied, not two alternating types
 
 
-def test_service_variety_across_rides(ctx: AppContext) -> None:
-    kinds = [ride_story.story(ctx, aid).kind for aid in _rides(ctx)[-6:]]
-    assert all(a != b for a, b in itertools.pairwise(kinds))
+def test_nothing_concrete_means_no_ride_log() -> None:
+    """Roger, 2026-10-18: no vague filler; an indoor ride with nothing to suggest gets nothing."""
+    f = _facts(1, temp_c=None)
+    assert copy.pick_type(f, None) == copy.NONE
+    assert copy.deterministic_lines(f, copy.NONE) == [] and copy.compose_block([]) == ""
 
 
-def test_casual_ride_leans_on_the_stop_and_never_assumes_company() -> None:
-    f = _facts(7, casual=True, stop=T["places"]["cafe"])
-    assert copy.pick_type(f, None) == "stop"
-    assert copy.pick_type(f, "stop") != "stop"
+def test_climb_needs_the_athletes_name_and_quotes_the_gap() -> None:
+    from cyp.reports.ride_model import ClimbCompare, ClimbEffort
+    from cyp.settings import ClimbConfig
+
+    named = [ClimbConfig(name_zh=T["places"]["climb"], minutes_min=17, minutes_max=22,
+                         distance_km=5.9, grade_pct=3.4)]  # fmt: skip
+    day = SimpleNamespace(day=None)
+    this = ClimbEffort(day="2026-10-16", time_s=1251)
+    c = ClimbCompare(name="6.0 km", distance_km=6.0, grade_pct=3.2, this=this, rank=2, of_n=5,
+                     history=[ClimbEffort(day="2026-09-25", time_s=1139)])  # fmt: skip
+    assert copy.named_climb(c, named) == T["places"]["climb"]
+    assert copy.named_climb(c.model_copy(update={"distance_km": 10.1}), named) is None
+    del day
+    f = _facts(1, temp_c=None, climb=T["places"]["climb"], climb_rank=2, climb_of_n=5,
+               climb_gap_s=112)  # fmt: skip
+    line = copy.deterministic_lines(f, "climb")[0]
+    assert "1 分 52 秒" in line and f"「{T['places']['climb']}」" in line
+    assert copy.validate([line], [T["filler"] * 7] * 4, f, T["filler"] * 4) == []
+
+
+def test_next_spot_says_which_way() -> None:
+    assert copy.compass((25.0, 121.4), (25.1, 121.4)) == "N"
+    assert copy.compass((25.0, 121.4), (24.95, 121.35)) == "SW"
+    f = _facts(1, temp_c=None, spot=T["places"]["peak"], spot_kind="peak", spot_km=6,
+               spot_dir="SW", spot_ele=512)  # fmt: skip
+    line = copy.deterministic_lines(f, "next_spot")[0]
+    assert "西南" in line and "512" in line and "6" in line
+
+
+def test_casual_ride_leans_on_a_spot_and_never_assumes_company() -> None:
+    P = T["places"]
+    f = _facts(7, casual=True, stop=P["cafe"], spot=P["viewpoint"], spot_km=12)
+    assert copy.pick_type(f, None) == "next_spot"
+    assert copy.pick_type(f, "next_spot") == "stop"
     lines = copy.deterministic_lines(f, "stop")
     assert f"「{T['places']['cafe']}」" in lines[0] and T["company"] not in "".join(lines)
 
@@ -236,9 +282,9 @@ def test_lines_are_suggestions_not_a_diary() -> None:
 
 
 def test_heads_skip_recent_ones() -> None:
-    heads = [copy.pick_head("tip", 3, [])]
+    heads = [copy.pick_head("stop", 3, [])]
     for _ in range(5):
-        heads.append(copy.pick_head("tip", 3, heads))
+        heads.append(copy.pick_head("stop", 3, heads))
     assert len(set(heads)) == len(heads) and all(len(h) == 4 for h in heads)
 
 
@@ -298,7 +344,8 @@ def test_validate_rejects(lines: list[str], poem: list[str], problem: str) -> No
 
 def test_valid_narration_is_used_and_cached(ctx: AppContext) -> None:
     aid = _rides(ctx)[-1]
-    _with(ctx, POEM)
+    _with(ctx, f"{ROUTE},{POEM}")
+    seed_spot(ctx, aid)
     seen: list[dict[str, Any]] = []
 
     def narrator(facts: dict[str, Any], head: str, *_: Any) -> Narration:
@@ -321,7 +368,8 @@ def test_valid_narration_is_used_and_cached(ctx: AppContext) -> None:
 
 def test_invented_place_falls_back_to_the_deterministic_text(ctx: AppContext) -> None:
     aid = _rides(ctx)[-1]
-    _with(ctx, POEM)
+    _with(ctx, f"{ROUTE},{POEM}")
+    seed_spot(ctx, aid)
 
     def liar(facts: dict[str, Any], head: str, *_: Any) -> Narration:
         return Narration(T["lines"]["liar"], [c * 7 for c in head], "m")
@@ -332,9 +380,11 @@ def test_invented_place_falls_back_to_the_deterministic_text(ctx: AppContext) ->
 
 def test_refusal_and_api_error(ctx: AppContext) -> None:
     aid = _rides(ctx)[-1]
-    _with(ctx, POEM)
+    _with(ctx, f"{ROUTE},{POEM}")
+    seed_spot(ctx, aid)
     assert ride_story.prepare(ctx, aid, narrator=lambda f, h, *_: None).poem == []
     other = _rides(ctx)[-2]
+    seed_spot(ctx, other)
 
     def down(facts: dict[str, Any], head: str, *_: Any) -> Narration:
         raise NarrationError("APIConnectionError: offline")
@@ -414,6 +464,7 @@ def test_cli_show_fetch_runs_prepare(
     monkeypatch.setattr(ride_story, "prepare", lambda c, aid, **_k: called.append(aid))
     env = {"CYP_DATA_DIR": str(ctx.settings.cyp_data_dir), "CYP_DB_URL": ctx.settings.cyp_db_url}
     aid = _rides(ctx)[-1]
+    seed_spot(ctx, aid)
     plain = CliRunner().invoke(app, ["ride-log", "show", str(aid)], env=env)
     assert plain.exit_code == 0, plain.output and called == []
     assert "⚙️ RIDE.LOG" in plain.output
@@ -490,7 +541,8 @@ def test_one_lookup_has_a_total_budget() -> None:
 
 def test_a_broken_answer_is_retried_once_with_its_problems(ctx: AppContext) -> None:
     aid = _rides(ctx)[-1]
-    _with(ctx, POEM)
+    _with(ctx, f"{ROUTE},{POEM}")
+    seed_spot(ctx, aid)
     calls: list[list[str]] = []
 
     def narrator(facts: dict[str, Any], head: str, problems: Any = ()) -> Narration:
@@ -515,13 +567,13 @@ def test_retry_message_lists_the_problems() -> None:
 
 def test_a_rephrasing_may_not_add_places_or_numbers_beyond_the_draft() -> None:
     P = T["places"]
-    f = _facts(1, peak=P["peak"], spot=P["viewpoint"])
+    f = _facts(1, stop=P["cafe"], spot=P["viewpoint"])
     draft = [f"{P['viewpoint']} 42.3"]
     ok = [f"{P['viewpoint']} 42.3", T["filler_line"]]
     assert copy.validate(ok, POEM_OK, f, T["poem_head"], draft=draft) == []
     extra_place = [
         f"{P['viewpoint']} 42.3",
-        P["peak"],
+        P["cafe"],
     ]  # a real place of the ride, not in the draft
     errors = copy.validate(extra_place, POEM_OK, f, T["poem_head"], draft=draft)
     assert any("not in the draft" in e for e in errors)
@@ -533,8 +585,8 @@ def test_a_rephrasing_may_not_add_places_or_numbers_beyond_the_draft() -> None:
 #: Every field the public facts object may carry (lead 2026-10-17: Strava gets public content only).
 PUBLIC_FIELDS = {
     "activity_id", "month", "casual", "indoor", "km", "elev_m", "minutes", "temp_c", "climb",
-    "climb_rank", "climb_of_n", "peak", "stop", "spot",
-    "spot_kind", "spot_km",
+    "climb_rank", "climb_of_n", "climb_gap_s", "stop", "spot", "spot_kind", "spot_km",
+    "spot_dir", "spot_ele",
 }  # fmt: skip
 
 

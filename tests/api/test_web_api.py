@@ -72,6 +72,9 @@ def test_autopilot_write_is_gated(two: TestClient) -> None:
 def test_ride_log_and_runs(two: TestClient) -> None:
     page = two.get("/v1/activities", params={"rides_only": True, "limit": 1}).json()
     aid = page["items"][0]["id"]
+    from tests.services.test_ride_story import seed_spot
+
+    seed_spot(two.default_ctx, aid)  # type: ignore[attr-defined]
     log = two.get(f"/v1/activities/{aid}/ride-log").json()
     assert log["workout"] == "" and log["ride_log"].startswith("⚙️ RIDE.LOG")
     assert "STATUS" not in log["ride_log"] and log["text"].endswith("#cyperformance")
