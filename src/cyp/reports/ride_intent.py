@@ -328,6 +328,7 @@ def _build_intent(
                     "achieved_s": facts.achieved_s,
                     "reps_counted": facts.reps_counted,
                     "reps_planned": target.reps,
+                    "rep_s_done": facts.rep_s_done,
                     "score": facts.score,
                 },
             )
@@ -340,14 +341,13 @@ def _build_intent(
                         lo=target.lo_w,
                         rep_min=target.rep_s / 60,
                         frac=intent_mod.REP_COUNT_FRAC,
-                        dip=target.lo_w * intent_mod.DIP_FLOOR_FRAC,
-                        dip_frac=intent_mod.DIP_FLOOR_FRAC,
+                        partial=intent_mod.PARTIAL_REP_FRAC,
                         max_s=intent_mod.EXCUSE_MAX_S,
                     ),
                     evidence={
                         "rep_s": target.rep_s,
                         "rep_count_frac": intent_mod.REP_COUNT_FRAC,
-                        "dip_floor_frac": intent_mod.DIP_FLOOR_FRAC,
+                        "partial_rep_frac": intent_mod.PARTIAL_REP_FRAC,
                     },
                 ),
                 Reason(

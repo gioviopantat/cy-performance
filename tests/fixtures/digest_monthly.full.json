@@ -1421,7 +1421,7 @@
    "doc": "docs/glossary/coggan_np_if_tss.md"
   },
   {
-   "model_id": "ride_intent_v1",
+   "model_id": "ride_intent_v1.1",
    "claim_id": "ride_intent.model",
    "grade": "C",
    "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",

@@ -65,21 +65,22 @@
    "headline_zh": "3/3 組有效、28/30 分鐘在 212–238 W",
    "because": [
     {
-     "text_zh": "分數 = max(區間分鐘 / 計畫分鐘, 有效組數 / 計畫組數) = 100%（每組已要求平均功率在區間內，所以爬坡時的短暫掉功率不會被重複扣分）；≥ 90% 達成，≥ 50% 部分達成",
+     "text_zh": "分數 = max(區間分鐘 / 計畫分鐘, 有效組數 / 計畫組數, 組內分鐘 / 計畫分鐘) = 100%（每組已要求平均功率在區間內，所以爬坡時的短暫掉功率不會被重複扣分）；≥ 90% 達成，≥ 50% 部分達成",
      "evidence": {
       "achieved_s": 1659,
       "reps_counted": 3,
       "reps_planned": 3,
+      "rep_s_done": 1659,
       "score": 1.0
      },
      "weight": null
     },
     {
-     "text_zh": "一段平均 ≥ 212 W 的努力達到計畫長度（10 分）的 80% 就算一組，長度加倍算兩組；中途掉到 170 W（下限的 80%）以上、不超過 120 秒的波動仍算同一組",
+     "text_zh": "一段平均 ≥ 212 W 的努力達到計畫長度（10 分）的 80% 就算一組，長度加倍算兩組；中途不超過 120 秒的放鬆仍算同一組（算進平均）；沒做滿、但達到計畫長度 50% 且平均在區間內的一段，分鐘數照算",
      "evidence": {
       "rep_s": 600,
       "rep_count_frac": 0.8,
-      "dip_floor_frac": 0.8
+      "partial_rep_frac": 0.5
      },
      "weight": null
     },
@@ -120,8 +121,8 @@
     }
    ],
    "method": {
-    "model_id": "ride_intent_v1",
-    "version": "ride_intent_v1",
+    "model_id": "ride_intent_v1.1",
+    "version": "ride_intent_v1.1",
     "inputs": {
      "achieved_frac": 0.9,
      "partial_frac": 0.5,
@@ -428,7 +429,7 @@
    "doc": "docs/glossary/coggan_np_if_tss.md"
   },
   {
-   "model_id": "ride_intent_v1",
+   "model_id": "ride_intent_v1.1",
    "claim_id": "ride_intent.model",
    "grade": "C",
    "citation": "Ours (docs/04-analysis-engine.md, ride report models); not validated",

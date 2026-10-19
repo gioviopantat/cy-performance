@@ -530,7 +530,8 @@ REGISTRY: tuple[Claim, ...] = (
     _proposed(
         "ride_intent.model",
         None,
-        "ride_intent_v1: time in the planned power band / counted reps judge the stimulus.",
+        "ride_intent_v1.1: time in the planned power band, counted reps and rep minutes judge "
+        "the stimulus.",
         "C",
         "Ours (docs/04-analysis-engine.md, ride report models); not validated",
     ),

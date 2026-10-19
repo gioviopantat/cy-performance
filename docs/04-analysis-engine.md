@@ -126,13 +126,15 @@ constant quoted, with its value, in the section's Explanation; athlete-facing te
 `reports/i18n/ride_report.zh-TW.yaml`. The planned stimulus comes from
 `ResolvedWorkout.stimulus()` (`planning/templates.py`).
 
-- **Intent v1** (`analysis/ride/intent.py`, `ride_intent_v1`). *Work* intents (tempo … VO2):
-  minutes of 30 s power in `[lo, hi × 1.10]` (band = the work band with the most planned time);
-  reps are blocks of power ≥ `lo` that survive dips (≤ smoothing window, or ≤ 120 s at ≥ 80 %
-  of `lo`) and *excused* interruptions (≤ 120 s, mostly stopped / coasting / descending
-  ≤ −2 %), bridged only while the block is short of one counted rep so planned rests are never
-  excused; a block counts when its mean is ≥ `lo` and it holds 80 % of the rep length. Score =
-  max(minutes ratio, reps ratio); ≥ 0.9 achieved, ≥ 0.5 partial. *Ceiling* intents (recovery,
+- **Intent v1.1** (`analysis/ride/intent.py`, `ride_intent_v1.1`, ADR-0025). *Work* intents
+  (tempo … VO2): minutes of 30 s power in `[lo, hi × 1.10]` (band = the work band with the
+  most planned time); reps are blocks of power ≥ `lo` that survive dips (≤ 120 s of easier
+  pedalling, counted as rep time) and *excused* interruptions (≤ 120 s, mostly stopped /
+  coasting / descending ≤ −2 %, not rep time), bridged only while the block is short of one
+  counted rep so planned rests are never bridged; a block counts when its mean is ≥ `lo` and it
+  holds 80 % of the rep length, and a block with that mean holding ≥ 50 % of a rep adds its
+  minutes. Score = max(minutes ratio, reps ratio, rep minutes ratio); ≥ 0.9 achieved, ≥ 0.5
+  partial. *Ceiling* intents (recovery,
   endurance) on 90 s power: time above `hi × 1.10` > 10 % → partial, > 25 % → missed; endurance
   with NP below the band floor is at most partial. No power band → load ratio decides; no
   trusted power → `no_data`.

@@ -132,6 +132,26 @@ def test_dips_on_a_climb_stay_in_the_rep() -> None:
     assert out.reps_counted == 1 and out.excused == []
 
 
+def test_one_ease_off_below_the_old_dip_floor_stays_in_the_rep() -> None:
+    """Ride 232 (ADR-0025): 16 min at ~234 W with one 36 s ease-off at 155 W is one rep."""
+    target = IntentTarget("work", 225.0, 252.0, 960, rep_s=960, reps=1)
+    rep = [Seg(700, 240.0), Seg(36, 155.0), Seg(214, 238.0)]
+    out = run([Seg(600, 150.0), *rep, Seg(300, 120.0)], target)
+    assert out.reps_counted == 1 and out.verdict == "achieved"
+
+
+def test_a_set_cut_short_counts_its_minutes() -> None:
+    """Ride 232: one full 16-min set and one of 11 min (heat), third skipped: partial."""
+    target = IntentTarget("work", 225.0, 252.0, 2880, rep_s=960, reps=3)
+    segs = [Seg(600, 150.0), Seg(660, 248.0), Seg(600, 100.0), Seg(960, 236.0), Seg(900, 120.0)]
+    out = run(segs, target)
+    assert out.reps_counted == 1
+    assert out.rep_s_done >= 1500 and out.verdict == "partial"
+    # Under half a rep is not a set: a 6-min surge adds nothing.
+    short = run([Seg(600, 150.0), Seg(360, 248.0), Seg(600, 100.0)], target)
+    assert short.rep_s_done == 0
+
+
 def test_block_below_the_floor_on_average_does_not_count() -> None:
     rep = [Seg(40, 215.0), Seg(60, 175.0)] * 6
     out = run([Seg(600, 150.0), *rep], ONE_REP)

@@ -8,14 +8,14 @@ Two kinds of target:
 - ``work`` (tempo, sweet spot, threshold, VO2, …): the work steps' power band. Achieved
   minutes are moving seconds whose smoothed power lies in ``[lo, hi × OVERSHOOT_FRAC]``.
   A *rep* is a block of runs of smoothed power ≥ ``lo``. Two runs belong to one block when the
-  gap between them is a *dip* (shorter than the smoothing window, or ≤ :data:`EXCUSE_MAX_S` at
-  ≥ :data:`DIP_FLOOR_FRAC` × ``lo`` on average: still pedalling hard, e.g. a steeper ramp or a
-  shift on a climb) or an *excused* interruption (≤ :data:`EXCUSE_MAX_S`, mostly stopped,
-  coasting or descending; listed, and not counted as rep time). Long dips and interruptions
-  are only bridged while the block is still short of one planned rep, so planned rests never
-  become "excused" gaps. A block counts when its mean
-  power over the rep time is ≥ ``lo`` and the rep time holds :data:`REP_COUNT_FRAC` of the
-  planned rep length (a 24-min block counts as two 12-min reps).
+  gap between them is a *dip* (≤ :data:`EXCUSE_MAX_S` of easier pedalling: a short descent,
+  traffic, a shift; it counts as rep time, so it pulls the block's mean down) or an *excused*
+  interruption (≤ :data:`EXCUSE_MAX_S`, mostly stopped, coasting or descending; listed, and
+  not counted as rep time). Gaps are only bridged while the block is still short of one planned
+  rep, so planned rests never join two reps. A block counts when its mean power over the rep
+  time is ≥ ``lo`` and the rep time holds :data:`REP_COUNT_FRAC` of the planned rep length (a
+  24-min block counts as two 12-min reps). A block with that mean holding at least
+  :data:`PARTIAL_REP_FRAC` of a rep is not a rep, but its minutes count toward the score.
 - ``ceiling`` (recovery, endurance): the point is to stay easy for the planned time. Achieved
   minutes are moving seconds whose 90 s power (:data:`CEILING_SMOOTH_S`) is at or below
   ``hi × OVERSHOOT_FRAC`` (coasting counts: descents are part of an easy road ride); time above
@@ -23,8 +23,11 @@ Two kinds of target:
   be the planned ride and caps the verdict at partial.
 
 Score: achieved / planned minutes in the band (the spec's v1 measure); for rep workouts the
-larger of that and reps counted / planned, because a counted rep already has its mean power in
-the band and second-by-second dips on a climb would otherwise hide a delivered stimulus. Verdict
+largest of that, reps counted / planned, and rep minutes / planned minutes (blocks whose mean
+is in the band, partial ones from :data:`PARTIAL_REP_FRAC` of a rep, capped at the plan),
+because a block's mean already holds the band and second-by-second dips on a road would
+otherwise hide a delivered stimulus (Roger, 2026-10-19: a 16-min sweet spot at 234 W split by
+one 36 s ease-off, and an 11-min set cut short by heat, scored as "missed 0/3"). Verdict
 thresholds are the named constants below. Load ratio (actual / planned load) is
 reported alongside; it decides the verdict only when the plan has no power band (e.g. an
 intervals.icu workout without our template).
@@ -40,7 +43,7 @@ import numpy as np
 
 from cyp.analysis.ride.frames import BoolArray, FloatArray, runs
 
-INTENT_VERSION = "ride_intent_v1"
+INTENT_VERSION = "ride_intent_v1.1"
 
 IntentKind = Literal["work", "ceiling"]
 IntentVerdict = Literal["achieved", "partial", "missed", "no_data"]
@@ -53,10 +56,9 @@ SMOOTH_REP_FRACTION = 0.25
 OVERSHOOT_FRAC = 1.10
 #: A rep counts once it holds 80 % of its planned length (Coggan-style compliance on work steps).
 REP_COUNT_FRAC = 0.80
-#: A gap of up to this long at ≥ 80 % of the band floor is a dip inside a rep, not its end
-#: (outdoor power on a climb oscillates around the floor; 80 % is still tempo for sweet spot).
-DIP_FLOOR_FRAC = 0.80
-#: The longest interruption that can be excused inside one rep (a long red light).
+#: A rep cut short still counts its minutes toward the score from this share of a rep.
+PARTIAL_REP_FRAC = 0.50
+#: The longest dip or interruption inside one rep (a long red light).
 EXCUSE_MAX_S = 120
 #: An interruption is excused when at least half of it was stopped, coasting or descending.
 EXCUSE_SHARE = 0.5
@@ -105,6 +107,8 @@ class IntentFacts:
     above_s: int = 0
     moving_s: int = 0
     reps_counted: int | None = None
+    #: Seconds of blocks whose mean held the band, partial reps included (capped at the plan).
+    rep_s_done: int = 0
     counted: list[Span] = field(default_factory=list)
     excused: list[Span] = field(default_factory=list)
     score: float | None = None
@@ -182,8 +186,7 @@ def _blocks(
                     parts.append(r)
                     gaps.append(Span(prev_end, r[0], reason))
                     continue
-                dip_mean = float(np.nan_to_num(watts[prev_end : r[0]], nan=0.0).mean())
-                if gap <= EXCUSE_MAX_S and dip_mean >= DIP_FLOOR_FRAC * lo_w:
+                if gap <= EXCUSE_MAX_S:  # a dip: rep time, judged by the block's mean
                     parts.append(r)
                     continue
         blocks.append(([r], []))
@@ -253,7 +256,7 @@ def assess_intent(
     out.above_s = int(np.count_nonzero(moving & (p > ceiling)))
     score = out.achieved_s / target.target_s
     if target.rep_s and target.reps:
-        reps = 0
+        reps = done = 0
         for parts, gaps in _blocks(p, watts, moving, grade, target.lo_w, window, target.rep_s):
             excused = sum(g.end_s - g.start_s for g in gaps)
             first, last = parts[0][0], parts[-1][1]
@@ -263,14 +266,18 @@ def assess_intent(
             seg = np.nan_to_num(watts[first:last], nan=0.0)[rep_mask]
             if seg.size == 0 or float(seg.mean()) < target.lo_w:
                 continue
-            n = count_reps(last - first - excused, target.rep_s)
+            on_s = last - first - excused
+            if on_s >= PARTIAL_REP_FRAC * target.rep_s:
+                done += on_s
+            n = count_reps(on_s, target.rep_s)
             if n < 1:
                 continue
             reps += n
             out.counted.append(Span(int(t[first]), int(t[last - 1]) + 1))
             out.excused += [Span(int(t[g.start_s]), int(t[g.end_s]), g.reason) for g in gaps]
         out.reps_counted = reps
-        score = max(score, reps / target.reps)
+        out.rep_s_done = min(done, target.reps * target.rep_s)
+        score = max(score, reps / target.reps, out.rep_s_done / target.target_s)
     out.score = round(min(score, 1.0), 3)
     out.verdict = verdict_from_score(out.score)
     return out

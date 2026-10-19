@@ -123,10 +123,10 @@ def test_outdoor_ride_with_stops_and_heat(
     assert r.limiters.lines[0].week_min > r.limiters.lines[0].trained_min > 0
     assert r.tomorrow is not None and r.tomorrow.changed
     ids = [m.model_id for m in r.methods]
-    assert ids[:3] == ["coggan_np_if_tss", "ride_intent_v1", "goal_projection_v2"]
+    assert ids[:3] == ["coggan_np_if_tss", "ride_intent_v1.1", "goal_projection_v2"]
     graded = {m.model_id: m for m in r.methods if m.claim_id is not None}
     assert graded["coggan_np_if_tss"].grade == "B"
-    assert graded["ride_intent_v1"].grade == "C"
+    assert graded["ride_intent_v1.1"].grade == "C"
     assert all(m.citation for m in graded.values())
     assert all((Path(__file__).resolve().parents[2] / m.doc).is_file() for m in r.methods)
 

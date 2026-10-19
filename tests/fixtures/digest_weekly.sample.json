@@ -142,6 +142,6 @@
   {"model_id": "tid_v2", "claim_id": "polarized_tid", "grade": "A", "citation": "Rosenblat 2019", "doc": "docs/adr/0014-tid-by-sessions.md"},
   {"model_id": "readiness_v2", "claim_id": "hrv_guided", "grade": "B", "citation": "Javaloyes 2019", "doc": "docs/04-analysis-engine.md"},
   {"model_id": "durability_v1", "claim_id": "durability_kj", "grade": "C", "citation": "Maunder 2021", "doc": "docs/04-analysis-engine.md"},
-  {"model_id": "ride_intent_v1", "doc": "docs/specs/ride-report.md"}
+  {"model_id": "ride_intent_v1.1", "doc": "docs/specs/ride-report.md"}
  ]
 }
