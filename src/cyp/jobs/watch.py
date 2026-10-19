@@ -16,7 +16,9 @@ With ``strava.auto_description`` on (ADR-0020), a ride whose report was just don
 RIDE.LOG written to Strava through ``services/strava_write.auto_push`` (every gate of ``push``),
 after ``services/ride_story.prepare`` looked the route up and narrated it (their own flags).
 The outcome goes to ``ride_reports.strava_status``; a failure never touches the report row,
-is retried once on the next tick, then given up (macOS notice).
+is retried once on the next tick, then given up (macOS notice). A story whose route lookup
+failed (Overpass down) is prepared again hourly for a day and Strava rewritten when its text
+changed.
 """
 
 from __future__ import annotations
@@ -59,6 +61,11 @@ CHILD_TIMEOUT_S = 9 * 60
 Decision = Literal["wait_streams", "wait_feel", "send"]
 TickStatus = Literal["ok", "skipped", "failed"]
 SyncFn = Callable[[AppContext], dict[str, Any]]
+
+
+#: A ride's story whose route lookup failed is retried this often, for this long.
+STORY_RETRY_EVERY = dt.timedelta(hours=1)
+STORY_RETRY_FOR = dt.timedelta(days=1)
 
 
 @dataclass
@@ -186,7 +193,16 @@ def tick(
                     notify_failure(ctx.settings, f"ride report {activity_id} not sent: {out.error}")
             if features.enabled(strava_write.AUTO_FLAG):
                 retries = [i for i in ride_report.strava_retries(ctx) if i not in reported]
-                for activity_id in [*reported, *retries]:
+                # A story whose OSM lookup failed: looked up again hourly for a day, and
+                # Strava rewritten when the text changed (push is a no-op otherwise).
+                stories = [
+                    i
+                    for i in ride_report.strava_done_since(ctx, at - STORY_RETRY_FOR)
+                    if i not in reported
+                    and i not in retries
+                    and ride_story.needs_retry(ctx, i, at, STORY_RETRY_EVERY)
+                ]
+                for activity_id in [*reported, *retries, *stories]:
                     report.rides.append(_strava(ctx, activity_id, at, strava_client))
             for r in report.rides:
                 run.incr(r.action)

@@ -49,6 +49,10 @@ sqlite3 profiles/<name>/data/cyp.sqlite \
 
 ## RIDE.LOG has no route or no poem
 
+The watcher retries a failed route lookup by itself: hourly, for a day after the ride, and it
+rewrites Strava when the text changes. Only a generated text that was edited by hand is saved
+in `data/ride_logs/<id>.txt` (a saved text wins over the generated one).
+
 `cyp --profile <name> ride-log show <id> --fetch` retries both and prints the text; the log
 (`ride_story.*` events in `cyp.jsonl`) says why: `osm_failed` (Overpass down or
 rate-limited: try later), `no_api_key` (`ANTHROPIC_API_KEY` missing in the profile's `.env`),

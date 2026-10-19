@@ -202,3 +202,41 @@ def test_a_ride_with_nothing_concrete_leaves_strava_alone(
     report = _tick(actx, T0, Mailer(), fake)
     assert _actions(report, aid) == ["sent", "strava_unchanged"] and fake.writes == []
     assert _row(actx, aid).strava_status == "unchanged"
+
+
+def test_a_failed_route_lookup_is_retried_and_strava_rewritten(
+    actx: AppContext, built: list[int], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ride 232: OSM down at first; an hour later the spot is found and Strava gets it."""
+    import os
+
+    from cyp.ingest.osm.client import OsmError
+    from cyp.services import ride_story
+    from tests.services.test_ride_story import T as STORY
+
+    class Down:
+        def places_in(self, *_a: object, **_k: object) -> list[object]:
+            raise OsmError("overpass: 500 Internal Server Error")
+
+        def close(self) -> None:
+            pass
+
+    monkeypatch.setattr(ride_story, "OsmClient", lambda **_k: Down())
+
+    _token(actx, "read,activity:write", athlete=OWNER)
+    aid = _strava_ride(actx)
+    osm = actx.settings.cyp_data_dir / "ride_story" / "osm" / f"{aid}.json"
+    osm.unlink()  # no cache: the lookup goes out and fails (no network in tests)
+    fake = FakeStrava("my notes")
+    first = _tick(actx, T0, Mailer(), fake)
+    assert _actions(first, aid) == ["sent", "strava_unchanged"] and fake.writes == []
+    seed_spot(actx, aid)  # Overpass answers now
+    story = actx.settings.cyp_data_dir / "ride_story" / f"{aid}.json"
+    soon = _tick(actx, T0 + dt.timedelta(minutes=10), Mailer(), fake)
+    assert _actions(soon, aid) == [] and fake.writes == []  # not before an hour
+    old = (T0 - dt.timedelta(hours=2)).timestamp()
+    os.utime(story, (old, old))
+    later = _tick(actx, T0 + dt.timedelta(hours=1), Mailer(), fake)
+    assert _actions(later, aid) == ["strava_written"] and len(fake.writes) == 1
+    assert STORY["places"]["viewpoint"] in fake.writes[0][1]
+    assert not (actx.settings.cyp_data_dir / "ride_logs" / f"{aid}.txt").exists()

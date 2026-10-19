@@ -179,9 +179,12 @@ def push(
     if not write or after == before.rstrip():
         return PushResult(strava_id, before, after, written=False)
     client.update_activity_description(strava_id, after)
-    from cyp.services.ride_log import save
+    from cyp.services.ride_log import build, save
 
-    save(ctx, activity_id, text)  # what went to Strava is what the UI shows from now on
+    # An edited text is kept for the UI and later pushes; the generated one is not, so a
+    # story retried later (an OSM lookup that failed at first) replaces it.
+    if text.strip() != build(ctx, activity_id).generated.strip():
+        save(ctx, activity_id, text)
     return PushResult(strava_id, before, after, written=True)
 
 

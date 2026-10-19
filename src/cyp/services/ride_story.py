@@ -129,6 +129,15 @@ def _write(path: Path, data: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
+def needs_retry(ctx: AppContext, activity_id: int, now: dt.datetime, every: dt.timedelta) -> bool:
+    """A cached story whose lookup or narration failed, last tried more than ``every`` ago."""
+    cached = load_cached(ctx, activity_id)
+    if cached is None or cached.prepared:
+        return False
+    tried = dt.datetime.fromtimestamp(_story_path(ctx, activity_id).stat().st_mtime, dt.UTC)
+    return now - tried >= every
+
+
 def load_cached(ctx: AppContext, activity_id: int) -> Story | None:
     """The cached story of a ride (``None``: none, or an older format)."""
     data = _read(_story_path(ctx, activity_id))

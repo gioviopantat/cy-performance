@@ -188,6 +188,19 @@ def strava_retries(ctx: AppContext) -> list[int]:
         )
 
 
+def strava_done_since(ctx: AppContext, since: dt.datetime) -> list[int]:
+    """Rides first seen since ``since`` whose automatic Strava write went through."""
+    with ctx.factory() as s:
+        return list(
+            s.scalars(
+                select(RideReport.activity_id)
+                .where(RideReport.strava_status.in_((STRAVA_WRITTEN, STRAVA_UNCHANGED)))
+                .where(RideReport.first_seen_at >= iso_utc(since))
+                .order_by(RideReport.activity_id)
+            )
+        )
+
+
 def record_strava(
     ctx: AppContext, activity_id: int, status: str, error: str | None, now: dt.datetime
 ) -> None:
