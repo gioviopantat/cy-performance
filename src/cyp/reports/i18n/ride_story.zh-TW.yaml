@@ -1,0 +1,66 @@
+# Strava RIDE.LOG copy (reports/ride_story.py, spec casual-and-strava §C). Public and casual:
+# light suggestions for next time, never a diary of the ride (Roger, 2026-10-17); no verdicts,
+# no plan, no tomorrow, no model jargon. Place names always in 「」 and only from
+# OSM facts. Variants rotate deterministically by activity id.
+
+# Every line carries a real name or number; no cheering, no filler (Roger, 2026-10-18).
+next_spot_dir:
+  - "下一站提案：「{spot}」，折返點再往{dir} {km} 公里，{why} 📍"
+  - "「{spot}」就在折返點{dir}邊 {km} 公里，{why}，下次多踩一段就到 📍"
+next_spot:
+  - "下一站提案：「{spot}」，離這次折返點 {km} 公里，{why} 📍"
+spot_why:
+  viewpoint: "停車拍照的好地方"
+  peak: "還沒插過旗的山頭"
+  peak_ele: "海拔 {ele} 公尺，還沒插過旗"
+  cafe: "到了剛好坐下來喝一杯"
+  attraction: "值得停下來逛一圈"
+dir:
+  N: "北"
+  NE: "東北"
+  E: "東"
+  SE: "東南"
+  S: "南"
+  SW: "西南"
+  W: "西"
+  NW: "西北"
+
+climb_best:
+  - "「{climb}」{of_n} 次裡最快，個人紀錄到手 🔥 下次換條更陡的坡"
+  - "「{climb}」刷新自己的最快紀錄（{of_n} 次裡第一）🔥"
+climb_gap:
+  - "「{climb}」{of_n} 次裡第 {rank} 快，離自己的最快還差 {gap}，紀錄在招手 ⛰️"
+  - "「{climb}」第 {rank}/{of_n} 快，跟最快差 {gap}，下次腿新鮮時去收回來 ⛰️"
+climb_rank:
+  - "「{climb}」{of_n} 次裡第 {rank} 快 ⛰️"
+gap:
+  min_sec: "{m} 分 {s} 秒"
+  sec: "{s} 秒"
+
+stop:
+  - "「{stop}」記進補給口袋名單 ☕"
+  - "補給點收藏：「{stop}」☕"
+
+weather:
+  hot:
+    - "{temp}°C 出門，下次兩瓶水起跳，或趁早上涼的時候騎 🧴"
+    - "均溫 {temp}°C，下次水壺裝冰塊再出門 🧊"
+  cold:
+    - "{temp}°C 有點凍，下次風衣跟手套帶上 🧥"
+    - "均溫 {temp}°C，下坡前先把風衣拉鍊拉好 🧥"
+
+#: Acrostic heads (4 characters each) per content type; the last 10 used are skipped.
+heads:
+  climb: ["坡陡心定", "登高望遠", "汗灑山徑", "步步登高", "峰迴路轉", "千階在望", "攀雲而上", "山風入懷"]
+  stop: ["杯中有茶", "停車小憩", "一盞清涼", "茶香半日", "歇腳樹下", "閒坐街角", "涼飲解渴", "偷閒片刻"]
+  next_spot: ["他日再訪", "下回相約", "前方有景", "且待來日", "尋幽訪勝", "來日方長", "遠方在招", "約定山水"]
+  weather: ["日暖風輕", "晴空萬里", "秋陽正好", "微風拂面", "雲淡天高", "晚風送涼", "細雨沾衣", "烈日當空"]
+
+footer: "#cyperformance"
+
+#: Validation word lists (reports/ride_story.validate).
+validation:
+  #: Words that read as a place; outside a facts place they mean an invented one.
+  place_words: ["咖啡", "茶", "寺", "宮", "廟", "公園", "步道", "觀景台"]
+  #: Never in a RIDE.LOG (Roger: 甜蜜點 not 甜點; no 三八 / 幹).
+  forbidden: ["甜點", "三八", "幹"]

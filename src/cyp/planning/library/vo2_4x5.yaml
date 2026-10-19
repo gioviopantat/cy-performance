@@ -1,0 +1,39 @@
+id: vo2_4x5
+version: 1
+name: "VO2max 4x5"
+name_zh: "VO2max 4x5 分"
+purpose_zh: "長 VO2 間歇，20 分鐘在 110–115 %。"
+intent: vo2
+phases: [threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 108, max: 115, default: 110}
+  rest_min: {min: 4, max: 5, default: 5, step: 1}
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - repeat: 3
+    cue: Primers
+    steps:
+      - {kind: steady, duration: 30s, lo: 105, hi: 110, cadence: "100-110rpm"}
+      - {kind: steady, duration: 30s, lo: 50, hi: 55}
+  - {kind: steady, duration: 4m, lo: 55, hi: 60}
+  - repeat: 4
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 5m, lo: "{pct}", hi: "{pct}+5", cadence: "95-105rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "A 2-2.5 km climb at 5-8 % fits a 5 min rep. Start slightly under target and build; do not blow up in rep 1. Rest = descent."
+  note_zh: "2–2.5 km、5–8 % 的坡剛好 5 分鐘。起步略低於目標再建立，第一趟不要爆；休息用下坡。"
+  widen_pct: 4
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "VO2 間歇不以心率配速；無功率時改用 RPE 9/10，事後以 HRmax > 90 % 檢查。"
+tss_model: closed_form
+explain_zh: "4×5 @ 110–115 % 是閾值期的主要 VO2 課：5 分鐘間歇是研究中（Seiler 2013 的 4×4–4×8）提升 VO2max 與 FTP 效果最好的時長之一。季節計畫從 4×5 進到 5×5，隔週與閾值 2×20 交替，用更高的天花板支撐 300 W 的目標。"

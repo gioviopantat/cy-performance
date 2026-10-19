@@ -1,0 +1,47 @@
+id: ramp_test
+version: 1
+name: "Ramp Test"
+name_zh: "Ramp 遞增測驗"
+purpose_zh: "每分鐘遞增 8 % FTP 直到力竭，以最佳 1 分鐘功率的 75 % 估 FTP。"
+intent: test
+phases: [base, build, threshold, test]
+slot_roles: [test]
+requires_power: true
+indoor_ok: true
+outdoor_ok: false
+params: {}
+steps:
+  - {cue: Warmup, kind: steady, duration: 10m, lo: 45, hi: 55, cadence: "85-95rpm"}
+  - {cue: Ramp step 1, kind: steady, duration: 1m, lo: 46, hi: 46}
+  - {kind: steady, duration: 1m, lo: 54, hi: 54}
+  - {kind: steady, duration: 1m, lo: 62, hi: 62}
+  - {kind: steady, duration: 1m, lo: 70, hi: 70}
+  - {kind: steady, duration: 1m, lo: 78, hi: 78}
+  - {kind: steady, duration: 1m, lo: 86, hi: 86}
+  - {kind: steady, duration: 1m, lo: 94, hi: 94}
+  - {kind: steady, duration: 1m, lo: 102, hi: 102}
+  - {kind: steady, duration: 1m, lo: 110, hi: 110}
+  - {kind: steady, duration: 1m, lo: 118, hi: 118}
+  - {kind: steady, duration: 1m, lo: 126, hi: 126}
+  - {kind: steady, duration: 1m, lo: 134, hi: 134}
+  - {kind: steady, duration: 1m, lo: 142, hi: 142}
+  - {kind: steady, duration: 1m, lo: 150, hi: 150}
+  - {kind: steady, duration: 1m, lo: 158, hi: 158}
+  - {kind: steady, duration: 1m, lo: 166, hi: 166}
+  - {kind: steady, duration: 1m, lo: 174, hi: 174}
+  - {kind: steady, duration: 1m, lo: 182, hi: 182}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 45, hi: 50}
+outdoor_rendering:
+  note: "Not rendered outdoors (indoor_ok only): the protocol needs ERG steps on Rouvy for repeatability (config: test_venue indoor)."
+  note_zh: "不提供戶外版本：此測驗需在 Rouvy 以 ERG 階梯執行才能跨次比較（設定 test_venue: indoor）。"
+  widen_pct: 0
+  rests_as_freeride: false
+  ramps_as_range: false
+hr_fallback: null
+hr_fallback_reason_zh: "測驗需要功率，無 HR 版本。"
+test:
+  protocol: "1-min steps, +8 % FTP (≈ +20 W at FTP 250) per step from 46 %, ride to failure (cadence drops > 10 rpm below target for 10 s or athlete stops). Steps beyond the athlete's limit are simply not reached; the workout ends on stop."
+  ftp_estimate: "FTP ≈ 0.75 × best 1-min average power in the ramp (Zwift/TrainerRoad convention). With FTP 250 a 1-min best of 333 W confirms 250; 360 W → 270; 400 W → 300."
+  notes_zh: "測驗日前一天 Z2 ≤ 60 分或休息；早上同一時段、同一台 Rouvy 設定、同樣的補給。結果寫入報告與 SET_EFTP 提案，絕不自動改 FTP（docs/05 §4）。"
+tss_model: closed_form
+explain_zh: "Ramp 測驗以每分鐘 +8 % 遞增到力竭，用最佳 1 分鐘功率的 75 % 估 FTP；它比 20 分鐘測驗省力、可重複，所以用在每個區塊的中點（第 4、12、20 週）當作低成本的進度檢查。它估的其實偏向 VO2/無氧能力，所以只是 eFTP 與 20 分鐘測驗之外的第三個證據，不單獨決定 FTP。"

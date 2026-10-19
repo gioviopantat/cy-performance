@@ -1,0 +1,66 @@
+# Test fixture: the invented reference athlete the planner tests are calibrated on.
+# Every number here is invented; nothing here describes a real person.
+timezone: Asia/Taipei
+athlete:
+  weight_kg: 70
+  ftp_w: 250
+
+goals:
+  - name: "FTP 285"
+    date: 2027-04-02
+    category: TARGET
+    kind: ftp_target
+    target: {ftp: 285}
+    checkpoints:
+      - {week: 8,  ftp: 258}
+      - {week: 16, ftp: 268}
+      - {week: 24, ftp: 278}
+
+season:
+  start: 2026-10-05
+  type: ftp_target
+  load_pattern: "3:1"
+  tests:
+    ramp:   {every_weeks: 8, offset_week: 4}
+    twenty_min: {every_weeks: 8, offset_week: 8}
+
+availability:
+  weekly_max_minutes: 900
+  mon: 0
+  tue: 130
+  wed: 160
+  thu: 130
+  fri: 100
+  sat: 240
+  sun: 190
+
+location:
+  indoor_policy: fallback
+  indoor_platform: Zwift
+  weather_indoor_if: {rain_prob_pct: 60, temp_c_min: 8, temp_c_max: 36}
+  test_venue: indoor
+  climbs:
+    - {name_zh: "爬坡 A", minutes_min: 9, minutes_max: 12, distance_km: 3.0, grade_pct: 6.0, good_for: [sweetspot, threshold, vo2]}
+    - {name_zh: "爬坡 B", minutes_min: 16, minutes_max: 21, distance_km: 6.0, grade_pct: 3.8, good_for: [tempo, sweetspot, threshold, test]}
+    - {name_zh: "爬坡 C", minutes_min: 21, minutes_max: 26, distance_km: 8.0, grade_pct: 2.8, good_for: [endurance, tempo, sweetspot, test]}
+
+data_quality:
+  power_unreliable:
+    - until: 2026-08-05
+      power_meter_serial: "0000000000"
+      reason_zh: "測試用：功率計校正前讀高約 20%。"
+
+other_sports:
+  plan: false
+  ingest_load: true
+  hit_downgrade_after_strength: true
+
+planner:
+  horizon_days: 14
+  mode: propose
+  today_cutoff_local: "10:00"
+  ramp_cap:        {base: 6, build: 6, threshold: 4}
+  tsb_floor:       {base: -30, build: -30, threshold: -25, test: 0}
+  hit_per_week:    {base: 1, build: 2, threshold: 2}
+  tid_model:       pyramidal
+  long_ride_day:   sat

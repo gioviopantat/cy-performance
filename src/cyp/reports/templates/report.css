@@ -1,0 +1,140 @@
+/* Shared look of the zh-TW PDFs (A4): per-ride report and weekly / monthly digests.
+   Rendered by WeasyPrint (cyp/reports/pdf.py); report-specific rules live in ride.css and
+   digest.css. */
+:root {
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --hairline: #e1e0d9;
+  --plane: #f6f6f3;
+  --accent: #2a78d6;
+  --good: #0ca30c;
+  --good-ink: #006300;
+  --warning: #fab219;
+  --warning-ink: #7a5200;
+  --critical: #d03b3b;
+  --critical-ink: #a32424;
+}
+
+@page {
+  size: A4;
+  margin: 16mm 18mm 18mm 18mm;
+  @top-left {
+    content: string(report-title);
+    font-size: 7.5pt;
+    color: #898781;
+  }
+  @bottom-right {
+    content: counter(page) " / " counter(pages);
+    font-size: 7.5pt;
+    color: #898781;
+  }
+}
+@page :first {
+  @top-left { content: none; }
+}
+
+/* Heiti TC first: WeasyPrint's font subsetter maps glyphs from the wrong face of a .ttc
+   collection when the face is not the first one, and PingFang TC is a later face of
+   PingFang.ttc (the text layer stays right, the drawn glyphs do not). Do not move PingFang up.
+   Arial goes first for Latin text: Heiti draws ° and · full-width. */
+html {
+  font-family: "Arial", "Heiti TC", "Noto Sans TC", "Noto Sans CJK TC", "Source Han Sans TC",
+    "Arial Unicode MS", sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.55;
+  color: var(--ink);
+  background: #ffffff;
+}
+body { margin: 0; }
+
+header.masthead { margin-bottom: 6mm; }
+.masthead .kicker { font-size: 8pt; color: var(--ink-2); letter-spacing: 0.04em; }
+.masthead h1 {
+  string-set: report-title content();
+  font-size: 18pt;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 1mm 0 3mm;
+}
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 0.6pt solid var(--hairline);
+  border-bottom: 0.6pt solid var(--hairline);
+  padding: 2.5mm 0;
+}
+.stat { margin-right: 7mm; }
+.stat .label { display: block; font-size: 7.5pt; color: var(--ink-2); }
+.stat .value { font-size: 12pt; font-weight: 600; }
+.stat .unit { font-size: 8pt; color: var(--ink-2); margin-left: 0.6mm; }
+
+/* No forced page breaks: short sections stay whole, long ones may split but never between a
+   heading and what follows it, nor inside a figure or a table row. */
+section { margin: 0 0 6mm; }
+tr { break-inside: avoid; }
+section h2 {
+  font-size: 11.5pt;
+  font-weight: 600;
+  margin: 0 0 2mm;
+  padding-top: 2mm;
+  border-top: 0.6pt solid var(--hairline);
+  break-after: avoid;
+}
+section h2 .no { color: var(--muted); font-weight: 400; margin-right: 2mm; }
+section h3 { font-size: 10pt; font-weight: 600; margin: 3mm 0 1mm; break-after: avoid; }
+p { margin: 0 0 2mm; }
+.lead { font-size: 12.5pt; line-height: 1.5; font-weight: 500; margin: 1mm 0 2mm; }
+.note { font-size: 8pt; color: var(--ink-2); }
+.figure { margin: 2mm 0 1mm; break-inside: avoid; }
+.figure img { width: 100%; }
+.keep { break-inside: avoid; }
+
+.badge {
+  display: inline-block;
+  font-size: 8pt;
+  font-weight: 600;
+  padding: 0.3mm 2mm;
+  border-radius: 2mm;
+  border: 0.8pt solid var(--muted);
+  color: var(--ink-2);
+  vertical-align: 0.3mm;
+}
+.badge.good { border-color: var(--good); color: var(--good-ink); }
+.badge.warning { border-color: var(--warning); color: var(--warning-ink); }
+.badge.critical { border-color: var(--critical); color: var(--critical-ink); }
+.badge.grade { border-color: var(--accent); color: #1c5cab; }
+
+.figures { display: flex; flex-wrap: wrap; margin: 1mm 0 2mm; }
+.figures .stat { margin-right: 9mm; }
+
+ul { margin: 0 0 2mm; padding-left: 5mm; }
+li { margin: 0 0 0.6mm; }
+
+table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin: 1mm 0 2mm; }
+th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--ink-2);
+  border-bottom: 0.6pt solid var(--hairline);
+  padding: 1mm 2mm 1mm 0;
+}
+td { border-bottom: 0.4pt solid var(--hairline); padding: 1mm 2mm 1mm 0; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.this td { font-weight: 600; }
+
+.explain { background: var(--plane); padding: 2mm 3mm; margin: 2mm 0; font-size: 8.5pt; line-height: 1.5; }
+.explain p { margin: 0 0 1mm; }
+.explain ul { margin: 0 0 1mm; }
+
+.arrow { color: var(--muted); margin: 0 1.5mm; }
+code { font-family: "Menlo", monospace; font-size: 7.5pt; color: var(--ink-2); }
+a { color: #1c5cab; text-decoration: none; }
+
+footer.colophon {
+  margin-top: 6mm;
+  padding-top: 2mm;
+  border-top: 0.6pt solid var(--hairline);
+  font-size: 7.5pt;
+  color: var(--muted);
+}

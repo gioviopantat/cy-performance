@@ -1,0 +1,44 @@
+id: z2_cadence_180
+version: 1
+name: "Endurance Z2 180 min + Cadence Drills {drills}x5"
+name_zh: "Z2 有氧 180 分 + 高迴轉練習 {drills}x5"
+purpose_zh: "三小時長騎，中段加入高迴轉練習。"
+intent: endurance
+phases: [base, build]
+slot_roles: [long_ride]
+requires_power: true
+indoor_ok: false
+outdoor_ok: true
+params:
+  drills: {min: 4, max: 6, default: 6, step: 1}
+progression: [drills]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 45m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - repeat: "{drills}"
+    cue: Cadence Drills
+    steps:
+      - {kind: work, duration: 5m, lo: 65, hi: 72, cadence: "100-110rpm"}
+      - {kind: steady, duration: 5m, lo: 65, hi: 75, cadence: "85-95rpm"}
+  - {cue: Endurance, kind: steady, duration: "105-{drills}*10m", lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 15m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Outdoor only. High-cadence blocks on the flattest part of the route; climbs under 80 %, descents soft-pedal. 60 g carbs/h."
+  note_zh: "僅戶外。高迴轉段放在路線最平的區段；爬坡不超過 80 %，下坡輕踩；每小時 60 g 碳水。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 心率 69–83 % LTHR；第三小時超過 85 % 就降功率。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 45m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - repeat: "{drills}"
+      cue: Cadence Drills
+      steps:
+        - {kind: work, duration: 5m, lo: 72, hi: 83, cadence: "100-110rpm"}
+        - {kind: steady, duration: 5m, lo: 69, hi: 80, cadence: "85-95rpm"}
+    - {cue: Endurance, kind: steady, duration: "105-{drills}*10m", lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 15m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "三小時長騎加高迴轉練習是基礎期週日 180 分時段的標準長騎，同時累積耐久力與踩踏經濟性。TSS 約等於同長度純 Z2，因此不改變週負荷，只改變刺激的品質。"

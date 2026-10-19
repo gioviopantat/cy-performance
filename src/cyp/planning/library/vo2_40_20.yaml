@@ -1,0 +1,48 @@
+id: vo2_40_20
+version: 1
+name: "VO2max 40/20s 3x{reps}"
+name_zh: "VO2max 40/20 秒 3 組 x{reps}"
+purpose_zh: "工作比休息長的短間歇，較 30/30 更接近持續 VO2 負荷。"
+intent: vo2
+phases: [threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  reps: {min: 6, max: 10, default: 8, step: 1}
+  pct: {min: 115, max: 125, default: 120}
+  set_rest_min: 4
+progression: [reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 1
+    steps:
+      - {kind: work, duration: 40s, lo: "{pct}", hi: "{pct}+5", cadence: "95-105rpm"}
+      - {kind: rest, duration: 20s, lo: 55, hi: 55}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 2
+    steps:
+      - {kind: work, duration: 40s, lo: "{pct}", hi: "{pct}+5", cadence: "95-105rpm"}
+      - {kind: rest, duration: 20s, lo: 55, hi: 55}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 3
+    steps:
+      - {kind: work, duration: 40s, lo: "{pct}", hi: "{pct}+5", cadence: "95-105rpm"}
+      - {kind: rest, duration: 20s, lo: 55, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Each set is 6-10 min continuous on a gentle climb; the 20 s off is a soft-pedal, keep rolling. Prefer indoors for the first session."
+  note_zh: "每組 6–10 分鐘連續，在緩坡上做；20 秒 Off 保持滾動輕踩。第一次建議在室內。"
+  widen_pct: 5
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "40/20 切換心率無法反映，不提供 HR 版本。"
+tss_model: closed_form
+explain_zh: "40/20（Rønnestad 的 30/15 變形）在三組中累積 12–20 分鐘的 115–125 % 工作，研究顯示短間歇對 VO2max 與功率輸出的提升不亞於長間歇，且 RPE 較低。它屬於閾值期的 VO2 工具箱，在 readiness 偏低時替代 5×5。"

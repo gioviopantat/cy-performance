@@ -1,0 +1,42 @@
+id: vo2_30_30_2sets
+version: 1
+name: "VO2max 30/30s 2x{reps}"
+name_zh: "VO2max 30/30 秒 2 組 x{reps}"
+purpose_zh: "短間歇累積大量接近 VO2max 的時間，疲勞低於長間歇。"
+intent: vo2
+phases: [threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  reps: {min: 10, max: 15, default: 12, step: 1}
+  pct: {min: 120, max: 130, default: 125}
+  set_rest_min: 5
+progression: [reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 1
+    steps:
+      - {kind: work, duration: 30s, lo: "{pct}", hi: "{pct}+5", cadence: "100-110rpm"}
+      - {kind: rest, duration: 30s, lo: 50, hi: 50}
+  - {cue: Recover, kind: rest, duration: "{set_rest_min}m", lo: 50, hi: 55}
+  - repeat: "{reps}"
+    cue: Set 2
+    steps:
+      - {kind: work, duration: 30s, lo: "{pct}", hi: "{pct}+5", cadence: "100-110rpm"}
+      - {kind: rest, duration: 30s, lo: 50, hi: 50}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Each set is 10-15 min continuous: use a gentle 2-4 % climb or a flat road with no junctions; the 30 s 'off' is soft-pedalling at speed, not coasting. Indoors in ERG/level mode is easier to execute."
+  note_zh: "每組 10–15 分鐘連續：用 2–4 % 的緩坡或無路口平路，Off 的 30 秒是順速輕踩不是滑行。室內更容易執行。"
+  widen_pct: 5
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "30 秒切換心率完全無法反映，不提供 HR 版本。"
+tss_model: closed_form
+explain_zh: "30/30 讓攝氧量在整組期間維持在接近最大值，卻因每 30 秒休息而累積較少乳酸，是用低疲勞取得大量 VO2 時間的方式（Billat 2001）。它在閾值期與 4×5/5×5 輪替，特別適合 readiness 一般、但仍要保留 VO2 刺激的週。"

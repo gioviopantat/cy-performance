@@ -1,0 +1,41 @@
+id: low_cadence_sfr
+version: 1
+name: "Low-Cadence SFR 4x6 @ {pct}%"
+name_zh: "低踏頻爬坡 SFR 4x6 分 @ {pct}%"
+purpose_zh: "在坡上用 55–65 rpm 低踏頻做甜蜜點以下的努力，練肌耐力與踩踏力量。"
+intent: tempo
+phases: [base, build]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 80, max: 90, default: 85}
+  rest_min: 4
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 72}
+  - repeat: 4
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 6m, lo: "{pct}", hi: "{pct}+4", cadence: "55-65rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55, cadence: "90-100rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Seated on a steady 5-8 % climb, big gear, upper body still. Stop if knees complain; spin the recoveries."
+  note_zh: "在 5–8 % 的穩定坡坐著用重齒比，上半身不動。膝蓋不舒服就停；休息時用高迴轉放鬆。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "心率約 85–92 % LTHR；重點是 55–65 rpm 的踏頻，不是心率。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 78}
+    - repeat: 4
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 6m, lo: 85, hi: 92, cadence: "55-65rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70, cadence: "90-100rpm"}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "SFR（義大利語「爬坡・力量・耐力」）是低踏頻高扭力的經典訓練，在不高的心率下給腿部肌肉高負荷，對爬坡多的路線與長距離很有幫助；研究不多但教練界廣泛使用，有膝蓋問題時不要做。"

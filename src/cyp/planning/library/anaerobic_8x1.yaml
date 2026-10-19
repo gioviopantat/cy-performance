@@ -1,0 +1,38 @@
+id: anaerobic_8x1
+version: 1
+name: "Anaerobic 8x1"
+name_zh: "無氧能力 8x1 分"
+purpose_zh: "1 分鐘高功率重複，訓練無氧容量（W′）與閾值以上的耐受度。"
+intent: anaerobic
+phases: [threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 130, max: 150, default: 140}
+  rest_min: 3
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 75}
+  - repeat: 2
+    cue: Primers
+    steps:
+      - {kind: steady, duration: 30s, lo: 110, hi: 120, cadence: "100-110rpm"}
+      - {kind: steady, duration: 90s, lo: 50, hi: 55}
+  - repeat: 8
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 1m, lo: "{pct}", hi: "{pct}+10", cadence: "100-110rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 45, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 12m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Short steep ramp (300-500 m at 6-10 %) or flat with a tailwind; roll back down for the rest. Power will scatter ±10 %; judge by the 1 min average."
+  note_zh: "短陡坡（300–500 m、6–10 %）或順風平路；休息滾回起點。功率會上下 10 %，看 1 分鐘平均即可。"
+  widen_pct: 5
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback: null
+hr_fallback_reason_zh: "1 分鐘全力段不以心率配速，不提供 HR 版本。"
+tss_model: closed_form
+explain_zh: "8×1 @ 130–150 % 針對 W′（閾值以上可做的功）與短時間高輸出，對 FTP 目標的直接貢獻較小，所以只在閾值期以低頻率出現，主要用來維持 CP/W′ 模型中的上端數據點、並讓 20 分鐘測驗起步不會「卡」。本季不是優先課表。"

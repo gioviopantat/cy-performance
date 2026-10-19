@@ -1,0 +1,72 @@
+# Athlete intent and constraints: FORMAT EXAMPLE with invented numbers.
+# Real athlete files live in profiles/<slug>/athlete.yaml (git-ignored; ADR-0006 §8).
+# Copy this file there, or run `cyp profile add <slug>` to generate one.
+timezone: Asia/Taipei
+athlete:
+  weight_kg: 70
+  ftp_w: 240                       # icu sport settings are canonical
+
+goals:
+  - name: "FTP 270"
+    date: 2027-04-02
+    category: TARGET
+    kind: ftp_target
+    target: {ftp: 270}
+    checkpoints:                   # expectations for reports, not plan inputs
+      - {week: 8,  ftp: 248}
+      - {week: 16, ftp: 258}
+      - {week: 24, ftp: 266}
+
+season:
+  start: 2026-10-05
+  type: ftp_target                 # no taper; blocks base -> build -> threshold/vo2 -> test week
+  load_pattern: "3:1"
+  tests:
+    ramp:   {every_weeks: 8, offset_week: 4}
+    twenty_min: {every_weeks: 8, offset_week: 8}
+
+availability:                      # minutes per weekday
+  weekly_max_minutes: 600
+  mon: 0
+  tue: 90
+  wed: 90
+  thu: 90
+  fri: 0
+  sat: 180
+  sun: 150
+
+location:
+  indoor_policy: fallback          # fallback = outdoor unless weather/test demands indoor
+  indoor_platform: Zwift
+  weather_indoor_if: {rain_prob_pct: 60, temp_c_min: 8, temp_c_max: 36}
+  test_venue: indoor
+  # Optional: local climbs for long outdoor work steps (minutes = your own ascent times).
+  climbs:
+    - {name_zh: "範例爬坡 A", minutes_min: 10, minutes_max: 12, distance_km: 3.0, grade_pct: 5.5, good_for: [sweetspot, threshold, vo2]}
+    - {name_zh: "範例爬坡 B", minutes_min: 20, minutes_max: 24, distance_km: 7.5, grade_pct: 3.0, good_for: [endurance, tempo, sweetspot, test]}
+
+data_quality:
+  # Optional: power that must not feed power curves, CP/W', FTP evidence or limiters.
+  power_unreliable: []
+  #  - until: 2026-01-31
+  #    power_meter_serial: "0000000000"
+  #    reason_zh: "功率計校正前讀高。"
+
+other_sports:
+  plan: false                      # strength + yoga are NOT scheduled
+  ingest_load: true                # their icu training load still counts in the PMC
+  hit_downgrade_after_strength: true
+
+planner:
+  horizon_days: 14
+  mode: propose                    # propose = diff only; apply = write to the icu calendar
+  today_cutoff_local: "10:00"
+  ramp_cap:        {base: 6, build: 6, threshold: 4}
+  tsb_floor:       {base: -30, build: -30, threshold: -25, test: 0}
+  hit_per_week:    {base: 1, build: 2, threshold: 2}
+  tid_model:       pyramidal
+  long_ride_day:   sat
+
+features:                          # docs/09-features.md; omitted ids keep their default
+  sync.strava: false
+  notify.macos: false

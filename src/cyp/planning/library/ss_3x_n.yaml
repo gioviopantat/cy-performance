@@ -1,0 +1,43 @@
+id: ss_3x_n
+version: 1
+name: "Sweet Spot {reps}x{work_min}"
+name_zh: "甜蜜點 {reps}x{work_min} 分"
+purpose_zh: "FTP 以下 10 % 的高產出/低疲勞比間歇，基礎期與建構期的主要 FTP 刺激。"
+intent: sweetspot
+phases: [base, build]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  reps: {min: 2, max: 4, default: 3, step: 1}
+  work_min: {min: 8, max: 20, default: 10, step: 2}
+  pct: {min: 86, max: 92, default: 88}
+  rest_min: 4
+progression: [work_min, reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 70}
+  - repeat: "{reps}"
+    cue: Main Set
+    steps:
+      - {kind: work, duration: "{work_min}m", lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Work steps on a climb or flat long enough for the full interval (a 12 min rep needs ~5 km at 25 km/h). Rest = freeride descent or soft-pedal. Cadence on a climb may drop to 75-85 rpm; that is fine."
+  note_zh: "工作段要在一段能完整做完的坡或平路上（12 分鐘約需 5 km）。休息用下坡或輕踩；爬坡時迴轉掉到 75–85 rpm 沒關係。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "甜蜜點心率 90–97 % LTHR。心率落後功率 1–2 分鐘，每趟前 2 分鐘用 RPE 7/10 控制。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 78}
+    - repeat: "{reps}"
+      cue: Main Set
+      steps:
+        - {kind: work, duration: "{work_min}m", lo: 90, hi: 97, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "甜蜜點（88–92 % FTP）每單位疲勞帶來的 FTP 刺激最高，所以是基礎期唯一的高強度課，也是建構期前半的主力；進程由 3×8 → 3×12 → 3×15 → 3×20 逐週拉長工作時間。拉到 3×20 之後就進入 2×20 閾值課。"

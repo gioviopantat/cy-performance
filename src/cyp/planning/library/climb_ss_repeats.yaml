@@ -1,0 +1,43 @@
+id: climb_ss_repeats
+version: 1
+name: "Climb Sweet Spot Repeats {reps}x{climb_min}"
+name_zh: "爬坡甜蜜點重複 {reps}x{climb_min} 分"
+purpose_zh: "在熟悉的坡上用甜蜜點強度重複爬，比平路甜蜜點更貼近實戰。"
+intent: sweetspot
+phases: [base, build, threshold]
+slot_roles: [hit]
+requires_power: false
+indoor_ok: false
+outdoor_ok: true
+params:
+  reps: {min: 2, max: 4, default: 3, step: 1}
+  climb_min: {min: 8, max: 20, default: 12, step: 2}
+  pct: {min: 86, max: 94, default: 89}
+  descent_min: {min: 5, max: 10, default: 8, step: 1}
+progression: [climb_min, reps, pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 72}
+  - repeat: "{reps}"
+    cue: Climb Repeats
+    steps:
+      - {kind: work, duration: "{climb_min}m", lo: "{pct}", hi: "{pct}+4", cadence: "75-90rpm"}
+      - {kind: freeride, duration: "{descent_min}m", tss_assume: 40}
+  - {cue: Cooldown, kind: steady, duration: 12m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Outdoor only: the planner names one of your climbs that holds {climb_min} min. Even pacing; descents are freeride."
+  note_zh: "僅戶外：系統會從你常騎的坡選一條約 {climb_min} 分鐘的。平均配速，下坡自由騎。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "爬坡心率 92–98 % LTHR，RPE 6–7/10；坡道時間是進步指標。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 80}
+    - repeat: "{reps}"
+      cue: Climb Repeats
+      steps:
+        - {kind: work, duration: "{climb_min}m", lo: 92, hi: 98, cadence: "75-90rpm"}
+        - {kind: freeride, duration: "{descent_min}m", tss_assume: 40}
+    - {cue: Cooldown, kind: steady, duration: 12m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "甜蜜點放在坡上，重力讓輸出更穩、更接近比賽和長距離騎乘的實際狀況；同一條坡的時間每週都能比較。"

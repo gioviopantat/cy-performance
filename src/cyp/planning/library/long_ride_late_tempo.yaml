@@ -1,0 +1,36 @@
+id: long_ride_late_tempo
+version: 1
+name: "Long Ride {total_min} min + Late Tempo {tempo_min} min"
+name_zh: "長騎 {total_min} 分 + 後段 Tempo {tempo_min} 分"
+purpose_zh: "長時間 Z2 之後在疲勞狀態下做 Tempo，直接訓練耐久力。"
+intent: endurance
+phases: [base, build]
+slot_roles: [long_ride]
+requires_power: true
+indoor_ok: false
+outdoor_ok: true
+params:
+  total_min: {min: 180, max: 240, default: 210, step: 30}
+  tempo_min: {min: 20, max: 40, default: 30, step: 5}
+  tempo_pct: {min: 78, max: 85, default: 80}
+progression: [tempo_min, total_min, tempo_pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 15m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: "{total_min}-{tempo_min}-35m", lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Late Tempo, kind: work, duration: "{tempo_min}m", lo: "{tempo_pct}", hi: "{tempo_pct}+6", cadence: "85-95rpm"}
+  - {cue: Finish Easy, kind: steady, duration: 20m, lo: 55, hi: 65}
+outdoor_rendering:
+  note: "Outdoor only. Plan the route so the tempo block falls on a long steady climb or uninterrupted flat 30-40 km from home. Fuel 60-90 g carbs/h from the start; the tempo block fails on empty glycogen, which is the point of measuring it."
+  note_zh: "僅戶外。路線規劃讓 Tempo 段落在離家 30–40 km、沒有路口的長坡或平路。一開始就每小時補 60–90 g 碳水；肝醣耗盡時 Tempo 會崩，這正是我們要量的東西。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 69–83 % LTHR，後段 Tempo 84–92 % LTHR。長騎後段心率會因為漂移偏高，Tempo 段以 RPE 5–6/10（可短句對話）為主、心率為輔。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 15m, lo: 60, hi: 78}
+    - {cue: Endurance, kind: steady, duration: "{total_min}-{tempo_min}-35m", lo: 70, hi: 83, cadence: "85-95rpm"}
+    - {cue: Late Tempo, kind: work, duration: "{tempo_min}m", lo: 84, hi: 92, cadence: "85-95rpm"}
+    - {cue: Finish Easy, kind: steady, duration: 20m, lo: 65, hi: 75}
+tss_model: closed_form
+explain_zh: "在累積 1 500–2 000 kJ 之後才做 Tempo，訓練的是「疲勞下維持輸出」的耐久力，這是這位選手 GC 型目標的主要限制因子。基礎期用 Tempo 強度是因為它夠低、不會搶走隔週高強度課的恢復，卻足以暴露並改善後段衰退。"

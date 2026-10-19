@@ -1,0 +1,45 @@
+id: threshold_3x20
+version: 1
+name: "Threshold 3x20"
+name_zh: "閾值 3x20 分"
+purpose_zh: "一小時閾值累積，本季強度課的最高量。"
+intent: threshold
+phases: [threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 95, max: 100, default: 95}
+  rest_min: {min: 6, max: 10, default: 8, step: 1}
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: 3
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 20m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Three 20 min efforts: same climb three times or flat loop. Hold the low end (95 %) on rep 3; stop the rep if power drops > 5 % below target for 2 min."
+  note_zh: "三趟 20 分鐘：同一段坡三次或平路圈。第三趟守下限 95 %；若功率連續 2 分鐘低於目標 5 % 以上就停止該趟。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "閾值心率 97–103 % LTHR；第三趟心率可能超過 103 %，以 RPE 8/10 為準並接受略低的輸出。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 80}
+    - {kind: steady, duration: 3m, lo: 88, hi: 94}
+    - {kind: steady, duration: 3m, lo: 60, hi: 70}
+    - repeat: 3
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 20m, lo: 97, hi: 103, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "3×20 @ 95–100 % 是建構期進程（3×12 → 2×20 → 3×20）的終點，用 60 分鐘的閾值工作量確認 FTP 已穩定在新水準；TSS 超過 100，所以每個區塊最多出現 1–2 次並且必排在週三 150 分時段。能完整完成它通常是 20 分鐘測驗會進步的最可靠訊號。"

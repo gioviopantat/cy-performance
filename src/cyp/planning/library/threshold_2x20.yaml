@@ -1,0 +1,45 @@
+id: threshold_2x20
+version: 1
+name: "Threshold 2x20 @{pct}%"
+name_zh: "閾值 2x20 分 @{pct}%"
+purpose_zh: "經典 FTP 課：兩段 20 分鐘在 FTP 到 102 %。"
+intent: threshold
+phases: [build, threshold]
+slot_roles: [hit]
+requires_power: true
+indoor_ok: true
+outdoor_ok: true
+params:
+  pct: {min: 95, max: 102, default: 97}
+  rest_min: {min: 5, max: 10, default: 8, step: 1}
+progression: [pct]
+steps:
+  - {cue: Warmup, kind: ramp, duration: 12m, lo: 50, hi: 72}
+  - {kind: steady, duration: 3m, lo: 85, hi: 90}
+  - {kind: steady, duration: 3m, lo: 50, hi: 55}
+  - repeat: 2
+    cue: Main Set
+    steps:
+      - {kind: work, duration: 20m, lo: "{pct}", hi: "{pct}+4", cadence: "85-95rpm"}
+      - {kind: rest, duration: "{rest_min}m", lo: 50, hi: 55}
+  - {cue: Cooldown, kind: steady, duration: 8m, lo: 50, hi: 50}
+outdoor_rendering:
+  note: "Needs a 20 min climb (6-8 km) or a flat loop. Treat the first rep as a rehearsal of the 20-min test pacing: even power, no surge in the first 3 min."
+  note_zh: "需要 20 分鐘的坡（6–8 km）或平路圈。第一趟當作 20 分鐘測驗的配速演練：功率平均、前 3 分鐘不要衝。"
+  widen_pct: 3
+  rests_as_freeride: true
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "閾值心率 97–103 % LTHR；20 分鐘內心率會持續爬，守住功率感覺（RPE 8/10）比追心率重要。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 12m, lo: 60, hi: 80}
+    - {kind: steady, duration: 3m, lo: 88, hi: 94}
+    - {kind: steady, duration: 3m, lo: 60, hi: 70}
+    - repeat: 2
+      cue: Main Set
+      steps:
+        - {kind: work, duration: 20m, lo: 97, hi: 103, cadence: "85-95rpm"}
+        - {kind: rest, duration: "{rest_min}m", lo: 60, hi: 70}
+    - {cue: Cooldown, kind: steady, duration: 8m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "2×20 @ 95–102 % 是整季的核心閾值課：建構期用 95–98 % 把 FTP 的持續時間拉長，閾值期用 100–102 % 和 VO2 課交替，直接把閾值功率往上推。每一次完成的 2×20 功率也是 eFTP 與 20 分鐘測驗預期值的證據。"

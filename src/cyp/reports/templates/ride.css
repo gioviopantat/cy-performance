@@ -1,0 +1,4 @@
+/* Per-ride PDF only (cyp/reports/ride_pdf.py); the shared look is report.css. */
+section.headline, section.feel, section.limiters, section.tomorrow, section.methods {
+  break-inside: avoid;
+}

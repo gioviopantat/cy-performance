@@ -1,0 +1,143 @@
+# Athlete-facing zh-TW text of the per-ride report (reports/ride_facts.py).
+# Python str.format templates; every {field} is a number the builder computed. Renderers show
+# these strings as they are and never add figures (docs/07).
+
+verdict:
+  achieved: "達成"
+  partial: "部分達成"
+  missed: "未達成"
+  unplanned: "沒有排課"
+  no_data: "資料不足"
+  casual: "休閒騎（不評分）"
+
+headline:
+  achieved: "目的達成：{name}。"
+  partial: "部分達成：{name}。"
+  missed: "沒有達成：{name}。"
+  no_data: "無法判斷：{name}。"
+  unplanned: "今天沒有排課，這趟是自由騎：{cls}。"
+  casual: "休閒騎（不評分）：{name}。"
+  casual_unplanned: "休閒騎（不評分）：{cls}。"
+  end: "。"
+  goal_date: "{target:.0f} W 預估 {date} 達成"
+  goal_shift_earlier: "（比上一趟提前 {days} 天）"
+  goal_shift_later: "（比上一趟延後 {days} 天）"
+  goal_shift_same: "（和上一趟一樣）"
+  goal_none: "{target:.0f} W：資料還不夠預估日期"
+  goal_after: "{target:.0f} W：照目前趨勢會晚於目標日 {date} 半年以上"
+  tomorrow_same: "明天照原計畫：{name}。"
+  tomorrow_changed: "明天改成：{name}。"
+  tomorrow_rest: "明天休息。"
+
+intent:
+  zone: "{cls} {lo:.0f}–{hi:.0f} % FTP"
+  zone_ceiling: "{cls}（上限 {hi:.0f} % FTP）"
+  zone_load: "{cls}（只比對負荷）"
+  counted: "第 {n} 段有效"
+  excused_stop: "停車（不扣分）"
+  excused_coast: "滑行／下坡（不扣分）"
+  headline_band: "{achieved:.0f}/{target:.0f} 分鐘在 {lo:.0f}–{hi:.0f} W"
+  headline_reps: "{counted}/{planned} 組有效、{achieved:.0f}/{target:.0f} 分鐘在 {lo:.0f}–{hi:.0f} W"
+  headline_ceiling: "{over:.0%} 的移動時間超過容許上限 {ceiling:.0f} W（{smooth} 秒平均）"
+  headline_overdone: "騎過頭：負荷是計畫的 {ratio:.0%}；"
+  overdone_rule: "恢復／耐力課的負荷超過計畫的 {max:.0%}、而且多 {margin:.0f} TSS 以上，就不算達到目的（這趟 {ratio:.0%}）；規劃器用同一條規則，依多出的量把隔天減量"
+  headline_too_easy: "，但標準化功率 {np:.0f} W 低於下限 {floor:.0f} W，比計畫輕鬆太多"
+  headline_load: "負荷 {actual:.0f}/{planned:.0f}（{ratio:.0%}）"
+  headline_no_power: "沒有可信的功率資料，無法判斷是否達到刺激"
+  headline_casual: "你把這趟標記為休閒騎，不和「{name}」比對；負荷 {load:.0f} TSS 照樣算進體能與週總量"
+  casual_rule: "你在騎完感受標記了休閒騎：這趟不評分，下面的數字只供參考；「{name}」對規劃器來說算沒做，錯過的高強度課會照規則補排"
+  headline_no_load: "這份課表沒有功率區間也沒有計畫負荷，無法比對"
+  band: "目標區間 {lo:.0f}–{hi:.0f} W（FTP {ftp:.0f} W 的 {lo_pct:.0f}–{hi_pct:.0f} %）；超過區間上限 {overshoot:.0%} 以內仍算達到刺激（容許上限 {ceiling:.0f} W）"
+  smooth: "功率先用 {window} 秒移動平均，避免單秒尖峰或掉功率影響判斷"
+  reps_rule: "一段平均 ≥ {lo:.0f} W 的努力達到計畫長度（{rep_min:.0f} 分）的 {frac:.0%} 就算一組，長度加倍算兩組；中途不超過 {max_s} 秒的放鬆仍算同一組（算進平均）；沒做滿、但達到計畫長度 {partial:.0%} 且平均在區間內的一段，分鐘數照算"
+  excuse_rule: "中斷 ≤ {max_s} 秒且一半以上時間在停車、滑行或下坡（坡度 ≤ {grade:.0f} %）就不算中斷，這趟有 {n} 段被寬列"
+  above: "{above:.0f} 分鐘超過容許上限 {ceiling:.0f} W"
+  ceiling_rule: "恢復／耐力課重點是不要騎太硬：以 {smooth} 秒平均功率看（起伏路上 30–60 秒的上坡不算），超過容許上限的時間佔移動時間 {over:.0%}（≤ {ok:.0%} 算達成，> {max:.0%} 算未達成）"
+  floor_rule: "耐力課也要有量：標準化功率 {np:.0f} W，下限 {floor:.0f} W；低於下限最多只算部分達成"
+  score_rule: "分數 = 區間分鐘 / 計畫分鐘 = {score:.0%}；≥ {achieved:.0%} 達成，≥ {partial:.0%} 部分達成"
+  score_rule_reps: "分數 = max(區間分鐘 / 計畫分鐘, 有效組數 / 計畫組數, 組內分鐘 / 計畫分鐘) = {score:.0%}（每組已要求平均功率在區間內，所以爬坡時的短暫掉功率不會被重複扣分）；≥ {achieved:.0%} 達成，≥ {partial:.0%} 部分達成"
+  score_rule_ceiling: "分數 = 容許上限內分鐘 / 計畫分鐘 = {score:.0%}；≥ {achieved:.0%} 達成，≥ {partial:.0%} 部分達成"
+  load: "負荷 {actual:.0f}，計畫 {planned:.0f}（{ratio:.0%}）"
+  load_rule: "這份課表沒有功率區間，只用負荷比判斷：≥ {achieved:.0%} 達成，≥ {partial:.0%} 部分達成"
+  no_power: "這趟沒有可信的功率（沒有功率計，或功率計被標為不可信），v1 不用心率判斷"
+
+goal:
+  headline: "目前 FTP {current:.0f} W，目標 {target:.0f} W（{target_date}）"
+  headline_date: "以近 {weeks} 週趨勢，預估 {date} 達到 {target:.0f} W"
+  trend: "近 {weeks} 週 FTP 估計（{points} 個實際變動點）趨勢每週 {slope:+.1f} W、後半段每週 {recent:+.1f} W、{increases} 週比前一週高、一致性 τ = {tau:.2f}，今天的趨勢值 {level:.0f} W"
+  too_few_points: "近 {weeks} 週 FTP 估計只變動過 {points} 次（至少要 {min_points} 次），看不出趨勢，不給預估日期"
+  no_progression: "只有 {increases} 週比前一週高（至少要 {min_increases} 週）：比較像跳了一階，不是持續進步，不給預估日期"
+  stalled: "後半段（近 4 週）趨勢每週 {recent:+.1f} W，沒有在往上，不給預估日期"
+  after_target: "照目前趨勢，{target:.0f} W 會在目標日 {target_date} 的 {after_weeks} 週之後才達到：直線推那麼遠不準，只說「晚於目標日」"
+  headline_after: "照目前趨勢，{target:.0f} W 會晚於目標日 {target_date} 半年以上"
+  below_setting: "FTP 估計 {level:.0f} W 比設定 {setting:.0f} W 低 {gap:.0%}（容許 {below:.0%}）：近期沒有騎到極限，用它推估會太悲觀，不給預估日期"
+  method: "用 Theil–Sen 穩健直線（成對斜率的中位數），單一週的異常值影響很小；只用估計值實際變動的那幾天（不重複計算沿用的值）；至少 {min_weeks} 週資料、{min_points} 個變動點、{min_increases} 週比前一週高、後半段仍往上、Kendall τ ≥ {min_tau:.1f}、估計不低於 FTP 設定 {below:.0%} 以上、每週至少 +{min_slope:.2f} W 才給日期；晚於目標日 {after_weeks} 週以上只說「晚於目標日」"
+  inconsistent: "趨勢不一致（Kendall τ = {tau:.2f} < {min_tau:.1f}）：週與週的變化方向不一致，還看不出穩定進步，不給預估日期"
+  no_max_effort: "近 {window} 天沒有接近極限的長時間努力，FTP 估計偏保守，預估的可信度低"
+  too_few_weeks: "只有 {weeks} 週的 FTP 估計（至少要 {min_weeks} 週），不給預估日期"
+  flat_or_falling: "趨勢每週 {slope:+.1f} W，低於 +{min_slope:.2f} W，照這樣到不了目標，不給預估日期"
+  too_far: "照目前趨勢要超過 {max_days} 天，不給預估日期"
+  reached: "趨勢值 {level:.0f} W 已達目標 {target:.0f} W"
+  shift: "上一趟（{prev_day}）預估 {prev_date}，這趟後預估 {date}：{shift_text}"
+  shift_earlier: "提前 {days} 天"
+  shift_later: "延後 {days} 天"
+  shift_same: "不變"
+  on_track: "預估日期 {date} 在目標日 {target_date} 之前：進度符合"
+  off_track: "預估日期 {date} 晚於目標日 {target_date}：照目前趨勢會落後"
+  evidence: "這趟有接近極限的長時間努力（{label}），× {frac:.2f} = FTP 證據 {ev:.0f} W"
+  source: "FTP 估計來源：{source}"
+
+outdoor:
+  stop: "停車 {sec} 秒"
+  heat: "平均氣溫 {temp_avg_c:.0f} °C（≥ {limit_c:.0f} °C）：高溫讓同樣功率的心率偏高，今天的心率漂移（decoupling）、效率因子（EF）和心率延遲不和涼爽天比較"
+  stops: "停車 {stops_n} 次、共 {stopped_min:.0f} 分鐘（每小時 {stops_per_h:.1f} 次；門檻每小時 {limit_per_h:.0f} 次或共 {limit_min:.0f} 分鐘）：路口把騎乘切開，間歇結構和變異指數（VI）不可靠"
+  stops_reps: "；被停車打斷的組數已另外寬列"
+  heat_vs_usual: "平均氣溫 {temp_avg_c:.0f} °C，比你最近常騎的 {usual_c:.0f} °C 高 {diff_c:.0f} °C（≥ {margin_c:.0f} °C）：同樣功率心率會偏高，今天的心率漂移（decoupling）、效率因子（EF）和心率延遲不和平常比較"
+  coasting: "滑行 {coasting_pct:.0f} %（≥ {limit_pct:.0f} %）：平均功率低估踩踏時的強度，看標準化功率（NP）和區間分鐘數，不看平均功率"
+
+climb:
+  name: "{km:.1f} km · {grade:.1f} % 爬坡"
+  rank: "第 {rank}/{of_n} 快"
+  time: "比過去中位數{dir} {sec} 秒"
+  faster: "快"
+  slower: "慢"
+  power: "平均 {w:.0f} W（過去中位數 {hist_w:.0f} W）"
+  fatigue: "爬之前已花 {kj:.0f} kJ，比過去中位數多 {diff:.1f} kJ/kg（≥ {margin:.0f} kJ/kg），比較時要打折（疲勞會拉低同一條坡的功率）"
+  fresh: "爬之前只花 {kj:.0f} kJ，比過去中位數少 {diff:.1f} kJ/kg（≥ {margin:.0f} kJ/kg），腿比較新鮮"
+  heat: "氣溫 {temp:.0f} °C，比過去中位數高 {diff:.0f} °C（≥ {margin:.0f} °C），比較時要打折（高溫會拉低功率）"
+
+feel:
+  much_harder: "RPE {rpe:.0f}，比這類課（{cls}、{minutes:.0f} 分鐘）預期的 {expected:.1f} 高 {gap:.1f}（≥ {surprise:.0f}）：比預期累很多，明天的準備度會往下調"
+  harder: "RPE {rpe:.0f}，比預期的 {expected:.1f} 高 {gap:.1f}（≥ {notable:.1f}）：比預期累一點"
+  easier: "RPE {rpe:.0f}，比預期的 {expected:.1f} 低 {gap:.1f}（≥ {notable:.1f}）：比預期輕鬆"
+  as_expected: "RPE {rpe:.0f}，和這類課預期的 {expected:.1f} 差不多（差 {gap:+.1f}）"
+  feel_strong: "感受 {feel}/5（1 很強 … 5 很弱）：狀態不錯"
+  feel_normal: "感受 {feel}/5（1 很強 … 5 很弱）：普通"
+  feel_weak: "感受 {feel}/5（1 很強 … 5 很弱）：覺得腿沒力"
+  unrated: "還沒評分：騎完感受（RPE、感受）會讓明天的課更準"
+
+limiters:
+  insufficient: "目前沒有確定的限制因子；{n} 項因資料不足暫不判斷（{names}）"
+  trained: "這趟練到「{name}」{minutes:.0f} 分鐘，本週累計 {week:.0f} 分鐘"
+  not_trained: "這趟沒有練到目前最主要的弱點「{name}」（本週累計 {week:.0f} 分鐘）"
+  none: "目前沒有偵測到明顯的限制因子"
+  fewer: "這趟在「{name}」{minutes:.0f} 分鐘，本週累計 {week:.0f} 分鐘"
+  fewer_suffix: "（越少越好）"
+
+common:
+  sep: "；"
+  list_sep: "、"
+
+limiter_names:
+  vo2_ceiling: "有氧天花板（5 分鐘功率）"
+  sustained_power: "20 分鐘持續功率"
+  durability: "耐久力"
+  grey_zone: "灰色地帶比例"
+  aerobic_volume: "有氧基礎量"
+
+# Planner explanations are written for the day they plan ("today"); in the per-ride report that
+# day is tomorrow and the ride just done is "today's ride", so the words are shifted one day
+# (applied in one pass).
+tomorrow_shift:
+  "昨天": "今天這趟"
+  "今天": "明天"

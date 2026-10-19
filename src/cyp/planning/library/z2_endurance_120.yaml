@@ -1,0 +1,30 @@
+id: z2_endurance_120
+version: 1
+name: "Endurance Z2 120 min"
+name_zh: "Z2 有氧耐力 120 分"
+purpose_zh: "兩小時 Z2，平日最長的有氧單位。"
+intent: endurance
+phases: [base, build, threshold]
+slot_roles: [endurance, long_ride]
+requires_power: false
+indoor_ok: true
+outdoor_ok: true
+params: {}
+steps:
+  - {cue: Warmup, kind: ramp, duration: 10m, lo: 50, hi: 65}
+  - {cue: Endurance, kind: steady, duration: 100m, lo: 62, hi: 75, cadence: "85-95rpm"}
+  - {cue: Cooldown, kind: steady, duration: 10m, lo: 50, hi: 55}
+outdoor_rendering:
+  note: "Hold 62-75 % on flats, climbs under 80 %, soft-pedal descents. Eat 40-60 g carbs/h from the first hour."
+  note_zh: "平路 62–75 %，爬坡不超過 80 %，下坡輕踩；第一小時起每小時補 40–60 g 碳水。"
+  widen_pct: 3
+  rests_as_freeride: false
+  ramps_as_range: true
+hr_fallback:
+  note_zh: "Z2 心率 69–83 % LTHR；第二小時若心率漂升超過 83 % 就降功率，這本身就是耐久力的訊號。"
+  steps:
+    - {cue: Warmup, kind: ramp, duration: 10m, lo: 60, hi: 72}
+    - {cue: Endurance, kind: steady, duration: 100m, lo: 69, hi: 83, cadence: "85-95rpm"}
+    - {cue: Cooldown, kind: steady, duration: 10m, lo: 60, hi: 68}
+tss_model: closed_form
+explain_zh: "兩小時 Z2 開始觸及耐久力（durability）：第二小時的心率漂移與效率因子會被記錄下來，作為長騎能力的指標。它在週三 150 分的時段或週日作為次長騎使用。"

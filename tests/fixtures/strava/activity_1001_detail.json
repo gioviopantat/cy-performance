@@ -1,0 +1,30 @@
+{"id": 1001, "athlete": {"id": 90000001}, "name": "Morning Ride", "sport_type": "Ride", "type": "Ride",
+ "description": "A lovely loop", "distance": 40000.0, "moving_time": 3600, "elapsed_time": 3700,
+ "total_elevation_gain": 500.0, "start_date": "2026-09-28T22:00:00Z", "start_date_local": "2026-09-29T06:00:00Z",
+ "timezone": "(GMT+08:00) Asia/Taipei", "utc_offset": 28800.0, "device_watts": true, "average_watts": 200.0,
+ "weighted_average_watts": 215.0, "max_watts": 600, "kilojoules": 720.0, "has_heartrate": true,
+ "average_heartrate": 150.0, "max_heartrate": 178.0, "average_cadence": 88.0, "calories": 850.0,
+ "gear_id": "b123", "gear": {"id": "b123", "name": "Canyon Aeroad"}, "device_name": "Garmin Edge 850",
+ "trainer": false, "commute": false, "manual": false, "workout_type": 10,
+ "map": {"polyline": "FULLPOLY", "summary_polyline": "abc"},
+ "segment_efforts": [
+  {"id": 9001, "name": "Hill Climb", "activity": {"id": 1001}, "athlete": {"id": 90000001},
+   "elapsed_time": 300, "moving_time": 295, "distance": 1200.0, "start_date": "2026-09-28T22:10:00Z",
+   "start_date_local": "2026-09-29T06:10:00Z", "start_index": 600, "end_index": 900,
+   "average_watts": 310.0, "device_watts": true, "average_heartrate": 172.0, "max_heartrate": 180.0,
+   "average_cadence": 80.0, "pr_rank": 1, "kom_rank": null, "achievements": [{"type": "pr", "rank": 1}],
+   "segment": {"id": 5001, "name": "Hill Climb", "activity_type": "Ride", "distance": 1200.0,
+    "average_grade": 6.5, "maximum_grade": 11.0, "elevation_high": 320.0, "elevation_low": 240.0,
+    "climb_category": 2, "city": "Taipei", "state": "Taiwan", "country": "Taiwan", "starred": true}},
+  {"id": 9002, "name": "River Sprint", "activity": {"id": 1001}, "elapsed_time": 60, "moving_time": 60,
+   "distance": 800.0, "start_date": "2026-09-28T22:40:00Z", "start_index": 2400, "end_index": 2460,
+   "average_watts": 420.0, "device_watts": true, "pr_rank": null, "achievements": [],
+   "segment": {"id": 5002, "name": "River Sprint", "activity_type": "Ride", "distance": 800.0,
+    "average_grade": 0.1, "climb_category": 0, "city": "Taipei", "country": "Taiwan"}}
+ ],
+ "laps": [
+  {"id": 8001, "lap_index": 1, "name": "Lap 1", "elapsed_time": 1800, "moving_time": 1790, "distance": 20000.0,
+   "start_index": 0, "end_index": 1800, "average_watts": 198.0},
+  {"id": 8002, "lap_index": 2, "name": "Lap 2", "elapsed_time": 1900, "moving_time": 1810, "distance": 20000.0,
+   "start_index": 1800, "end_index": 3600, "average_watts": 202.0}
+ ]}
