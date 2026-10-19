@@ -116,6 +116,16 @@ def test_diff_declined_and_budget() -> None:
     assert len(d.create) == 2 and d.deferred == [spec(4).external_id, spec(5).external_id]
 
 
+def test_an_event_the_athlete_moved_is_left_where_they_put_it() -> None:
+    """Roger, 2026-10-19: dragged Tuesday's sweet spot to Monday in icu."""
+    moved = {**spec(2).payload(), "start_date_local": f"{day(1).isoformat()}T00:00:00"}
+    gone = {**spec(4).payload(), "start_date_local": f"{day(3).isoformat()}T00:00:00"}
+    desired = [spec(2, name="rest note")]  # the plan changed that day; spec(4) not wanted
+    d = compute_diff(desired, [moved, gone], window=WINDOW, now_local=NOW)
+    assert d.declined == [spec(2).external_id, spec(4).external_id]
+    assert d.n_writes == 0
+
+
 # -------------------------------------------------------------------------- publisher
 
 

@@ -244,13 +244,17 @@ def _sync(ctx: AppContext, sync: SyncFn, enabled: bool) -> str | None:
 
 
 def _light_sync(ctx: AppContext) -> dict[str, Any]:
-    """intervals.icu activities (+ streams) since the cursor minus its overlap; no Strava."""
+    """intervals.icu activities (+ streams) and calendar events; no Strava.
+
+    Events too, so a workout the athlete dragged to another day in icu is seen before the
+    ride's report judges the ride against it.
+    """
     from cyp.jobs.sync import build_intervals_syncer
 
     with ctx.write_lock:
         syncer = build_intervals_syncer(ctx.settings, ctx.factory, streams=True)
         try:
-            return dict(syncer.run(("activities",)).stages)
+            return dict(syncer.run(("activities", "events")).stages)
         finally:
             close = getattr(syncer, "close", None)
             if callable(close):

@@ -29,7 +29,7 @@ from cyp.services.readiness import ride_feedback
 from cyp.services.ride_feedback import casual_ids
 from cyp.settings import AthleteConfig
 from cyp.store.models import Activity, ActivityMetrics, PlannedWorkout
-from cyp.store.repo.planned import is_live
+from cyp.store.repo.planned import PlannedWorkoutRepo, is_live
 from cyp.store.streams import StreamStore
 
 #: Days before today whose records are (re)written each morning (late syncs, edited RPE).
@@ -145,9 +145,11 @@ def compute(ctx: AppContext, today: dt.date, days: int = COMPLIANCE_DAYS) -> dic
             )
             .order_by(PlannedWorkout.date_local, PlannedWorkout.slot)
         ).all()
+        repo = PlannedWorkoutRepo(s)
         for pw in rows:
+            day = repo.moved_day(pw) or pw.date_local  # dragged in icu: judged where it went
             out[pw.id] = judge_day(
-                s, ctx.store, ds, cfg, pw.date_local, pw, feedback, frames=frames, casual=casual
+                s, ctx.store, ds, cfg, day, pw, feedback, frames=frames, casual=casual
             )
     return out
 

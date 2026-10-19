@@ -70,6 +70,9 @@ Deterministic allocation of `target_tss` across available days:
 - Fixed long ride on the day with most availability (weekend; in a week with one-off `availability.dates`, any day); never adjacent to the other HIT day
   unless block = specialty and readiness ≥ NORMAL.
 - HIT days separated by ≥ 48 h; rest/recovery day after the long ride.
+- A hard ride already done this week (not tagged casual) uses up one of the week's HIT
+  sessions and counts for the 48 h spacing, so a workout ridden early or on the athlete's own
+  is not scheduled again (ADR-0024).
 - Strength/yoga are **not planned**. Their actual load still enters the PMC via icu, and a heavy
   strength session detected yesterday downgrades today's HIT to Z2.
 - Residual TSS → Z2 endurance of lengths that fit availability; if residual < 25 TSS → rest.

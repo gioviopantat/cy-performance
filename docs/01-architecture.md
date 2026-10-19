@@ -165,7 +165,7 @@ Details in [05-training-engine](05-training-engine.md).
 - `jobs/launchd.py` — the macOS launch agents (`cyp schedule install`: 05:30 autopilot;
   `--watch`: `cyp watch --all` every 10 min); `jobs/notify.py` — macOS notification on failure
   (`notify.macos`) and SMTP email (`notify.email`).
-- `jobs/watch.py` — one watcher tick per profile: lock → light intervals.icu sync → per-ride
+- `jobs/watch.py` — one watcher tick per profile: lock → light intervals.icu sync (activities, streams, calendar events) → per-ride
   analysis → for each new ride, wait for streams (≤ 6 h) and the rating (≤ 2 h), then build the
   PDF and email it; one `ride_reports` row per ride so it is sent once. Never writes a calendar
   ([ADR-0010](adr/0010-ride-report-polling-and-email.md)); with `strava.auto_description` on it

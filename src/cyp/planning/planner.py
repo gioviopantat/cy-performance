@@ -193,6 +193,9 @@ class PlanContext:
     #: Athlete ≥ 60 with ``plan.athlete_rules`` on: a second hard day 48 h after the first gets
     #: the lighter session (set by the caller from :func:`athlete_rules.is_senior`).
     masters: bool = False
+    #: Past days with a hard ride (not casual): they use up the week's hard sessions, so a
+    #: workout the athlete rode early (or on their own) is not scheduled again.
+    done_hard: frozenset[dt.date] = frozenset()
 
 
 def weekday_key(day: dt.date) -> str:
@@ -240,7 +243,10 @@ def assign_roles(
         roles[long_day] = "long_ride"
     after_long = long_day + dt.timedelta(days=1) if long_day else None
 
-    hard: list[dt.date] = []
+    hard: list[dt.date] = [d for d in days if d in ctx.done_hard]
+    for d in hard:
+        if roles[d] == "endurance" and avail[d] >= MIN_HIT_MINUTES:
+            roles[d] = "hit"
 
     def ok_for_hard(d: dt.date) -> bool:
         if avail.get(d, 0) < MIN_HIT_MINUTES or roles[d] in ("long_ride", "rest"):
@@ -262,7 +268,7 @@ def assign_roles(
             eve = test_day - dt.timedelta(days=1)
             if week.phase == "test" and eve in roles and roles[eve] == "endurance":
                 roles[eve] = "opener"
-    n_hit = max(week.hit_sessions - (1 if week.test else 0), 0)
+    n_hit = max(week.hit_sessions - (1 if week.test else 0) - len(hard), 0)
     if week.phase == "test" and week.test:
         n_hit = 0
     # Preferred hard days are part of the goal menus (flag plan.goal_menus).

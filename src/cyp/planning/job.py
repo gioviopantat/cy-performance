@@ -237,6 +237,7 @@ def plan_horizon(
         indoor_days=frozenset(ov.indoor_days),
         goal_date=sk.goal_date,
         masters=is_senior(cfg, today),
+        done_hard=_done_hard(ds, sk, today, ad.casual_days),
     )
     weeks = [w for w in sk.weeks if w.end >= first and w.start <= last]
     ctl, atl = ds.ctl_atl(weeks[0].start - dt.timedelta(days=1))
@@ -400,6 +401,21 @@ def _to_date(values: Mapping[dt.date, float], today: dt.date) -> float:
     """Sum of ``values`` from this week's Monday up to yesterday."""
     start = today - dt.timedelta(days=today.weekday())
     return sum(values.get(start + dt.timedelta(days=i), 0.0) for i in range(today.weekday()))
+
+
+def _done_hard(
+    ds: Dataset, sk: SeasonSkeleton, today: dt.date, casual: frozenset[dt.date]
+) -> frozenset[dt.date]:
+    """This week's past days with a hard ride that was not tagged casual."""
+    week = sk.week_of(today)
+    if week is None:
+        return frozenset()
+    past = [week.start + dt.timedelta(days=i) for i in range((today - week.start).days)]
+    return frozenset(
+        d
+        for d in past
+        if d not in casual and any(a.is_ride and a.classification in HARD_CLASSES for a in ds.on(d))
+    )
 
 
 def _ahead_weeks(ds: Dataset, run: PlanRun, today: dt.date) -> frozenset[dt.date]:

@@ -30,7 +30,9 @@ from cyp.store.repo.planned import PlannedWorkoutRepo
 def planned_for(inp: RideInputs) -> tuple[PlannedWorkout | None, IcuEvent | None]:
     """Our planned workout this ride executed, else the athlete's own icu WORKOUT of the day.
 
-    With several rides on one day only the longest one carries the plan.
+    A workout of ours the athlete dragged to this day in icu (its event is on this day, its
+    external_id names another) counts as this day's plan. With several rides on one day only
+    the longest one carries the plan.
     """
     s, a, day = inp.session, inp.activity, inp.day
     repo = PlannedWorkoutRepo(s)
@@ -51,8 +53,11 @@ def planned_for(inp: RideInputs) -> tuple[PlannedWorkout | None, IcuEvent | None
     if same_day and max(same_day, key=lambda x: (x.moving_s or 0, -x.id)).id != a.id:
         return None, None
     pw = repo.first_live_on(day)
-    if pw is not None:
+    if pw is not None and repo.moved_day(pw) is None:
         return pw, None
+    moved = repo.moved_onto(day)
+    if moved:
+        return moved[0], None
     ev = s.scalar(
         select(IcuEvent)
         .where(

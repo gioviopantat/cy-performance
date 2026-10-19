@@ -6,6 +6,8 @@ Rules:
   the cut-off; future days freely.
 - An external_id we published before (``previously_published``) that is now missing from the
   calendar was deleted by the athlete: it is *declined*, never recreated.
+- An event of ours that sits on another day than its external_id says was moved by the
+  athlete: it is *declined* too, never moved back, changed or deleted.
 - At most ``max_events`` writes (creates + updates + deletes) per run; the rest is deferred.
 """
 
@@ -62,6 +64,20 @@ def mutable(day: dt.date, now_local: dt.datetime, cutoff: dt.time) -> bool:
     return True
 
 
+def _calendar_day(event: dict[str, Any]) -> dt.date | None:
+    try:
+        return dt.date.fromisoformat(str(event.get("start_date_local") or "")[:10])
+    except ValueError:
+        return None
+
+
+def moved_by_athlete(event: dict[str, Any]) -> bool:
+    """Our event no longer on the day its external_id names: the athlete dragged it."""
+    parsed = parse_external_id(event.get("external_id"))
+    on = _calendar_day(event)
+    return parsed is not None and on is not None and on != parsed[1]
+
+
 def _event_day(event: dict[str, Any]) -> dt.date | None:
     parsed = parse_external_id(event.get("external_id"))
     if parsed:
@@ -103,6 +119,9 @@ def compute_diff(
         if not (lo <= spec.date <= hi):
             continue
         remote = ours.get(spec.external_id)
+        if remote is not None and moved_by_athlete(remote):
+            diff.declined.append(spec.external_id)
+            continue
         if not mutable(spec.date, now_local, cutoff):
             diff.frozen.append(spec.external_id)
             continue
@@ -119,6 +138,9 @@ def compute_diff(
     for ext, remote in sorted(ours.items()):
         day = _event_day(remote)
         if ext in wanted or day is None or not (lo <= day <= hi):
+            continue
+        if moved_by_athlete(remote):
+            diff.declined.append(ext)
             continue
         if not mutable(day, now_local, cutoff):
             diff.frozen.append(ext)

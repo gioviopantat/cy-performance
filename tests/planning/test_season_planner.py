@@ -116,6 +116,27 @@ def test_roles_respect_availability_and_spacing(cfg: AthleteConfig, ctx: PlanCon
     }
 
 
+def test_a_hard_ride_already_done_uses_up_the_weeks_hard_sessions(
+    cfg: AthleteConfig, ctx: PlanContext
+) -> None:
+    """Roger, 2026-10-19: rode Tuesday's sweet spot on Monday; no second one later that week."""
+    from dataclasses import replace
+
+    w = build_skeleton(cfg).weeks[1]  # base week: 1 HIT
+    mon = w.start
+    plain = assign_roles(w, availability(w, ctx), ctx)
+    assert sum(r == "hit" for r in plain.values()) == 1 and plain[mon] == "rest"
+    done = replace(ctx, done_hard=frozenset({mon}))
+    roles = assign_roles(w, availability(w, done), done)
+    assert [d for d, r in roles.items() if r == "hit"] == []  # Monday's ride was the one
+    # The planned hard day itself, ridden: it stays the week's only hard day.
+    tue = mon + dt.timedelta(days=1)
+    same = replace(ctx, done_hard=frozenset({tue}))
+    assert [d for d, r in assign_roles(w, availability(w, same), same).items() if r == "hit"] == [
+        tue
+    ]
+
+
 def test_plan_week_is_deterministic_and_explained(cfg: AthleteConfig, ctx: PlanContext) -> None:
     a = _week_plan(cfg, ctx, 9)
     b = _week_plan(cfg, ctx, 9)

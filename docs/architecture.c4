@@ -147,7 +147,7 @@ model {
   cyp.watchAgent -> cyp.cli 'starts watch --all every 10 min'
   cyp.cli -> cyp.watcher 'watch [--all]: one subprocess per profile; ride-report <id> [--send]'
   cyp.api -> cyp.watcher 'a saved post-ride feeling starts that profile tick at once'
-  cyp.watcher -> icu 'checks key owner, syncs recent activities and streams (read only)'
+  cyp.watcher -> icu 'checks key owner, syncs recent activities, streams and calendar events (read only)'
   cyp.watcher -> cyp.db 'reads rides, metrics, plans; writes ride_reports and job_runs'
   cyp.watcher -> cyp.streams 'reads ride streams for the charts'
   cyp.watcher -> cyp.rideFiles 'reads post-ride feelings, casual tags and RIDE.LOG texts'

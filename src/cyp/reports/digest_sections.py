@@ -35,7 +35,7 @@ from cyp.reports.ride_model import Intent
 from cyp.reports.ride_sections import usual_temp
 from cyp.store.models import IcuEvent, PlannedWorkout
 from cyp.store.repo.events import CYP_EXTERNAL_ID_PREFIX
-from cyp.store.repo.planned import is_live
+from cyp.store.repo.planned import PlannedWorkoutRepo, is_live
 
 #: Hard sessions (mid + high) a week may be off its phase target before the distribution is
 #: called under / over: one session either way, since a week holds only 4-7 sessions and one
@@ -128,9 +128,11 @@ def week_label(inp: DigestInputs, start: dt.date) -> str:
 def day_plans(inp: DigestInputs, day: dt.date) -> tuple[list[PlannedWorkout], list[IcuEvent]]:
     """The day's live planned workouts of ours, else the athlete's own icu WORKOUT events.
 
-    Same precedence as :func:`~cyp.reports.ride_intent.planned_for`.
+    Same precedence as :func:`~cyp.reports.ride_intent.planned_for`: a workout the athlete
+    dragged to another day in icu counts on that day.
     """
-    ours = list(
+    repo = PlannedWorkoutRepo(inp.session)
+    stayed = list(
         inp.session.scalars(
             select(PlannedWorkout)
             .where(
@@ -141,6 +143,7 @@ def day_plans(inp: DigestInputs, day: dt.date) -> tuple[list[PlannedWorkout], li
             .order_by(PlannedWorkout.slot)
         )
     )
+    ours = [p for p in stayed if repo.moved_day(p) is None] + repo.moved_onto(day)
     if ours:
         return ours, []
     events = inp.session.scalars(
