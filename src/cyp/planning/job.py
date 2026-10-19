@@ -38,7 +38,7 @@ from cyp.core.errors import AnalysisError
 from cyp.core.explain import Explanation
 from cyp.core.ids import external_id
 from cyp.core.timeutil import iso_utc, now_utc
-from cyp.dataset import CACHE, Dataset, PlannedRow
+from cyp.dataset import CACHE, ActivityRow, Dataset, PlannedRow
 from cyp.planning import adapt
 from cyp.planning import gate as gate_mod
 from cyp.planning.athlete_rules import is_senior
@@ -403,18 +403,29 @@ def _to_date(values: Mapping[dt.date, float], today: dt.date) -> float:
     return sum(values.get(start + dt.timedelta(days=i), 0.0) for i in range(today.weekday()))
 
 
+#: Minutes at ≥ 90 % FTP (power Z4 and up) that make a ride a hard session even when its
+#: whole-ride IF is diluted (a sweet spot set ridden outdoors with stops classifies as tempo).
+HARD_DOSE_S = 15 * 60
+HARD_ZONES = ("Z4", "Z5", "Z6", "Z7")
+
+
+def _is_hard(a: ActivityRow) -> bool:
+    if a.classification in HARD_CLASSES:
+        return True
+    tiz = a.tiz_power or {}
+    return sum(float(tiz.get(z) or 0.0) for z in HARD_ZONES) >= HARD_DOSE_S
+
+
 def _done_hard(
     ds: Dataset, sk: SeasonSkeleton, today: dt.date, casual: frozenset[dt.date]
 ) -> frozenset[dt.date]:
-    """This week's past days with a hard ride that was not tagged casual."""
+    """This week's past days with a hard ride (class or ≥ 15 min at Z4+) not tagged casual."""
     week = sk.week_of(today)
     if week is None:
         return frozenset()
     past = [week.start + dt.timedelta(days=i) for i in range((today - week.start).days)]
     return frozenset(
-        d
-        for d in past
-        if d not in casual and any(a.is_ride and a.classification in HARD_CLASSES for a in ds.on(d))
+        d for d in past if d not in casual and any(a.is_ride and _is_hard(a) for a in ds.on(d))
     )
 
 

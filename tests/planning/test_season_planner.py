@@ -438,3 +438,19 @@ def test_is_overdone_needs_factor_and_margin() -> None:
     assert not adapt.is_overdone(125, 100)
     assert adapt.is_overdone(141, 100)
     assert not adapt.is_overdone(None, 100) and not adapt.is_overdone(80, 0)
+
+
+def test_a_diluted_sweet_spot_still_counts_as_hard() -> None:
+    """Ride 232: IF 0.73 (tempo by class) but 18 min at Z4+; a long Z2 ride with hills is not."""
+    from cyp.dataset import ActivityRow
+    from cyp.planning.job import _is_hard
+
+    def row(cls: str, z4_up_s: float) -> ActivityRow:
+        return ActivityRow(id=1, date=dt.date(2026, 10, 19), sport="Ride", name=None,
+                           is_ride=True, moving_s=5400, kj=None, has_power=True, has_hr=True,
+                           load=79.0, load_source="cyp", classification=cls,
+                           tiz_power={"Z3": 700.0, "Z4": z4_up_s})  # fmt: skip
+
+    assert _is_hard(row("tempo", 1091.0))
+    assert not _is_hard(row("endurance", 390.0))
+    assert _is_hard(row("threshold", 0.0))
